@@ -20,7 +20,26 @@ export const PALETTE = ["rgba(140,133,118,0.55)", "#d4af37", "#ff3b1f", "#ede6d6
 export const ENTROPY = [0.97, 0.66, 0.6, 0.55, 0.5, 0.38, 0.21, 0.09, 0.03];
 export const WOBBLE = [26, 2.4, 2.2, 2.2, 2.2, 1.6, 1.3, 1.1, 0.7];
 
-export type Formation = { x: Float32Array; y: Float32Array; c: Uint8Array };
+/** World-space formation: x/y in the stage plane (px, centered on the stage), z = depth (+ away). */
+export type Formation = { x: Float32Array; y: Float32Array; z: Float32Array; c: Uint8Array };
+
+/**
+ * Camera per act. tilt: rotation about the screen X axis (ground seen from the stands);
+ * yaw: in-plane orbit, swept across the act by scroll (yawSweep); spin: rotation about the
+ * vertical axis after tilting (globe/coin turn), with a slow time drift (spinRate rad/s).
+ */
+export type Camera = { tilt: number; yaw: number; yawSweep: number; spin: number; spinRate: number };
+export const CAMERAS: Camera[] = [
+  { tilt: 0, yaw: 0, yawSweep: 0, spin: 0, spinRate: 0.07 },         // 0 ruido: volumetric cloud turning
+  { tilt: 0.98, yaw: -0.22, yawSweep: 0.44, spin: 0, spinRate: 0 },  // 1 fútbol: stadium view, orbit
+  { tilt: 0.92, yaw: 0.2, yawSweep: -0.4, spin: 0, spinRate: 0 },    // 2 MLB
+  { tilt: 1.0, yaw: -0.18, yawSweep: 0.36, spin: 0, spinRate: 0 },   // 3 NBA
+  { tilt: 1.05, yaw: 0.16, yawSweep: -0.32, spin: 0, spinRate: 0 },  // 4 tenis
+  { tilt: 0.78, yaw: -0.3, yawSweep: 0.3, spin: 0, spinRate: 0 },    // 5 100 versiones: columns
+  { tilt: 0.95, yaw: 0.62, yawSweep: -0.5, spin: 0, spinRate: 0 },   // 6 matriz: towers, diagonal view
+  { tilt: 0.28, yaw: 0, yawSweep: 0, spin: -0.25, spinRate: 0 },     // 7 calibración: slight turn
+  { tilt: 0, yaw: 0, yawSweep: 0, spin: 0, spinRate: 0.55 },         // 8 marca: coin turning
+];
 type Box = { cx: number; cy: number; s: number; w: number; h: number };
 
 function rng(seed: number) {
@@ -39,7 +58,7 @@ function gauss(r: () => number) {
 }
 
 function alloc(n: number): Formation {
-  return { x: new Float32Array(n), y: new Float32Array(n), c: new Uint8Array(n) };
+  return { x: new Float32Array(n), y: new Float32Array(n), z: new Float32Array(n), c: new Uint8Array(n) };
 }
 
 /** Where formations live: right half on desktop (text on the left), upper area on mobile. */
@@ -54,6 +73,7 @@ function noise(n: number, b: Box): Formation {
   for (let i = 0; i < n; i++) {
     f.x[i] = -0.1 * b.w + r() * b.w * 1.2;
     f.y[i] = -0.1 * b.h + r() * b.h * 1.2;
+    f.z[i] = (r() * 1.6 - 0.55) * b.s; // volumetric: some flecks fly past the lens
     const k = r();
     f.c[i] = k < 0.18 ? COLOR.flare : k < 0.24 ? COLOR.bone : COLOR.dim;
   }
@@ -137,6 +157,9 @@ function hundred(n: number, b: Box): Formation {
     const rad = Math.sqrt(r()) * cell * 0.3;
     f.x[i] = x0 + (col + 0.5) * cell + Math.cos(a) * rad;
     f.y[i] = y0 + (row + 0.5) * cell + Math.sin(a) * rad;
+    // Each version is a column; home wins stand tallest so the 49 read as a block.
+    const height = k < 49 ? 1.1 : k < 76 ? 0.55 : 0.22;
+    f.z[i] = -r() * cell * height;
     f.c[i] = k < 49 ? COLOR.gold : k < 76 ? COLOR.bone : COLOR.dim;
   }
   return f;
@@ -174,6 +197,7 @@ function matrix(n: number, b: Box): Formation {
     f.x[i] = x0 + (a + 0.07 + r() * 0.86) * cell;
     f.y[i] = y0 + (h + 0.07 + r() * 0.86) * cell;
     const rel = p[k] / max;
+    f.z[i] = -r() * (0.04 + rel) * b.s * 0.5; // probability = tower height
     f.c[i] = rel > 0.98 ? COLOR.bone : rel > 0.42 ? COLOR.gold : COLOR.dim;
   }
   return f;
@@ -402,5 +426,8 @@ function tennis(n: number, b: Box): Formation {
 
 export function buildFormations(n: number, w: number, h: number): Formation[] {
   const b = stage(w, h);
-  return [noise(n, b), pitch(n, b), diamond(n, b), basketball(n, b), tennis(n, b), hundred(n, b), matrix(n, b), calibration(n, b), mark(n, b)];
+  const list = [noise(n, b), pitch(n, b), diamond(n, b), basketball(n, b), tennis(n, b), hundred(n, b), matrix(n, b), calibration(n, b), mark(n, b)];
+  // Center every formation on the stage origin; the camera projects back onto the stage.
+  for (const f of list) for (let i = 0; i < n; i++) { f.x[i] -= b.cx; f.y[i] -= b.cy; }
+  return list;
 }
