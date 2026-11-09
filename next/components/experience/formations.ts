@@ -21,7 +21,22 @@ export const ENTROPY = [0.97, 0.66, 0.6, 0.55, 0.5, 0.38, 0.21, 0.09, 0.03];
 export const WOBBLE = [26, 2.4, 2.2, 2.2, 2.2, 1.6, 1.3, 1.1, 0.7];
 
 /** World-space formation: x/y in the stage plane (px, centered on the stage), z = depth (+ away). */
-export type Formation = { x: Float32Array; y: Float32Array; z: Float32Array; c: Uint8Array };
+export type Formation = {
+  x: Float32Array; y: Float32Array; z: Float32Array; c: Uint8Array;
+  /** Live-simulation group per particle (agent/column/bin index), -1 = static. */
+  g: Int16Array;
+  sim?: SimSpec;
+};
+
+export type Agent = { x: number; y: number; team: number }; // team 0 gold, 1 bone, 2 ball
+export type SimSpec = {
+  kind: "football" | "baseball" | "basketball" | "tennis" | "columns" | "towers" | "bins";
+  scale: number;
+  agents?: Agent[];
+  pts?: Record<string, [number, number]>;
+  land?: [number, number][];
+  groups?: number;
+};
 
 /**
  * Camera per act. tilt: rotation about the screen X axis (ground seen from the stands);
@@ -58,7 +73,7 @@ function gauss(r: () => number) {
 }
 
 function alloc(n: number): Formation {
-  return { x: new Float32Array(n), y: new Float32Array(n), z: new Float32Array(n), c: new Uint8Array(n) };
+  return { x: new Float32Array(n), y: new Float32Array(n), z: new Float32Array(n), c: new Uint8Array(n), g: new Int16Array(n).fill(-1) };
 }
 
 /** Where formations live: right half on desktop (text on the left), upper area on mobile. */
@@ -116,8 +131,28 @@ function pitch(n: number, b: Box): Formation {
       f.x[i] = sx(players[p][0]) + Math.cos(a) * rad;
       f.y[i] = sy(players[p][1]) + Math.sin(a) * rad;
       f.c[i] = p < 11 ? COLOR.gold : COLOR.bone;
+      f.g[i] = p;
     }
   }
+  // The ball: a tight red cluster that the simulation moves around the pitch.
+  const ballN = Math.max(24, Math.floor(perPlayer * 0.75));
+  for (let k = 0; k < ballN; k++, i++) {
+    const a = r() * Math.PI * 2;
+    const rad = Math.sqrt(r()) * b.s * 0.0075;
+    f.x[i] = sx(52.5) + Math.cos(a) * rad;
+    f.y[i] = sy(34) + Math.sin(a) * rad;
+    f.c[i] = COLOR.flare;
+    f.g[i] = players.length;
+  }
+  f.sim = {
+    kind: "football",
+    scale: b.s,
+    agents: [
+      ...players.map(([x, y], p) => ({ x: sx(x), y: sy(y), team: p < 11 ? 0 : 1 })),
+      { x: sx(52.5), y: sy(34), team: 2 },
+    ],
+    pts: { min: [sx(1), sy(1)], max: [sx(104), sy(67)], goal0: [sx(0), sy(34)], goal1: [sx(105), sy(34)] },
+  };
   for (; i < n; i++) {
     let d = r() * total;
     let placed = false;
@@ -161,7 +196,9 @@ function hundred(n: number, b: Box): Formation {
     const height = k < 49 ? 1.1 : k < 76 ? 0.55 : 0.22;
     f.z[i] = -r() * cell * height;
     f.c[i] = k < 49 ? COLOR.gold : k < 76 ? COLOR.bone : COLOR.dim;
+    f.g[i] = k;
   }
+  f.sim = { kind: "columns", scale: b.s, groups: 100 };
   return f;
 }
 
@@ -201,7 +238,9 @@ function matrix(n: number, b: Box): Formation {
     const floors = Math.max(1, Math.round(rel * 14));
     f.z[i] = -Math.floor(r() * floors) * b.s * 0.02;
     f.c[i] = rel > 0.98 ? COLOR.bone : rel > 0.42 ? COLOR.gold : COLOR.dim;
+    f.g[i] = k;
   }
+  f.sim = { kind: "towers", scale: b.s, groups: G * G };
   return f;
 }
 
@@ -241,7 +280,9 @@ function calibration(n: number, b: Box): Formation {
     f.x[i] = x0 + bin.pred * size + gauss(r) * spread;
     f.y[i] = y0 - bin.obs * size + gauss(r) * spread;
     f.c[i] = COLOR.gold;
+    f.g[i] = bi;
   }
+  f.sim = { kind: "bins", scale: b.s, groups: 10 };
   return f;
 }
 
@@ -281,7 +322,7 @@ function mark(n: number, b: Box): Formation {
 
 type Seg = [number, number, number, number];
 type Arc = { cx: number; cy: number; r: number; a0: number; a1: number };
-type Blob = { x: number; y: number; c: number; r?: number };
+type Blob = { x: number; y: number; c: number; r?: number; team?: number };
 
 /**
  * Generic "field drawing": distributes particles along line segments and arcs (in field units),
@@ -299,17 +340,23 @@ function drawField(
   const nBlobs = Math.floor(n * blobShare);
   const per = Math.max(1, Math.floor(nBlobs / Math.max(1, blobs.length)));
   let i = 0;
+  const agents: Agent[] = [];
   for (let b = 0; b < blobs.length; b++) {
     const [bx, by] = toPx(blobs[b].x, blobs[b].y);
     const rad = blobs[b].r ?? blobR;
-    for (let k = 0; k < per && i < n; k++, i++) {
+    const team = blobs[b].team;
+    const gi = team === undefined ? -1 : agents.push({ x: bx, y: by, team }) - 1;
+    const count = team === 2 ? Math.max(24, Math.floor(per * 0.7)) : per;
+    for (let k = 0; k < count && i < n; k++, i++) {
       const a = r() * Math.PI * 2;
       const d = Math.sqrt(r()) * rad;
       f.x[i] = bx + Math.cos(a) * d;
       f.y[i] = by + Math.sin(a) * d;
       f.c[i] = blobs[b].c;
+      f.g[i] = gi;
     }
   }
+  if (agents.length) f.sim = { kind: "football", scale: 0, agents }; // kind/scale/pts set by the caller
   for (; i < n; i++) {
     if (extra && extra(f, i, r)) continue;
     let d = r() * total;
@@ -360,14 +407,23 @@ function diamond(n: number, b: Box): Formation {
   ];
   const G = COLOR.gold;
   const blobs: Blob[] = [
-    { x: 0, y: base * q, c: G }, { x: 0, y: -0.04, c: G }, // pitcher, catcher
-    { x: first[0] + 0.03, y: first[1] + 0.04, c: G }, { x: 0.1, y: 0.42, c: G }, { x: -0.1, y: 0.42, c: G },
-    { x: third[0] - 0.03, y: third[1] + 0.04, c: G },
-    { x: -0.55, y: 0.62, c: G }, { x: 0, y: 0.82, c: G }, { x: 0.55, y: 0.62, c: G },
-    { x: 0.035, y: 0.0, c: COLOR.bone }, // batter
+    { x: 0, y: base * q, c: G, team: 0 }, { x: 0, y: -0.04, c: G, team: 0 }, // 0 pitcher, 1 catcher
+    { x: first[0] + 0.03, y: first[1] + 0.04, c: G, team: 0 }, { x: 0.1, y: 0.42, c: G, team: 0 }, { x: -0.1, y: 0.42, c: G, team: 0 },
+    { x: third[0] - 0.03, y: third[1] + 0.04, c: G, team: 0 },
+    { x: -0.55, y: 0.62, c: G, team: 0 }, { x: 0, y: 0.82, c: G, team: 0 }, { x: 0.55, y: 0.62, c: G, team: 0 },
+    { x: 0.035, y: 0.0, c: COLOR.bone, team: 1 }, // 9 batter
+    { x: 0, y: base * q, c: COLOR.flare, r: b.s * 0.007, team: 2 }, // 10 ball (starts with the pitcher)
     { x: 0, y: 0, c: COLOR.bone, r: b.s * 0.008 }, ...[first, second, third].map(([x, y]) => ({ x, y, c: COLOR.bone, r: b.s * 0.008 })),
   ];
-  return drawField(n, 131, toPx, segs, arcs, blobs, 0.26, b.s * 0.016);
+  const f = drawField(n, 131, toPx, segs, arcs, blobs, 0.26, b.s * 0.016);
+  const land: [number, number][] = [];
+  for (let k = 0; k < 9; k++) {
+    const ang = Math.PI / 4 + (Math.PI / 2) * ((k + 0.5) / 9);
+    const rr = 0.55 + ((k * 37) % 5) * 0.08;
+    land.push(toPx(Math.cos(ang) * rr, Math.sin(ang) * rr));
+  }
+  f.sim = { ...f.sim!, kind: "baseball", scale: b.s, pts: { home: toPx(0, 0), first: toPx(...first), pitcher: toPx(0, base * q) }, land };
+  return f;
 }
 
 function basketball(n: number, b: Box): Formation {
@@ -392,10 +448,15 @@ function basketball(n: number, b: Box): Formation {
   const blobs: Blob[] = [
     [4, 7.5], [7.5, 3.2], [7.5, 11.8], [10.5, 5.5], [11, 9.5],
   ].flatMap(([x, y]): Blob[] => [
-    { x, y, c: COLOR.gold },
-    { x: x + 1.1, y: y + 0.6, c: COLOR.bone },
-  ]).concat([{ x: 1.575, y: 7.5, c: COLOR.flare, r: b.s * 0.012 }, { x: 26.425, y: 7.5, c: COLOR.flare, r: b.s * 0.012 }]);
-  return drawField(n, 151, toPx, segs, arcs, blobs, 0.22, b.s * 0.017);
+    { x, y, c: COLOR.gold, team: 0 },
+    { x: x + 1.1, y: y + 0.6, c: COLOR.bone, team: 1 },
+  ]).concat([
+    { x: 7.5, y: 3.2, c: COLOR.flare, r: b.s * 0.0075, team: 2 }, // ball, starts with a guard
+    { x: 1.575, y: 7.5, c: COLOR.bone, r: b.s * 0.011 }, { x: 26.425, y: 7.5, c: COLOR.bone, r: b.s * 0.011 },
+  ]);
+  const f = drawField(n, 151, toPx, segs, arcs, blobs, 0.22, b.s * 0.017);
+  f.sim = { ...f.sim!, kind: "basketball", scale: b.s, pts: { hoop: toPx(1.575, 7.5), min: toPx(0.5, 0.5), max: toPx(13.5, 14.5) } };
+  return f;
 }
 
 function tennis(n: number, b: Box): Formation {
@@ -409,27 +470,31 @@ function tennis(n: number, b: Box): Formation {
     [5.485, 1.37, 5.485, 9.6], [18.285, 1.37, 18.285, 9.6], [5.485, 5.485, 18.285, 5.485],
     [11.885, -0.9, 11.885, 11.87], [11.885, -0.9, 11.885, 11.87], // net, weighted double
   ];
-  const blobs: Blob[] = [{ x: 1.2, y: 3.4, c: COLOR.gold }, { x: 22.4, y: 7.6, c: COLOR.bone }];
-  // The ball's trajectory: a dotted gold arc rising over the net (a rally in progress).
-  const arc = (f: Formation, i: number, r: () => number) => {
-    if (r() > 0.14) return false;
-    const t = Math.floor(r() * 46) / 46;
-    const x = 2 + t * 19.6;
-    const y = 3.6 + t * 3.6;
-    const lift = Math.sin(t * Math.PI) * 4.2;
-    const [px, py] = toPx(x, y);
-    f.x[i] = px + gauss(r) * 1.2;
-    f.y[i] = py - lift * (H / 10.97) + gauss(r) * 1.2;
-    f.c[i] = COLOR.gold;
-    return true;
+  const blobs: Blob[] = [
+    { x: -0.4, y: 5.485, c: COLOR.gold, team: 0 },
+    { x: 24.17, y: 5.485, c: COLOR.bone, team: 1 },
+    { x: -0.1, y: 5.485, c: COLOR.flare, r: b.s * 0.007, team: 2 },
+  ];
+  const f = drawField(n, 171, toPx, segs, [], blobs, 0.1, b.s * 0.02);
+  void H;
+  f.sim = {
+    ...f.sim!, kind: "tennis", scale: b.s,
+    pts: { min: toPx(-1.2, 0.6), max: toPx(24.97, 10.37), net: toPx(11.885, 5.485), base0: toPx(-0.4, 5.485), base1: toPx(24.17, 5.485) },
   };
-  return drawField(n, 171, toPx, segs, [], blobs, 0.1, b.s * 0.02, arc);
+  return f;
 }
 
 export function buildFormations(n: number, w: number, h: number): Formation[] {
   const b = stage(w, h);
   const list = [noise(n, b), pitch(n, b), diamond(n, b), basketball(n, b), tennis(n, b), hundred(n, b), matrix(n, b), calibration(n, b), mark(n, b)];
   // Center every formation on the stage origin; the camera projects back onto the stage.
-  for (const f of list) for (let i = 0; i < n; i++) { f.x[i] -= b.cx; f.y[i] -= b.cy; }
+  for (const f of list) {
+    for (let i = 0; i < n; i++) { f.x[i] -= b.cx; f.y[i] -= b.cy; }
+    const sp = f.sim;
+    if (!sp) continue;
+    sp.agents?.forEach((a) => { a.x -= b.cx; a.y -= b.cy; });
+    if (sp.pts) for (const k in sp.pts) sp.pts[k] = [sp.pts[k][0] - b.cx, sp.pts[k][1] - b.cy];
+    sp.land = sp.land?.map(([x, y]) => [x - b.cx, y - b.cy]);
+  }
   return list;
 }
