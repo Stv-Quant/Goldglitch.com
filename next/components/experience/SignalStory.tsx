@@ -227,11 +227,22 @@ export function SignalStory() {
       for (let g = 0; g < 12; g++) {
         const c = counts[g];
         if (!c) continue;
+        const isBall = g >= 6 && g <= 8; // flare color = ball / noise flecks: drawn larger, with a halo
+        if (isBall && !stretch) {
+          ctx.fillStyle = "rgba(255,59,31,0.12)";
+          const list = buckets[g];
+          for (let j = 0; j < c; j += 3) {
+            const i = list[j];
+            const hs = base * 4.5 * Math.min(ss[i], 2);
+            ctx.fillRect(sx[i] - hs / 2, sy[i] - hs / 2, hs, hs);
+          }
+        }
         ctx.fillStyle = PALETTE3D[g];
         const list = buckets[g];
+        const mul = isBall ? 1.7 : 1;
         for (let j = 0; j < c; j++) {
           const i = list[j];
-          const sz = Math.min(4, base * Math.min(ss[i], 2.2));
+          const sz = Math.min(5, base * mul * Math.min(ss[i], 2.2));
           if (stretch) {
             const dy = Math.max(-70, Math.min(70, (sy[i] - psy[i]) * stretch));
             ctx.fillRect(sx[i], dy > 0 ? sy[i] - dy : sy[i], sz, Math.max(sz, Math.abs(dy)));
