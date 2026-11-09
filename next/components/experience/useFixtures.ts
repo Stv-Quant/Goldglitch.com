@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { Fixture } from "./ProbabilityTicker";
+import type { Fixture } from "./fixture";
 
 let inflight: Promise<Fixture[]> | null = null;
 

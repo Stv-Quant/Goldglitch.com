@@ -5,11 +5,14 @@ Pushes a batch (competitions, teams, matches, predictions, metrics) to the PWA's
 POST /api/ingest, signed with HMAC-SHA256. Stdlib only, so it drops into SQPC as-is.
 
     from goldglitch_publish import publish
-    publish(batch_dict, url="https://goldglitch.com/api/ingest", secret=os.environ["GG_INGEST_SECRET"])
+    publish(batch_dict, url="https://easygoldglitch.com/api/ingest", secret=os.environ["GG_INGEST_SECRET"])
 
-CLI demo (generates a realistic sample batch and sends it):
-    python goldglitch_publish.py --url http://localhost:3000/api/ingest --secret dev-secret --demo
-    python goldglitch_publish.py --dump demo.json --demo      # write the batch, don't send
+Setup: Admin → Datos → Conexión con SQPC → "Generar clave", save the .env it shows next to this file.
+
+CLI:
+    python goldglitch_publish.py --ping                 # test the key, writes nothing
+    python goldglitch_publish.py --file batch.json      # publish a batch built by SQPC
+    python goldglitch_publish.py --dump demo.json --demo  # sample batch to see the format
 
 Batch contract: next/lib/contracts.ts (ingestBatchSchema). Times are epoch milliseconds UTC.
 """
@@ -164,32 +167,67 @@ def demo_batch(now_ms: int | None = None) -> dict[str, Any]:
             "teams": teams, "matches": matches, "predictions": preds, "metrics": metrics}
 
 
+DEFAULT_URL = "https://easygoldglitch.com/api/ingest"
+
+
+def load_env(path: str | None = None) -> None:
+    """Read KEY=VALUE lines from a .env next to this script (or `path`) without overriding real env vars."""
+    path = path or os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
+    if not os.path.exists(path):
+        return
+    with open(path, encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            k, v = line.split("=", 1)
+            os.environ.setdefault(k.strip(), v.strip().strip('"').strip("'"))
+
+
+def ping_batch() -> dict[str, Any]:
+    """Empty, signed batch: proves URL + key work without touching any data."""
+    return {"batchId": str(uuid.uuid4()), "source": "sqpc-ping"}
+
+
 def main() -> int:
+    load_env()
     ap = argparse.ArgumentParser(description="Publish SQPC batches to Goldglitch")
-    ap.add_argument("--url", default=os.environ.get("GG_INGEST_URL"))
+    ap.add_argument("--url", default=os.environ.get("GG_INGEST_URL", DEFAULT_URL))
     ap.add_argument("--secret", default=os.environ.get("GG_INGEST_SECRET"))
-    ap.add_argument("--file", help="JSON batch file to send")
-    ap.add_argument("--demo", action="store_true", help="generate a demo batch")
+    g = ap.add_mutually_exclusive_group(required=True)
+    g.add_argument("--file", help="JSON batch file to send")
+    g.add_argument("--demo", action="store_true", help="generate a demo batch (do NOT send to production)")
+    g.add_argument("--ping", action="store_true", help="send an empty signed batch to test the connection")
     ap.add_argument("--dump", help="write the batch to this path instead of sending")
     a = ap.parse_args()
 
-    if a.demo:
+    if a.ping:
+        batch = ping_batch()
+    elif a.demo:
         batch = demo_batch()
-    elif a.file:
+    else:
         with open(a.file, encoding="utf-8") as f:
             batch = json.load(f)
-    else:
-        ap.error("use --demo or --file")
 
     if a.dump:
         with open(a.dump, "w", encoding="utf-8") as f:
             json.dump(batch, f, ensure_ascii=False, indent=2)
         print(f"wrote {a.dump}")
         return 0
-    if not a.url or not a.secret:
-        ap.error("--url and --secret (or GG_INGEST_URL / GG_INGEST_SECRET) are required")
-    print(json.dumps(publish(batch, a.url, a.secret), indent=2))
-    return 0
+    if not a.secret:
+        ap.error("missing key: put GG_INGEST_SECRET in .env (generate it in Admin → Datos → Conexión con SQPC)")
+    if a.demo and "easygoldglitch.com" in a.url:
+        ap.error("--demo writes fake matches; refusing to send it to production")
+    try:
+        res = publish(batch, a.url, a.secret)
+    except RuntimeError as e:
+        print(f"ERROR {e}", file=sys.stderr)
+        return 1
+    if a.ping:
+        print("OK: Goldglitch acepta la clave. Conexión lista." if res.get("ok") else res)
+    else:
+        print(json.dumps(res, indent=2, ensure_ascii=False))
+    return 0 if res.get("ok") else 1
 
 
 if __name__ == "__main__":

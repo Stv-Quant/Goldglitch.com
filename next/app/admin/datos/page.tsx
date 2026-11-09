@@ -1,11 +1,16 @@
 import { Badge, ago, dt } from "@/components/admin/ui";
+import { headers } from "next/headers";
+import { IngestKeyPanel } from "@/components/admin/IngestKeyPanel";
 import { getDataHealth } from "@/lib/admin";
+import { getIngestSecret } from "@/lib/ingestKey";
 
 const STATUS: Record<string, string> = { scheduled: "Programados", live: "En vivo", finished: "Finalizados", postponed: "Aplazados", canceled: "Cancelados" };
 
 export default async function DataPage() {
-  const d = await getDataHealth();
-  const last = d.batches[0];
+  const [d, key, h] = await Promise.all([getDataHealth(), getIngestSecret(), headers()]);
+  const last = d.batches.find((b) => b.source !== "sqpc-ping") ?? d.batches[0];
+  const host = h.get("host") ?? "easygoldglitch.com";
+  const endpoint = `${host.startsWith("localhost") ? "http" : "https"}://${host}/api/ingest`;
   return (
     <div className="space-y-8">
       <div>
@@ -16,6 +21,11 @@ export default async function DataPage() {
           predicción o datos viejos.
         </p>
       </div>
+
+      <IngestKeyPanel source={key.source} keyUpdatedAt={key.updatedAt ? dt(key.updatedAt) : null}
+        lastBatch={d.batches[0] ? ago(d.batches[0].received_at) : null}
+        lastBatchFresh={!!d.batches[0] && Date.now() - d.batches[0].received_at < 86_400_000}
+        endpoint={endpoint} />
 
       <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 xl:grid-cols-4">
         <Stat label="Última publicación" value={last ? ago(last.received_at) : "Nunca"} sub={last ? dt(last.received_at) : "SQPC aún no ha enviado datos"} bad={!last || Date.now() - last.received_at > 86_400_000} />
