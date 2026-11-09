@@ -1,66 +1,71 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef } from "react";
+import { dayTag, type Fixture } from "./ProbabilityTicker";
+import { useFixtures } from "./useFixtures";
 
-const STEPS = [
-  {
-    n: "01",
-    title: "Datos",
-    body: "Resultados, eventos y cuotas de fuentes públicas, todos los días. Lo que no se puede verificar, no entra al modelo.",
-    stat: "Fuentes verificables",
-  },
-  {
-    n: "02",
-    title: "Variables",
-    body: "Fuerza ofensiva y defensiva ajustada por rival, localía, descanso y calendario. Cada número tiene una razón.",
-    stat: "Ajustado por rival",
-  },
-  {
-    n: "03",
-    title: "Modelo",
-    body: "Modelos estadísticos de conteo (goles, carreras) y ratings de fuerza. Salen distribuciones completas, no un ganador.",
-    stat: "Distribuciones, no picks",
-  },
-  {
-    n: "04",
-    title: "Calibración",
-    body: "Comprobamos que el 60% signifique 60% con partidos que el modelo nunca vio. Si se desvía, se corrige y se publica.",
-    stat: "Validación fuera de muestra",
-  },
-  {
-    n: "05",
-    title: "Historial",
-    body: "Publicamos cómo le fue a cada pronóstico, acierte o falle, en un historial abierto. Sin borrar los malos días.",
-    stat: "Aciertos y fallos",
-  },
-];
-
-const TURNS = 3; // the helix repeats the 5 steps three times; the middle turn is the one you read
-const STEP_DEG = 42; // tighter than 360/5 so neighbours stay visible around the cylinder
-const CARDS = Array.from({ length: STEPS.length * TURNS }, (_, k) => ({ k, s: STEPS[k % STEPS.length] }));
+const MAX = 10;
+const STEP_DEG = 42; // tight enough that the neighbours stay visible around the cylinder
 // Funnel of spinning rings: narrow at the bottom, wide at the top (a whirlwind), alternating directions.
 const RINGS = [0.66, 0.86, 1.08, 1.34];
 const RIBS = 10;
 
+const timeFmt = new Intl.DateTimeFormat("es-CO", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "America/Bogota" });
+
+function when(f: Fixture) {
+  if (f.state === "in") return <span className="text-up">● EN VIVO</span>;
+  return <>{dayTag(f.kickoffAt) ? "MAÑANA" : "HOY"} · {timeFmt.format(f.kickoffAt)}</>;
+}
+
+function MatchCard({ f }: { f: Fixture }) {
+  const labels = f.outcomes === 3 ? ["Local", "Empate", "Visitante"] : ["Local", "Visitante"];
+  return (
+    <>
+      <div className="flex items-center justify-between gap-3 num text-[10px] tracking-[0.18em] uppercase">
+        <span className="text-gold truncate">{f.league === f.sport ? f.sport : `${f.sport} · ${f.league}`}</span>
+        <span className="text-lo whitespace-nowrap">{when(f)}</span>
+      </div>
+      <div className="mt-5 grid grid-cols-[1fr_auto_1fr] items-baseline gap-3">
+        <h3 className="display text-4xl sm:text-5xl truncate">{f.home}</h3>
+        <span className="num text-xs text-lo">vs</span>
+        <p className="display text-4xl sm:text-5xl truncate text-right">{f.away}</p>
+      </div>
+      <ul className="mt-5 space-y-2.5" aria-label="Probabilidades ocultas">
+        {labels.map((l, j) => (
+          <li key={l} className="grid grid-cols-[5rem_1fr_2.5rem] items-center gap-3 text-[13px]">
+            <span className="text-mid">{l}</span>
+            <span className="match-bar" style={{ ["--j" as string]: j }} aria-hidden />
+            <span className="num text-right text-gold match-q">???</span>
+          </li>
+        ))}
+      </ul>
+      <Link href="/acceso" className="mt-5 inline-flex text-sm text-gold hover:underline underline-offset-4">Ver probabilidades →</Link>
+    </>
+  );
+}
+
 /**
- * "Cómo calculamos" as a vortex: the steps sit on a helix wrapped around a cylinder of light.
- * Scrolling screws the helix (rotate + rise) so the next step turns to the front, while the
- * funnel rings and ribs spin on their own. 15 cards + a few dozen lines, all CSS transforms on
- * the compositor; JS only writes one transform/opacity per card per frame while on screen.
+ * Upcoming matches as a vortex: the fixtures sit on a helix wrapped around a cylinder of light.
+ * Scrolling screws the helix so the next match turns to the front; the funnel rings spin on their own.
+ * No probability ever reaches this page: every value is "???".
  */
 export function MethodRing() {
   const ref = useRef<HTMLDivElement>(null);
+  const fixtures = useFixtures();
+  const list = (fixtures ?? []).slice(0, MAX);
+  const n = list.length;
 
   useEffect(() => {
-    const el = ref.current!;
+    const el = ref.current;
+    if (!el || !n) return;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
       el.dataset.static = "";
       return;
     }
     const cards = Array.from(el.querySelectorAll<HTMLElement>("[data-card]"));
-    const dots = Array.from(el.querySelectorAll<HTMLElement>("[data-dot]"));
-    let target = STEPS.length;
-    let cur = target;
+    let target = 0;
+    let cur = 0;
     let raf = 0;
     let visible = false;
     let lastActive = -1;
@@ -69,7 +74,11 @@ export function MethodRing() {
       const r = el.getBoundingClientRect();
       const total = r.height - window.innerHeight;
       const p = Math.min(1, Math.max(0, -r.top / Math.max(1, total)));
-      target = STEPS.length + p * (STEPS.length - 1);
+      // Dwell on each match: the middle half of every segment turns the helix, the rest holds still.
+      const x = p * (n - 1);
+      const i = Math.min(n - 2, Math.floor(x));
+      const t = Math.min(1, Math.max(0, (x - i - 0.25) / 0.5));
+      target = n > 1 ? i + t * t * (3 - 2 * t) : 0;
     };
 
     const frame = () => {
@@ -82,21 +91,24 @@ export function MethodRing() {
       for (const c of cards) {
         const rel = Number(c.dataset.k) - cur;
         const a = rel * STEP_DEG;
-        const facing = Math.cos((a * Math.PI) / 180); // 1 = front, -1 = back
+        const facing = Math.cos((a * Math.PI) / 180);
         const near = Math.exp(-(rel * rel) / 9);
-        const focus = 0.4 + 0.6 * Math.exp(-(rel * rel) / 0.12); // the card being read is fully lit
+        const focus = 0.4 + 0.6 * Math.exp(-(rel * rel) / 0.12);
         const o = focus * Math.max(0, facing) ** 0.8 * near;
-        // Neighbours sit on a slightly smaller radius so their near edge never pokes through the card being read.
+        // Neighbours sit on a smaller radius so their near edge never pokes through the card being read.
         const r = R * (0.72 + 0.28 * Math.exp(-(rel * rel) / 0.12));
         c.style.transform = `translate(-50%, -50%) translateY(${(rel * pitch).toFixed(1)}px) rotateY(${a.toFixed(2)}deg) translateZ(${r.toFixed(1)}px)`;
         c.style.opacity = o < 0.02 ? "0" : o.toFixed(3);
         c.style.visibility = o < 0.02 ? "hidden" : "visible";
       }
-      const active = Math.round(cur) % STEPS.length;
+      const active = Math.round(cur);
       if (active !== lastActive) {
         lastActive = active;
-        cards.forEach((c) => c.toggleAttribute("data-front", Number(c.dataset.k) === Math.round(cur)));
-        dots.forEach((d, i) => d.toggleAttribute("data-on", i === active));
+        cards.forEach((c) => {
+          const on = Number(c.dataset.k) === active;
+          c.toggleAttribute("data-front", on);
+          c.inert = !on; // only the card being read is clickable / focusable
+        });
       }
       el.style.setProperty("--twist", `${(cur * STEP_DEG * -0.35).toFixed(2)}deg`);
       if (visible && cur !== target) raf = requestAnimationFrame(frame);
@@ -123,21 +135,33 @@ export function MethodRing() {
       window.removeEventListener("resize", kick);
       if (raf) cancelAnimationFrame(raf);
     };
-  }, []);
+  }, [n]);
+
+  const header = (
+    <div className="relative z-10 mx-auto w-full max-w-6xl px-5 sm:px-6 pt-24 sm:pt-28">
+      <p className="num text-[11px] tracking-[0.22em] text-gold uppercase">Próximos partidos</p>
+      <h2 id="metodo-title" className="display mt-3 text-[2.6rem] sm:text-[4.2rem]">
+        No especulamos. <em>Calculamos.</em>
+      </h2>
+      <p className="mt-3 max-w-xl text-mid">Los partidos de hoy y mañana. Los números se ven al entrar.</p>
+    </div>
+  );
+
+  if (fixtures && !n) {
+    return (
+      <section id="metodo" className="relative pb-16" aria-labelledby="metodo-title">
+        {header}
+        <p className="mx-auto max-w-6xl px-5 sm:px-6 mt-8 text-sm text-lo">Hoy y mañana no hay partidos en las ligas que seguimos.</p>
+      </section>
+    );
+  }
 
   return (
-    <section id="metodo" ref={ref} className="method relative" aria-labelledby="metodo-title">
+    <section id="metodo" ref={ref} className="method relative" aria-labelledby="metodo-title"
+      style={{ height: `${100 + Math.max(n || 6, 2) * 26}dvh` }}>
       <div className="method-stage sticky top-0 h-dvh overflow-hidden flex flex-col">
-        <div className="relative z-10 mx-auto w-full max-w-6xl px-5 sm:px-6 pt-24 sm:pt-28">
-          <p className="num text-[11px] tracking-[0.22em] text-gold uppercase">Método</p>
-          <h2 id="metodo-title" className="display mt-3 text-[2.6rem] sm:text-[4.2rem]">
-            No especulamos. <em>Calculamos.</em>
-          </h2>
-          <p className="mt-3 max-w-xl text-mid">Cinco pasos, siempre los mismos, para cada partido de cada deporte.</p>
-        </div>
-
+        {header}
         <div className="method-scene relative flex-1">
-          {/* The whirlwind: a funnel of spinning rings, ribs of light and a glowing axis */}
           <div aria-hidden className="vortex">
             <div className="vortex-axis" />
             <div className="vortex-spin">
@@ -152,28 +176,22 @@ export function MethodRing() {
           </div>
 
           <div className="method-helix">
-            {CARDS.map(({ k, s }) => {
-              const dup = k < STEPS.length || k >= STEPS.length * 2;
-              return (
-                <article key={k} data-card data-k={k} data-dup={dup ? "" : undefined} aria-hidden={dup || undefined}
-                  className="method-card glass">
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="num text-gold text-sm">{s.n}</span>
-                    <span className="num text-[10px] tracking-[0.18em] uppercase text-lo text-right">{s.stat}</span>
-                  </div>
-                  <h3 className="display mt-5 text-4xl sm:text-5xl">{s.title}</h3>
-                  <p className="mt-4 text-[15px] leading-relaxed text-mid">{s.body}</p>
-                  <div className="method-progress mt-6 h-px" aria-hidden />
+            {fixtures === null ? (
+              <div className="method-card glass" data-front style={{ transform: "translate(-50%, -50%) translateZ(var(--R))" }}>
+                <div className="h-3 w-1/2 rounded bg-[var(--seg-3)] animate-pulse" />
+                <div className="mt-6 h-10 w-3/4 rounded bg-[var(--seg-3)] animate-pulse" />
+                <div className="mt-6 space-y-3">{[0, 1, 2].map((i) => <div key={i} className="h-2 rounded bg-[var(--seg-3)] animate-pulse" />)}</div>
+              </div>
+            ) : (
+              list.map((f, k) => (
+                <article key={f.id} data-card data-k={k} className="method-card glass">
+                  <MatchCard f={f} />
                 </article>
-              );
-            })}
+              ))
+            )}
           </div>
 
-          <ol aria-hidden className="method-dots">
-            {STEPS.map((s) => (
-              <li key={s.n} data-dot className="num">{s.n}</li>
-            ))}
-          </ol>
+          {n > 1 && <p aria-hidden className="method-count num">{n} partidos</p>}
         </div>
       </div>
     </section>

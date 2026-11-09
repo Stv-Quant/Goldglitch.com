@@ -112,13 +112,24 @@ async function fromSqpc(start: number, end: number): Promise<TodayFixture[]> {
   }
 }
 
-/** Our own fixtures (SQPC) first; the public schedule fills the rest so the strip is never empty on a match day. */
+/**
+ * Upcoming fixtures for today and tomorrow (Colombia), live ones included, finished ones dropped.
+ * Our own fixtures (SQPC) first; the public schedule fills the rest so it is never empty on a match day.
+ */
 export async function getTodayFixtures(now = Date.now()): Promise<TodayFixture[]> {
-  const { start, end, ymd } = bogotaDay(now);
-  const [own, pub] = await Promise.all([fromSqpc(start, end), fromEspn(ymd, start, end)]);
+  const today = bogotaDay(now);
+  const tomorrow = bogotaDay(now + 86_400_000);
+  const [own, pubA, pubB] = await Promise.all([
+    fromSqpc(today.start, tomorrow.end),
+    fromEspn(today.ymd, today.start, today.end),
+    fromEspn(tomorrow.ymd, tomorrow.start, tomorrow.end),
+  ]);
+  const pub = [...pubA, ...pubB].filter((f) => f.state !== "post");
   const seen = new Set(own.map((f) => `${f.home}-${f.away}`));
   const all = [...own, ...pub.filter((f) => !seen.has(`${f.home}-${f.away}`))];
-  // Upcoming and live first, finished last.
   const rank = { in: 0, pre: 1, post: 2 } as const;
-  return all.sort((a, b) => rank[a.state] - rank[b.state] || a.kickoffAt - b.kickoffAt).slice(0, 40);
+  return all
+    .filter((f) => f.state !== "post")
+    .sort((a, b) => rank[a.state] - rank[b.state] || a.kickoffAt - b.kickoffAt)
+    .slice(0, 40);
 }

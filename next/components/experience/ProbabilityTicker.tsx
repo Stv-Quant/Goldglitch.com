@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { useFixtures } from "./useFixtures";
 
-type Fixture = {
+export type Fixture = {
   id: string;
   sport: string;
   league: string;
@@ -15,12 +16,15 @@ type Fixture = {
 };
 
 const timeFmt = new Intl.DateTimeFormat("es-CO", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "America/Bogota" });
-const dayFmt = new Intl.DateTimeFormat("es-CO", { weekday: "long", day: "numeric", month: "long", timeZone: "America/Bogota" });
+
+const ymdFmt = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Bogota" });
+export function dayTag(ms: number) {
+  return ymdFmt.format(ms) === ymdFmt.format(Date.now()) ? "" : "MAÑ ";
+}
 
 function when(f: Fixture) {
   if (f.state === "in") return <span className="text-up">EN VIVO</span>;
-  if (f.state === "post") return <span className="text-lo">FINAL</span>;
-  return <span className="text-lo">{timeFmt.format(f.kickoffAt)}</span>;
+  return <span className="text-lo">{dayTag(f.kickoffAt)}{timeFmt.format(f.kickoffAt)}</span>;
 }
 
 /** Fill the track so a short match day still loops seamlessly. */
@@ -45,7 +49,7 @@ function Row({ items, reverse, dur, scramble }: { items: Fixture[]; reverse?: bo
               <span className="text-hi">{m.home}</span>
               <span className="flex gap-2" aria-label="Probabilidad oculta">
                 {Array.from({ length: m.outcomes }, (_, j) => (
-                  <span key={j} className="tick-q">{hot ? <Scramble seed={i * 7 + j} /> : "??"}</span>
+                  <span key={j} className="tick-q">{hot ? <Scramble seed={i * 7 + j} /> : "???"}</span>
                 ))}
               </span>
               <span className="text-hi">{m.away}</span>
@@ -73,17 +77,8 @@ function Scramble({ seed }: { seed: number }) {
 }
 
 export function ProbabilityTicker() {
-  const [fixtures, setFixtures] = useState<Fixture[] | null>(null);
+  const fixtures = useFixtures();
   const [scramble, setScramble] = useState<string | null>(null);
-
-  useEffect(() => {
-    let alive = true;
-    fetch("/api/today")
-      .then((r) => (r.ok ? r.json() : { fixtures: [] }))
-      .then((d: { fixtures: Fixture[] }) => alive && setFixtures(d.fixtures ?? []))
-      .catch(() => alive && setFixtures([]));
-    return () => { alive = false; };
-  }, []);
 
   useEffect(() => {
     if (!fixtures?.length || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
@@ -100,10 +95,10 @@ export function ProbabilityTicker() {
   const b = pad((fixtures ?? []).filter((_, i) => i % 2 === 1).concat(fixtures && fixtures.length < 2 ? fixtures : []));
 
   return (
-    <section aria-label="Partidos de hoy" className="relative border-y border-line bg-[var(--bg-raise)]/60 py-2 my-10">
+    <section aria-label="Próximos partidos" className="relative border-y border-line bg-[var(--bg-raise)]/60 py-2 my-10">
       <div className="px-5 sm:px-6 pt-2 flex flex-wrap items-center justify-between gap-2 num text-[10px] tracking-[0.2em] uppercase text-lo">
         <span className="flex items-center gap-2">
-          <span className="live-dot" aria-hidden /> Partidos de hoy · {dayFmt.format(Date.now())}
+          <span className="live-dot" aria-hidden /> Próximos partidos
           {fixtures && <span className="text-mid">· {fixtures.length}</span>}
         </span>
         <span className="hidden sm:inline">Hora Colombia</span>
@@ -120,7 +115,7 @@ export function ProbabilityTicker() {
         </div>
       )}
       <p className="px-5 sm:px-6 pb-2 text-[11px] num tracking-[0.12em] uppercase text-lo">
-        ?? = probabilidad del modelo.{" "}
+        ??? = probabilidad del modelo.{" "}
         <Link href="/acceso" className="text-gold hover:underline underline-offset-4">Entra gratis para ver las de los partidos que cubrimos →</Link>
       </p>
     </section>
