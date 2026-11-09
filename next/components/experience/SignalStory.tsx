@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef } from "react";
 import { buildFormations, CAMERAS, ENTROPY, stage, WOBBLE, type Formation } from "./formations";
+import { makeSim, type LiveSim } from "./sims";
 
 // 4 colors (dim, gold, flare, bone) × 3 depth bands (far, mid, near): fog without per-mark alpha changes.
 const RGB = [[140, 133, 118, 0.6], [212, 175, 55, 1], [255, 59, 31, 1], [237, 230, 214, 1]] as const;
@@ -45,6 +46,8 @@ export function SignalStory() {
 
     let W = 0, H = 0, dpr = 1, N = 0, CX = 0, CY = 0, FOV = 900, ZK = 1;
     let F: Formation[] = [];
+    let SIM: (LiveSim | null)[] = [];
+    let lastT = 0;
     // World state (smoothed toward targets) + last projected screen positions.
     let wx = new Float32Array(0), wy = new Float32Array(0), wz = new Float32Array(0);
     let sx = new Float32Array(0), sy = new Float32Array(0), ss = new Float32Array(0), psy = new Float32Array(0);
@@ -78,6 +81,7 @@ export function SignalStory() {
       const nextN = W < 700 || cores <= 4 ? 3400 : 6500;
       const first = N === 0;
       F = buildFormations(nextN, W, H);
+      SIM = F.map((fm, i) => makeSim(fm, 11 + i));
       if (nextN !== N) {
         N = nextN;
         wx = new Float32Array(N); wy = new Float32Array(N); wz = new Float32Array(N);
@@ -121,6 +125,13 @@ export function SignalStory() {
       const wob = reduce ? 0 : WOBBLE[a] + (WOBBLE[b] - WOBBLE[a]) * t;
       const k = reduce ? 1 : 0.11;
       const sec = time * 0.001;
+      const dt = lastT ? Math.min(0.05, Math.max(0, sec - lastT)) : 0.016;
+      lastT = sec;
+      // Live simulations: only the two formations currently on screen are stepped.
+      const SA = reduce ? null : SIM[a];
+      const SB = reduce || b === a ? null : SIM[b];
+      SA?.step(sec, dt);
+      SB?.step(sec, dt);
       const pointerLive = !reduce && time - pointer.t < 1800;
 
       // Camera: interpolate the act's camera (swept by scroll) toward the next act's opening pose.
@@ -148,17 +159,24 @@ export function SignalStory() {
       counts.fill(0);
       for (let i = 0; i < N; i++) {
         const ti = reduce ? t : ease(clamp01((t - delay[i]) / 0.65));
-        let tx = A.x[i] + (B.x[i] - A.x[i]) * ti;
-        let ty = A.y[i] + (B.y[i] - A.y[i]) * ti;
-        const tz = A.z[i] + (B.z[i] - A.z[i]) * ti;
+        let axp = A.x[i], ayp = A.y[i], azp = A.z[i];
+        let bxp = B.x[i], byp = B.y[i], bzp = B.z[i];
+        const ga = A.g[i], gb = B.g[i];
+        if (SA && ga >= 0) { axp += SA.ox[ga]; ayp += SA.oy[ga]; azp = azp * SA.sz[ga] + SA.oz[ga]; }
+        if (SB && gb >= 0) { bxp += SB.ox[gb]; byp += SB.oy[gb]; bzp = bzp * SB.sz[gb] + SB.oz[gb]; }
+        let tx = axp + (bxp - axp) * ti;
+        let ty = ayp + (byp - ayp) * ti;
+        const tz = azp + (bzp - azp) * ti;
+        // Agents (players, ball) track their target tightly so passes read crisp; scenery eases.
+        const kk = (SA && ga >= 0 && ti < 0.5) || (SB && gb >= 0 && ti >= 0.5) ? Math.max(k, 0.32) : k;
         if (wob) {
           const ph = phase[i];
           tx += Math.sin(sec * 0.9 + ph) * wob + (a === 0 ? Math.sin(sec * 0.3 + ty * 0.004) * wob * 1.4 : 0);
           ty += Math.cos(sec * 1.1 + ph * 1.3) * wob;
         }
-        wx[i] += (tx - wx[i]) * k;
-        wy[i] += (ty - wy[i]) * k;
-        wz[i] += (tz - wz[i]) * k;
+        wx[i] += (tx - wx[i]) * kk;
+        wy[i] += (ty - wy[i]) * kk;
+        wz[i] += (tz - wz[i]) * kk;
 
         // Project: in-plane yaw → tilt about X → spin about Y → perspective.
         const x1 = wx[i] * cY - wy[i] * sY;
@@ -209,11 +227,22 @@ export function SignalStory() {
       for (let g = 0; g < 12; g++) {
         const c = counts[g];
         if (!c) continue;
+        const isBall = g >= 6 && g <= 8; // flare color = ball / noise flecks: drawn larger, with a halo
+        if (isBall && !stretch) {
+          ctx.fillStyle = "rgba(255,59,31,0.12)";
+          const list = buckets[g];
+          for (let j = 0; j < c; j += 3) {
+            const i = list[j];
+            const hs = base * 4.5 * Math.min(ss[i], 2);
+            ctx.fillRect(sx[i] - hs / 2, sy[i] - hs / 2, hs, hs);
+          }
+        }
         ctx.fillStyle = PALETTE3D[g];
         const list = buckets[g];
+        const mul = isBall ? 1.7 : 1;
         for (let j = 0; j < c; j++) {
           const i = list[j];
-          const sz = Math.min(4, base * Math.min(ss[i], 2.2));
+          const sz = Math.min(5, base * mul * Math.min(ss[i], 2.2));
           if (stretch) {
             const dy = Math.max(-70, Math.min(70, (sy[i] - psy[i]) * stretch));
             ctx.fillRect(sx[i], dy > 0 ? sy[i] - dy : sy[i], sz, Math.max(sz, Math.abs(dy)));
