@@ -43,7 +43,7 @@ export function SignalStory() {
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const sections = Array.from(root.querySelectorAll<HTMLElement>("[data-act]"));
 
-    let W = 0, H = 0, dpr = 1, N = 0, CX = 0, CY = 0, FOV = 900;
+    let W = 0, H = 0, dpr = 1, N = 0, CX = 0, CY = 0, FOV = 900, ZK = 1;
     let F: Formation[] = [];
     // World state (smoothed toward targets) + last projected screen positions.
     let wx = new Float32Array(0), wy = new Float32Array(0), wz = new Float32Array(0);
@@ -73,6 +73,7 @@ export function SignalStory() {
       canvas.style.height = `${H}px`;
       const st = stage(W, H);
       CX = st.cx; CY = st.cy; FOV = Math.max(W, H) * 1.05;
+      ZK = W < 700 ? 0.8 : 1; // phones: pull the camera back so tilted fields stay on screen
       const cores = navigator.hardwareConcurrency || 4;
       const nextN = W < 700 || cores <= 4 ? 3400 : 6500;
       const first = N === 0;
@@ -129,7 +130,7 @@ export function SignalStory() {
       const tilt = ca.tilt + (cb.tilt - ca.tilt) * ct;
       const yaw = ca.yaw + (cb.yaw - ca.yaw) * ct;
       const spin = ca.spin + (cb.spin - ca.spin) * ct;
-      const zoom = ca.zoom + (cb.zoom - ca.zoom) * ct;
+      const zoom = (ca.zoom + (cb.zoom - ca.zoom) * ct) * ZK;
       const cY = Math.cos(yaw), sY = Math.sin(yaw);
       const cT = Math.cos(tilt), sT = Math.sin(tilt);
       const cS = Math.cos(spin), sS = Math.sin(spin);
@@ -196,7 +197,7 @@ export function SignalStory() {
         ss[i] = sc;
 
         // Depth band: near / mid / far → brightness (fog). 4 colors × 3 bands = 12 batches.
-        const depth = sc / zoom; // fog follows true depth, not zoom
+        const depth = sc / zoom; // fog follows true depth, not zoom (ZK included)
         const band = depth > 1.12 ? 2 : depth > 0.9 ? 1 : 0;
         const g = (ti < 0.5 ? A.c[i] : B.c[i]) * 3 + band;
         buckets[g][counts[g]++] = i;

@@ -4,7 +4,7 @@
  */
 export function SealProof() {
   return (
-    <section className="reveal-on-enter relative mx-auto max-w-6xl px-5 sm:px-6 py-28 grid gap-12 lg:grid-cols-[1.05fr_1fr] items-center" aria-labelledby="sello-title">
+    <section className="reveal-on-enter relative overflow-x-clip mx-auto max-w-6xl px-5 sm:px-6 py-28 grid gap-12 lg:grid-cols-[1.05fr_1fr] items-center" aria-labelledby="sello-title">
       <div>
         <p className="num text-[11px] tracking-[0.22em] text-gold uppercase">El sello</p>
         <h2 id="sello-title" className="display mt-3 text-[2.6rem] sm:text-[4rem]">

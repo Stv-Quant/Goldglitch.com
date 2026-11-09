@@ -36,7 +36,7 @@ export const CAMERAS: Camera[] = [
   { tilt: 1.0, yaw: -0.18, yawSweep: 0.36, spin: 0, spinRate: 0, zoom: 1.25 },   // 3 NBA
   { tilt: 1.05, yaw: 0.16, yawSweep: -0.32, spin: 0, spinRate: 0, zoom: 1.25 },  // 4 tenis
   { tilt: 0.78, yaw: -0.3, yawSweep: 0.3, spin: 0, spinRate: 0, zoom: 1.12 },    // 5 100 versiones: columns
-  { tilt: 1.1, yaw: 0.42, yawSweep: -0.4, spin: 0, spinRate: 0, zoom: 1.18 },   // 6 matriz: towers, diagonal view
+  { tilt: 1.12, yaw: 0.5, yawSweep: -0.45, spin: 0, spinRate: 0, zoom: 1.1 },   // 6 matriz: towers, diagonal view
   { tilt: 0.28, yaw: 0, yawSweep: 0, spin: -0.25, spinRate: 0, zoom: 1.0 },     // 7 calibración: slight turn
   { tilt: 0, yaw: 0, yawSweep: 0, spin: 0, spinRate: 0.55, zoom: 1.0 },         // 8 marca: coin turning
 ];
@@ -194,10 +194,12 @@ function matrix(n: number, b: Box): Formation {
     while (k < cdf.length - 1 && u > cdf[k]) k++;
     const h = Math.floor(k / G);
     const a = k % G;
-    f.x[i] = x0 + (a + 0.18 + r() * 0.64) * cell;
-    f.y[i] = y0 + (h + 0.18 + r() * 0.64) * cell;
+    f.x[i] = x0 + (a + 0.2 + r() * 0.6) * cell;
+    f.y[i] = y0 + (h + 0.2 + r() * 0.6) * cell;
     const rel = p[k] / max;
-    f.z[i] = -r() * (0.03 + rel) * b.s * 0.3; // probability = tower height
+    // Probability = tower height, built in discrete floors so the eye reads stacked 3D bars, not a cloud.
+    const floors = Math.max(1, Math.round(rel * 14));
+    f.z[i] = -Math.floor(r() * floors) * b.s * 0.02;
     f.c[i] = rel > 0.98 ? COLOR.bone : rel > 0.42 ? COLOR.gold : COLOR.dim;
   }
   return f;
