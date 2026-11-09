@@ -11,6 +11,7 @@ export const dynamic = "force-dynamic";
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const viewer = await getViewer();
   if (!viewer) redirect("/acceso");
+  if (viewer.mustChangePassword) redirect("/acceso/nueva-clave");
 
   return (
     <div className="min-h-dvh pb-20 sm:pb-0">
@@ -20,6 +21,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           <div className="hidden sm:block"><AppNav /></div>
           <div className="flex items-center gap-3">
             <InstallButton />
+            {viewer.isAdmin && (
+              <Link href="/admin" className="num text-[11px] tracking-[0.16em] uppercase px-2.5 py-1 rounded-md border border-[var(--flare)] text-flare hover:bg-[rgba(255,59,31,0.08)]">
+                Admin{viewer.viewingAs ? ` · viendo ${PLANS[viewer.viewingAs].name}` : ""}
+              </Link>
+            )}
             <Link
               href="/app/cuenta"
               className="text-[11px] eyebrow px-2.5 py-1 rounded-md border border-line"
