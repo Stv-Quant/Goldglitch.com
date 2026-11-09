@@ -26,7 +26,7 @@ export default async function DataPage() {
 
       <section>
         <h2 className="text-lg font-semibold">Próximos partidos sin predicción</h2>
-        <p className="mt-1 text-xs text-lo">Las predicciones solo se aceptan antes del inicio (sello). Si un partido empieza sin predicción, se queda sin ella.</p>
+        <p className="mt-1 text-xs text-lo">Las predicciones solo se aceptan antes del inicio del partido. Si un partido empieza sin predicción, se queda sin ella.</p>
         <ul className="card mt-3 divide-y divide-[var(--border-soft)] text-sm">
           {d.missing.map((m) => (
             <li key={m.id} className="flex flex-wrap justify-between gap-2 px-4 py-2.5">

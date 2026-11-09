@@ -87,8 +87,8 @@ export async function POST(request: Request) {
         ),
     );
   }
-  // Seal rule: a prediction is only accepted if generated before kickoff, and an existing one can
-  // only be replaced by a newer pre-kickoff version. After kickoff nothing — not even us — can edit it.
+  // Integrity rule: a prediction is only accepted if generated before kickoff, and an existing one can
+  // only be replaced by a newer pre-kickoff version. After kickoff it is never modified.
   const predStart = stmts.length;
   for (const p of b.predictions) {
     stmts.push(
@@ -124,13 +124,13 @@ export async function POST(request: Request) {
   }
 
   // Order matters (FKs): competitions → teams → matches → predictions → metrics. Chunks run sequentially.
-  let predictionsSealed = 0;
+  let predictionsStored = 0;
   try {
     for (let i = 0; i < stmts.length; i += CHUNK) {
       const res = await db.batch(stmts.slice(i, i + CHUNK));
       res.forEach((r, j) => {
         const idx = i + j;
-        if (idx >= predStart && idx < predEnd) predictionsSealed += r.meta?.changes ? 1 : 0;
+        if (idx >= predStart && idx < predEnd) predictionsStored += r.meta?.changes ? 1 : 0;
       });
     }
   } catch (e) {
@@ -148,10 +148,10 @@ export async function POST(request: Request) {
       competitions: b.competitions.length,
       teams: b.teams.length,
       matches: b.matches.length,
-      predictions: predictionsSealed,
+      predictions: predictionsStored,
       metrics: b.metrics.length,
     },
-    // Predictions rejected because they were generated at/after kickoff or are older than the stored seal.
-    rejectedPredictions: b.predictions.length - predictionsSealed,
+    // Predictions rejected because they were generated at/after kickoff or are older than the stored version.
+    rejectedPredictions: b.predictions.length - predictionsStored,
   });
 }

@@ -106,7 +106,7 @@ export default async function AdminHome() {
           <Metric label="Partidos próximos 7 días" value={n(d.upcoming7)} sub={`${n(d.upcomingWithPrediction)} con predicción`}
             how="Partidos programados con inicio en los próximos 7 días, en todas las ligas cubiertas." />
           <Metric label="Cobertura de predicciones" value={pct(coverage)} tone={coverage !== null && coverage < 0.8 ? "down" : coverage !== null ? "up" : undefined}
-            how="Porcentaje de los partidos próximos que ya tienen predicción sellada."
+            how="Porcentaje de los partidos próximos que ya tienen predicción publicada."
             why="Debe acercarse a 100% antes de cada jornada; los partidos sin predicción se ven vacíos para los usuarios." />
           <Metric label="Brier skill del modelo" value={skill === null ? "—" : pct(skill)} tone={skill !== null ? (skill > 0 ? "up" : "down") : undefined}
             sub={d.model ? `Brier ${d.model.brier.toFixed(3)} · ${n(d.model.n)} pronósticos · ${d.model.model_version}` : "Sin métricas publicadas"}

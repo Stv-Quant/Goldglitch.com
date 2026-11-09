@@ -29,15 +29,24 @@ const STEPS = [
   },
   {
     n: "05",
-    title: "Sello",
-    body: "Cada pronóstico queda sellado con hora antes del pitazo. Después del inicio, el servidor no permite editarlo.",
-    stat: "Inmutable tras el inicio",
+    title: "Historial",
+    body: "Publicamos cómo le fue a cada pronóstico, acierte o falle, en un historial abierto. Sin borrar los malos días.",
+    stat: "Aciertos y fallos",
   },
 ];
 
+const TURNS = 3; // the helix repeats the 5 steps three times; the middle turn is the one you read
+const STEP_DEG = 42; // tighter than 360/5 so neighbours stay visible around the cylinder
+const CARDS = Array.from({ length: STEPS.length * TURNS }, (_, k) => ({ k, s: STEPS[k % STEPS.length] }));
+// Funnel of spinning rings: narrow at the bottom, wide at the top (a whirlwind), alternating directions.
+const RINGS = [0.62, 0.72, 0.82, 0.93, 1.05, 1.18, 1.32, 1.48];
+const RIBS = 18;
+
 /**
- * "Cómo calculamos": a CSS 3D ring of five cards. The section is pinned; scroll turns the ring
- * so each step comes to the front. 5 DOM cards → CSS transforms on the compositor, no canvas needed.
+ * "Cómo calculamos" as a vortex: the steps sit on a helix wrapped around a cylinder of light.
+ * Scrolling screws the helix (rotate + rise) so the next step turns to the front, while the
+ * funnel rings and ribs spin on their own. 15 cards + a few dozen lines, all CSS transforms on
+ * the compositor; JS only writes one transform/opacity per card per frame while on screen.
  */
 export function MethodRing() {
   const ref = useRef<HTMLDivElement>(null);
@@ -48,29 +57,74 @@ export function MethodRing() {
       el.dataset.static = "";
       return;
     }
+    const cards = Array.from(el.querySelectorAll<HTMLElement>("[data-card]"));
+    const dots = Array.from(el.querySelectorAll<HTMLElement>("[data-dot]"));
+    let target = STEPS.length;
+    let cur = target;
     let raf = 0;
-    const update = () => {
-      raf = 0;
+    let visible = false;
+    let lastActive = -1;
+
+    const readScroll = () => {
       const r = el.getBoundingClientRect();
       const total = r.height - window.innerHeight;
       const p = Math.min(1, Math.max(0, -r.top / Math.max(1, total)));
-      el.style.setProperty("--mp", p.toFixed(4));
-      const active = Math.min(STEPS.length - 1, Math.round(p * (STEPS.length - 1)));
-      el.querySelectorAll<HTMLElement>("[data-step]").forEach((c, i) => c.toggleAttribute("data-front", i === active));
+      target = STEPS.length + p * (STEPS.length - 1);
     };
-    const onScroll = () => { if (!raf) raf = requestAnimationFrame(update); };
-    update();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("resize", onScroll);
+
+    const frame = () => {
+      raf = 0;
+      cur += (target - cur) * 0.11;
+      if (Math.abs(target - cur) < 0.0005) cur = target;
+      const mobile = window.innerWidth < 640;
+      const R = mobile ? 190 : 300;
+      const pitch = mobile ? 112 : 128;
+      for (const c of cards) {
+        const rel = Number(c.dataset.k) - cur;
+        const a = rel * STEP_DEG;
+        const facing = Math.cos((a * Math.PI) / 180); // 1 = front, -1 = back
+        const near = Math.exp(-(rel * rel) / 9);
+        const focus = 0.4 + 0.6 * Math.exp(-(rel * rel) / 0.12); // the card being read is fully lit
+        const o = focus * Math.max(0, facing) ** 0.8 * near;
+        c.style.transform = `translate(-50%, -50%) translateY(${(rel * pitch).toFixed(1)}px) rotateY(${a.toFixed(2)}deg) translateZ(${R}px)`;
+        c.style.opacity = o < 0.02 ? "0" : o.toFixed(3);
+        c.style.visibility = o < 0.02 ? "hidden" : "visible";
+      }
+      const active = Math.round(cur) % STEPS.length;
+      if (active !== lastActive) {
+        lastActive = active;
+        cards.forEach((c) => c.toggleAttribute("data-front", Number(c.dataset.k) === Math.round(cur)));
+        dots.forEach((d, i) => d.toggleAttribute("data-on", i === active));
+      }
+      el.style.setProperty("--twist", `${(cur * STEP_DEG * -0.35).toFixed(2)}deg`);
+      if (visible && cur !== target) raf = requestAnimationFrame(frame);
+    };
+
+    const kick = () => {
+      readScroll();
+      if (!raf) raf = requestAnimationFrame(frame);
+    };
+    const io = new IntersectionObserver(([e]) => {
+      visible = e.isIntersecting;
+      el.toggleAttribute("data-live", visible); // pauses the CSS spin when off screen
+      if (visible) kick();
+    });
+    io.observe(el);
+    readScroll();
+    cur = target;
+    frame();
+    window.addEventListener("scroll", kick, { passive: true });
+    window.addEventListener("resize", kick);
     return () => {
-      window.removeEventListener("scroll", onScroll);
-      window.removeEventListener("resize", onScroll);
+      io.disconnect();
+      window.removeEventListener("scroll", kick);
+      window.removeEventListener("resize", kick);
       if (raf) cancelAnimationFrame(raf);
     };
   }, []);
 
   return (
-    <section id="metodo" ref={ref} className="method relative" style={{ ["--mp" as string]: 0, ["--n" as string]: STEPS.length }} aria-labelledby="metodo-title">
+    <section id="metodo" ref={ref} className="method relative" aria-labelledby="metodo-title">
       <div className="method-stage sticky top-0 h-dvh overflow-hidden flex flex-col">
         <div className="relative z-10 mx-auto w-full max-w-6xl px-5 sm:px-6 pt-24 sm:pt-28">
           <p className="num text-[11px] tracking-[0.22em] text-gold uppercase">Método</p>
@@ -79,21 +133,45 @@ export function MethodRing() {
           </h2>
           <p className="mt-3 max-w-xl text-mid">Cinco pasos, siempre los mismos, para cada partido de cada deporte.</p>
         </div>
+
         <div className="method-scene relative flex-1">
-          <div className="method-ring">
-            {STEPS.map((s, i) => (
-              <article key={s.n} data-step className="method-card glass" style={{ ["--i" as string]: i }}>
-                <div className="flex items-center justify-between">
-                  <span className="num text-gold text-sm">{s.n}</span>
-                  <span className="num text-[10px] tracking-[0.18em] uppercase text-lo">{s.stat}</span>
-                </div>
-                <h3 className="display mt-6 text-4xl sm:text-5xl">{s.title}</h3>
-                <p className="mt-4 text-[15px] leading-relaxed text-mid">{s.body}</p>
-                <div className="method-progress mt-6 h-px bg-[var(--border-soft)]" aria-hidden />
-              </article>
+          {/* The whirlwind: a funnel of spinning rings, ribs of light and a glowing axis */}
+          <div aria-hidden className="vortex">
+            <div className="vortex-axis" />
+            <div className="vortex-spin">
+              {Array.from({ length: RIBS }, (_, j) => (
+                <span key={j} className="vortex-rib" style={{ ["--j" as string]: j, ["--ribs" as string]: RIBS }} />
+              ))}
+            </div>
+            {RINGS.map((s, j) => (
+              <span key={j} className="vortex-ring"
+                style={{ ["--s" as string]: s, ["--y" as string]: (RINGS.length - 1) / 2 - j, ["--d" as string]: `${14 + j * 3}s`, ["--dir" as string]: j % 2 ? "reverse" : "normal" }} />
             ))}
           </div>
-          <div aria-hidden className="method-floor" />
+
+          <div className="method-helix">
+            {CARDS.map(({ k, s }) => {
+              const dup = k < STEPS.length || k >= STEPS.length * 2;
+              return (
+                <article key={k} data-card data-k={k} data-dup={dup ? "" : undefined} aria-hidden={dup || undefined}
+                  className="method-card glass">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="num text-gold text-sm">{s.n}</span>
+                    <span className="num text-[10px] tracking-[0.18em] uppercase text-lo text-right">{s.stat}</span>
+                  </div>
+                  <h3 className="display mt-5 text-4xl sm:text-5xl">{s.title}</h3>
+                  <p className="mt-4 text-[15px] leading-relaxed text-mid">{s.body}</p>
+                  <div className="method-progress mt-6 h-px" aria-hidden />
+                </article>
+              );
+            })}
+          </div>
+
+          <ol aria-hidden className="method-dots">
+            {STEPS.map((s) => (
+              <li key={s.n} data-dot className="num">{s.n}</li>
+            ))}
+          </ol>
         </div>
       </div>
     </section>
