@@ -23,3 +23,11 @@ next/node_modules/
 next/.next/
 next/.open-next/
 next/.wrangler/
+
+# Local secrets
+.dev.vars
+next/.dev.vars
+
+# Python
+__pycache__/
+*.pyc
