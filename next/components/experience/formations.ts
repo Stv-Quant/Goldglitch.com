@@ -28,17 +28,17 @@ export type Formation = { x: Float32Array; y: Float32Array; z: Float32Array; c: 
  * yaw: in-plane orbit, swept across the act by scroll (yawSweep); spin: rotation about the
  * vertical axis after tilting (globe/coin turn), with a slow time drift (spinRate rad/s).
  */
-export type Camera = { tilt: number; yaw: number; yawSweep: number; spin: number; spinRate: number };
+export type Camera = { tilt: number; yaw: number; yawSweep: number; spin: number; spinRate: number; zoom: number };
 export const CAMERAS: Camera[] = [
-  { tilt: 0, yaw: 0, yawSweep: 0, spin: 0, spinRate: 0.07 },         // 0 ruido: volumetric cloud turning
-  { tilt: 0.98, yaw: -0.22, yawSweep: 0.44, spin: 0, spinRate: 0 },  // 1 fútbol: stadium view, orbit
-  { tilt: 0.92, yaw: 0.2, yawSweep: -0.4, spin: 0, spinRate: 0 },    // 2 MLB
-  { tilt: 1.0, yaw: -0.18, yawSweep: 0.36, spin: 0, spinRate: 0 },   // 3 NBA
-  { tilt: 1.05, yaw: 0.16, yawSweep: -0.32, spin: 0, spinRate: 0 },  // 4 tenis
-  { tilt: 0.78, yaw: -0.3, yawSweep: 0.3, spin: 0, spinRate: 0 },    // 5 100 versiones: columns
-  { tilt: 0.95, yaw: 0.62, yawSweep: -0.5, spin: 0, spinRate: 0 },   // 6 matriz: towers, diagonal view
-  { tilt: 0.28, yaw: 0, yawSweep: 0, spin: -0.25, spinRate: 0 },     // 7 calibración: slight turn
-  { tilt: 0, yaw: 0, yawSweep: 0, spin: 0, spinRate: 0.55 },         // 8 marca: coin turning
+  { tilt: 0, yaw: 0, yawSweep: 0, spin: 0, spinRate: 0.07, zoom: 1.0 },         // 0 ruido: volumetric cloud turning
+  { tilt: 0.98, yaw: -0.22, yawSweep: 0.44, spin: 0, spinRate: 0, zoom: 1.28 },  // 1 fútbol: stadium view, orbit
+  { tilt: 0.92, yaw: 0.2, yawSweep: -0.4, spin: 0, spinRate: 0, zoom: 1.22 },    // 2 MLB
+  { tilt: 1.0, yaw: -0.18, yawSweep: 0.36, spin: 0, spinRate: 0, zoom: 1.25 },   // 3 NBA
+  { tilt: 1.05, yaw: 0.16, yawSweep: -0.32, spin: 0, spinRate: 0, zoom: 1.25 },  // 4 tenis
+  { tilt: 0.78, yaw: -0.3, yawSweep: 0.3, spin: 0, spinRate: 0, zoom: 1.12 },    // 5 100 versiones: columns
+  { tilt: 1.1, yaw: 0.42, yawSweep: -0.4, spin: 0, spinRate: 0, zoom: 1.18 },   // 6 matriz: towers, diagonal view
+  { tilt: 0.28, yaw: 0, yawSweep: 0, spin: -0.25, spinRate: 0, zoom: 1.0 },     // 7 calibración: slight turn
+  { tilt: 0, yaw: 0, yawSweep: 0, spin: 0, spinRate: 0.55, zoom: 1.0 },         // 8 marca: coin turning
 ];
 type Box = { cx: number; cy: number; s: number; w: number; h: number };
 
@@ -194,10 +194,10 @@ function matrix(n: number, b: Box): Formation {
     while (k < cdf.length - 1 && u > cdf[k]) k++;
     const h = Math.floor(k / G);
     const a = k % G;
-    f.x[i] = x0 + (a + 0.07 + r() * 0.86) * cell;
-    f.y[i] = y0 + (h + 0.07 + r() * 0.86) * cell;
+    f.x[i] = x0 + (a + 0.18 + r() * 0.64) * cell;
+    f.y[i] = y0 + (h + 0.18 + r() * 0.64) * cell;
     const rel = p[k] / max;
-    f.z[i] = -r() * (0.04 + rel) * b.s * 0.5; // probability = tower height
+    f.z[i] = -r() * (0.03 + rel) * b.s * 0.3; // probability = tower height
     f.c[i] = rel > 0.98 ? COLOR.bone : rel > 0.42 ? COLOR.gold : COLOR.dim;
   }
   return f;

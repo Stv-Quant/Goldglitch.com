@@ -57,6 +57,16 @@ export default async function MatchPage({ params }: { params: Promise<{ id: stri
         ) : (
           <p className="mt-6 text-sm text-lo">El modelo aún no publica este partido.</p>
         )}
+        {m.seal && (
+          <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-line pt-4 num text-[11px] text-lo">
+            <span className="inline-flex items-center gap-1.5 text-gold">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden><path d="M12 2l3 5 6 1-4 4 1 6-6-3-6 3 1-6-4-4 6-1z" /></svg>
+              Sellado antes del pitazo
+            </span>
+            <span>{dayLabel(m.seal.at)} {timeLabel(m.seal.at)} · {Math.max(0, Math.round(m.seal.beforeKickoffMs / 60000))} min antes del inicio</span>
+            <span title={m.seal.hash}>SHA-256 {m.seal.hash.slice(0, 16)}…</span>
+          </div>
+        )}
       </header>
 
       {p && (

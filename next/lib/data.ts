@@ -1,6 +1,7 @@
 import "server-only";
 import type { ModelMetrics, Prediction } from "./contracts";
 import { canViewSport, redactPrediction, type RedactedPrediction } from "./entitlements";
+import { sha256Hex } from "./crypto";
 import { getDB } from "./env";
 import type { Tier } from "./plans";
 
@@ -16,6 +17,8 @@ export type MatchView = {
   home: { id: string; name: string; short: string };
   away: { id: string; name: string; short: string };
   prediction: RedactedPrediction | null;
+  /** Public proof the model output existed before kickoff: timestamp + SHA-256 of the stored payload. */
+  seal?: { at: number; hash: string; beforeKickoffMs: number };
 };
 
 type Row = {
@@ -86,7 +89,15 @@ export async function getMatch(id: string, tier: Tier): Promise<MatchView | { lo
   const r = await db.prepare(`${BASE_SELECT} WHERE m.id = ?`).bind(id).first<Row>();
   if (!r) return null;
   if (!canViewSport(tier, r.sport)) return { locked: true };
-  return toView(r, tier);
+  const view = toView(r, tier);
+  if (r.payload && view.prediction) {
+    view.seal = {
+      at: view.prediction.generatedAt,
+      hash: await sha256Hex(r.payload),
+      beforeKickoffMs: r.kickoff_at - view.prediction.generatedAt,
+    };
+  }
+  return view;
 }
 
 export async function latestMetrics(): Promise<ModelMetrics[]> {

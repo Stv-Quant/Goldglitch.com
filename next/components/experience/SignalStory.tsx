@@ -106,7 +106,7 @@ export function SignalStory() {
     function cam(i: number, ph: number, sec: number) {
       const c = CAMERAS[i];
       const drift = reduce || !c.spinRate ? 0 : i === 0 ? sec * c.spinRate : Math.sin(sec * c.spinRate) * 0.6;
-      return { tilt: c.tilt, yaw: c.yaw + c.yawSweep * ((reduce ? 0.5 : ph) - 0.5), spin: c.spin + drift };
+      return { tilt: c.tilt, yaw: c.yaw + c.yawSweep * ((reduce ? 0.5 : ph) - 0.5), spin: c.spin + drift, zoom: c.zoom };
     }
 
     function frame(time: number) {
@@ -129,6 +129,7 @@ export function SignalStory() {
       const tilt = ca.tilt + (cb.tilt - ca.tilt) * ct;
       const yaw = ca.yaw + (cb.yaw - ca.yaw) * ct;
       const spin = ca.spin + (cb.spin - ca.spin) * ct;
+      const zoom = ca.zoom + (cb.zoom - ca.zoom) * ct;
       const cY = Math.cos(yaw), sY = Math.sin(yaw);
       const cT = Math.cos(tilt), sT = Math.sin(tilt);
       const cS = Math.cos(spin), sS = Math.sin(spin);
@@ -167,7 +168,7 @@ export function SignalStory() {
         const z3 = -x1 * sS + z2 * cS;
         const d = FOV + z3;
         if (d < FOV * 0.15) { ss[i] = 0; continue; } // behind the lens
-        const sc = FOV / d;
+        const sc = (FOV / d) * zoom;
         psy[i] = sy[i];
         let px = CX + x3 * sc;
         let py = CY + y2 * sc - vel * (0.6 + delay[i] * 2.2); // particles trail the scroll like a fluid
@@ -195,7 +196,8 @@ export function SignalStory() {
         ss[i] = sc;
 
         // Depth band: near / mid / far → brightness (fog). 4 colors × 3 bands = 12 batches.
-        const band = sc > 1.12 ? 2 : sc > 0.9 ? 1 : 0;
+        const depth = sc / zoom; // fog follows true depth, not zoom
+        const band = depth > 1.12 ? 2 : depth > 0.9 ? 1 : 0;
         const g = (ti < 0.5 ? A.c[i] : B.c[i]) * 3 + band;
         buckets[g][counts[g]++] = i;
       }
@@ -210,7 +212,7 @@ export function SignalStory() {
         const list = buckets[g];
         for (let j = 0; j < c; j++) {
           const i = list[j];
-          const sz = Math.min(4, base * ss[i]);
+          const sz = Math.min(4, base * Math.min(ss[i], 2.2));
           if (stretch) {
             const dy = Math.max(-70, Math.min(70, (sy[i] - psy[i]) * stretch));
             ctx.fillRect(sx[i], dy > 0 ? sy[i] - dy : sy[i], sz, Math.max(sz, Math.abs(dy)));
