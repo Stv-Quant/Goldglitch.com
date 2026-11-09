@@ -1,4 +1,4 @@
-﻿{
+{
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "easygoldglitch-next",
   "main": ".open-next/worker.js",
@@ -8,11 +8,18 @@
     "directory": ".open-next/assets",
     "binding": "ASSETS"
   },
-    "d1_databases": [
+  "d1_databases": [
     {
       "binding": "EGG_DB",
       "database_name": "easygoldglitch-db",
-      "database_id": "9fdab209-da16-4d01-bd46-79b2fbf69df1"
+      "database_id": "9fdab209-da16-4d01-bd46-79b2fbf69df1",
+      "migrations_dir": "migrations"
     }
   ],
+  "vars": {
+    "APP_URL": "https://goldglitch.com",
+    "MAIL_FROM": "Goldglitch <acceso@goldglitch.com>"
+  }
+  // Secrets (wrangler secret put …): INGEST_HMAC_SECRET, WOMPI_PUBLIC_KEY,
+  // WOMPI_INTEGRITY_SECRET, WOMPI_EVENTS_SECRET, RESEND_API_KEY
 }

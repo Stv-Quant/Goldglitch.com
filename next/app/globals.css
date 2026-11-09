@@ -1,26 +1,176 @@
 @import "tailwindcss";
 
+/* ---------- Design tokens (StatsForge baseline) ---------- */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Goldglitch identity: warm void, bone paper, gold = signal, flare = noise */
+  --bg-void: #0a0907;
+  --bg-raise: #12100d;
+  --bg-panel: rgba(22, 19, 15, 0.74);
+  --border-soft: rgba(237, 230, 214, 0.08);
+  --border-glass: rgba(212, 175, 55, 0.18);
+  --gold: #d4af37;
+  --gold-dim: #8c7424;
+  --gold-faint: rgba(212, 175, 55, 0.12);
+  --neon-up: #2ef2a0;
+  --neon-down: #ff5a3c;
+  --flare: #ff3b1f; /* noise / tipster red */
+  --seg-2: #4a4843; /* secondary outcome segment */
+  --seg-3: #2c2b28; /* tertiary outcome segment */
+  --text-hi: #ede6d6;
+  --text-mid: #b8b0a0;
+  --text-lo: #8c8576;
+  --blur-glass: 14px;
+  --radius: 14px;
+  --motion-fast: 120ms;
+  --motion-base: 220ms;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-void: var(--bg-void);
+  --color-raise: var(--bg-raise);
+  --color-panel: var(--bg-panel);
+  --color-gold: var(--gold);
+  --color-gold-dim: var(--gold-dim);
+  --color-up: var(--neon-up);
+  --color-down: var(--neon-down);
+  --color-hi: var(--text-hi);
+  --color-mid: var(--text-mid);
+  --color-lo: var(--text-lo);
+  --color-line: var(--border-soft);
+  --color-flare: var(--flare);
+  --font-sans: "Bricolage Grotesque Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono Variable", ui-monospace, Menlo, monospace;
+  --font-display: "Instrument Serif", "Iowan Old Style", Georgia, serif;
+  --radius-card: var(--radius);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  background: var(--bg-void);
+  color-scheme: dark;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--bg-void);
+  color: var(--text-hi);
+  font-family: var(--font-sans);
+  font-optical-sizing: auto;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100dvh;
+}
+
+/* Numbers never jitter when they update. */
+.num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+.glass {
+  background: var(--bg-panel);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius);
+  backdrop-filter: blur(var(--blur-glass));
+  -webkit-backdrop-filter: blur(var(--blur-glass));
+}
+
+.card {
+  background: var(--bg-raise);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius);
+}
+
+.eyebrow {
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-lo);
+}
+
+.btn-gold {
+  background: var(--gold);
+  color: #020202;
+  font-weight: 600;
+  border-radius: 10px;
+  transition: filter var(--motion-fast), transform var(--motion-fast);
+}
+.btn-gold:hover { filter: brightness(1.08); }
+.btn-gold:active { transform: translateY(1px); }
+
+.btn-ghost {
+  border: 1px solid var(--border-soft);
+  color: var(--text-hi);
+  border-radius: 10px;
+  transition: border-color var(--motion-fast), background var(--motion-fast);
+}
+.btn-ghost:hover { border-color: var(--border-glass); background: var(--gold-faint); }
+
+:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+.hero-glow {
+  background:
+    radial-gradient(60% 50% at 50% 0%, rgba(212, 175, 55, 0.14), transparent 70%),
+    radial-gradient(40% 30% at 85% 20%, rgba(46, 242, 160, 0.05), transparent 70%);
+}
+
+.grid-lines {
+  background-image:
+    linear-gradient(var(--border-soft) 1px, transparent 1px),
+    linear-gradient(90deg, var(--border-soft) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: radial-gradient(70% 60% at 50% 30%, #000 30%, transparent 75%);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .rise { animation: rise var(--motion-base) ease-out both; }
+  @keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+}
+
+/* Editorial display: serif for statements, mono for evidence. */
+.display {
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  line-height: 0.95;
+}
+.display em { font-style: italic; color: var(--gold); }
+
+/* Film grain keeps large dark fields from looking flat/digital. */
+.grain::after {
+  content: "";
+  position: fixed;
+  inset: -50%;
+  pointer-events: none;
+  z-index: 60;
+  opacity: 0.07;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+@media (prefers-reduced-motion: no-preference) {
+  .grain::after { animation: grain 0.9s steps(4) infinite; }
+  @keyframes grain { 0%{transform:translate(0,0)} 25%{transform:translate(-3%,2%)} 50%{transform:translate(2%,-3%)} 75%{transform:translate(-1%,3%)} 100%{transform:translate(0,0)} }
+}
+
+/* Tipster noise: red chromatic jitter. */
+.noise-word {
+  font-family: var(--font-mono);
+  color: var(--flare);
+  text-shadow: 2px 0 rgba(0, 255, 230, 0.35), -2px 0 rgba(255, 59, 31, 0.6);
+  white-space: nowrap;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .noise-word { animation: jitter 2.4s steps(1) infinite; }
+  @keyframes jitter {
+    0%, 86%, 100% { transform: none; clip-path: none; opacity: 0.9; }
+    88% { transform: translate(-3px, 1px) skewX(-8deg); clip-path: inset(10% 0 40% 0); }
+    90% { transform: translate(4px, -1px); clip-path: inset(55% 0 5% 0); opacity: 0.5; }
+    92% { transform: none; opacity: 1; }
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .scroll-cue { transform-origin: top; animation: cue 1.8s cubic-bezier(.65,0,.35,1) infinite; }
+  @keyframes cue { 0% { transform: scaleY(0); } 50% { transform: scaleY(1); transform-origin: top; } 51% { transform-origin: bottom; } 100% { transform: scaleY(0); transform-origin: bottom; } }
 }
