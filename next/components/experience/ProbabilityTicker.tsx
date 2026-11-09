@@ -1,67 +1,58 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
+import { useFixtures } from "./useFixtures";
 
-type Item = { sport: string; home: string; away: string; p: number[] };
+export type Fixture = {
+  id: string;
+  sport: string;
+  league: string;
+  home: string;
+  away: string;
+  kickoffAt: number;
+  state: "pre" | "in" | "post";
+  outcomes: 2 | 3;
+};
 
-// Illustrative values only (labelled on screen). Real fixtures come from SQPC via /api/ingest.
-const ROW_A: Item[] = [
-  { sport: "FÚT", home: "AME", away: "CAL", p: [50, 27, 23] },
-  { sport: "MLB", home: "NYY", away: "BOS", p: [58, 42] },
-  { sport: "FÚT", home: "ARS", away: "LIV", p: [49, 27, 24] },
-  { sport: "MLB", home: "LAD", away: "SFG", p: [61, 39] },
-  { sport: "FÚT", home: "NAL", away: "MIL", p: [52, 29, 19] },
-  { sport: "MLB", home: "HOU", away: "SEA", p: [54, 46] },
-];
-const ROW_B: Item[] = [
-  { sport: "NBA", home: "BOS", away: "LAL", p: [62, 38] },
-  { sport: "TEN", home: "J. A", away: "J. B", p: [57, 43] },
-  { sport: "FÚT", home: "MCI", away: "CHE", p: [57, 24, 19] },
-  { sport: "NBA", home: "DEN", away: "PHX", p: [55, 45] },
-  { sport: "TEN", home: "J. C", away: "J. D", p: [71, 29] },
-  { sport: "FÚT", home: "JUN", away: "TOL", p: [43, 32, 25] },
-];
+const timeFmt = new Intl.DateTimeFormat("es-CO", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "America/Bogota" });
 
-type Flash = { row: number; idx: number; dir: 1 | -1; id: number } | null;
-
-/** Moves 1–3 points between two outcomes so every row still sums to 100. */
-function nudge(items: Item[]): [Item[], number, 1 | -1] {
-  const idx = Math.floor(Math.random() * items.length);
-  const it = items[idx];
-  const from = Math.floor(Math.random() * it.p.length);
-  let to = Math.floor(Math.random() * it.p.length);
-  if (to === from) to = (to + 1) % it.p.length;
-  const d = Math.min(1 + Math.floor(Math.random() * 3), it.p[from] - 5);
-  const p = [...it.p];
-  p[from] -= d;
-  p[to] += d;
-  const next = items.map((x, i) => (i === idx ? { ...x, p } : x));
-  return [next, idx, to === 0 ? 1 : -1];
+const ymdFmt = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Bogota" });
+export function dayTag(ms: number) {
+  return ymdFmt.format(ms) === ymdFmt.format(Date.now()) ? "" : "MAÑ ";
 }
 
-function Row({ items, reverse, dur, flash, row }: { items: Item[]; reverse?: boolean; dur: string; flash: Flash; row: number }) {
+function when(f: Fixture) {
+  if (f.state === "in") return <span className="text-up">EN VIVO</span>;
+  return <span className="text-lo">{dayTag(f.kickoffAt)}{timeFmt.format(f.kickoffAt)}</span>;
+}
+
+/** Fill the track so a short match day still loops seamlessly. */
+function pad(items: Fixture[], min = 8): Fixture[] {
+  if (!items.length) return items;
+  const out = [...items];
+  while (out.length < min) out.push(...items);
+  return out;
+}
+
+function Row({ items, reverse, dur, scramble }: { items: Fixture[]; reverse?: boolean; dur: string; scramble: string | null }) {
   const doubled = [...items, ...items];
   return (
     <div className="ticker overflow-hidden py-3">
       <ul className="ticker-track" data-reverse={reverse ? "" : undefined} style={{ ["--ticker-dur" as string]: dur }}>
         {doubled.map((m, i) => {
-          const max = Math.max(...m.p);
-          const lit = flash && flash.row === row && flash.idx === i % items.length;
+          const hot = scramble === m.id;
           return (
-            <li key={i} className={`flex items-center gap-4 num text-sm whitespace-nowrap ${lit ? "tick-lit" : ""}`} aria-hidden={i >= items.length}>
+            <li key={i} className={`flex items-center gap-4 num text-sm whitespace-nowrap ${hot ? "tick-lit" : ""}`} aria-hidden={i >= items.length}>
               <span className="text-[10px] tracking-[0.2em] text-lo border border-line rounded px-1.5 py-0.5">{m.sport}</span>
+              <span className="text-[11px]">{when(m)}</span>
               <span className="text-hi">{m.home}</span>
-              <span className="flex gap-2">
-                {m.p.map((v, j) => (
-                  <span key={j} style={{ color: v === max ? "var(--gold)" : "var(--text-lo)" }}>{v}</span>
+              <span className="flex gap-2" aria-label="Probabilidad oculta">
+                {Array.from({ length: m.outcomes }, (_, j) => (
+                  <span key={j} className="tick-q">{hot ? <Scramble seed={i * 7 + j} /> : "???"}</span>
                 ))}
               </span>
               <span className="text-hi">{m.away}</span>
-              {lit && (
-                <span key={flash!.id} className="tick-delta text-[10px]" style={{ color: flash!.dir > 0 ? "var(--neon-up)" : "var(--neon-down)" }}>
-                  {flash!.dir > 0 ? "▲" : "▼"}
-                </span>
-              )}
               <span className="text-line">/</span>
             </li>
           );
@@ -71,31 +62,61 @@ function Row({ items, reverse, dur, flash, row }: { items: Item[]; reverse?: boo
   );
 }
 
+/** Digits flicker for a moment, as if the model were recalculating, then fall back to "??". */
+function Scramble({ seed }: { seed: number }) {
+  const [v, setV] = useState("??");
+  useEffect(() => {
+    let n = seed;
+    const id = setInterval(() => {
+      n = (n * 9301 + 49297) % 233280;
+      setV(String(10 + (n % 80)));
+    }, 70);
+    return () => clearInterval(id);
+  }, [seed]);
+  return <>{v}</>;
+}
+
 export function ProbabilityTicker() {
-  const [a, setA] = useState(ROW_A);
-  const [b, setB] = useState(ROW_B);
-  const [flash, setFlash] = useState<Flash>(null);
+  const fixtures = useFixtures();
+  const [scramble, setScramble] = useState<string | null>(null);
 
   useEffect(() => {
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    let n = 0;
+    if (!fixtures?.length || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     const id = setInterval(() => {
-      const row = n++ % 2;
-      if (row === 0) setA((cur) => { const [next, idx, dir] = nudge(cur); setFlash({ row, idx, dir, id: n }); return next; });
-      else setB((cur) => { const [next, idx, dir] = nudge(cur); setFlash({ row, idx, dir, id: n }); return next; });
-    }, 1400);
+      setScramble(fixtures[Math.floor(Math.random() * fixtures.length)].id);
+      setTimeout(() => setScramble(null), 650);
+    }, 1600);
     return () => clearInterval(id);
-  }, []);
+  }, [fixtures]);
+
+  if (fixtures && !fixtures.length) return null;
+
+  const a = pad((fixtures ?? []).filter((_, i) => i % 2 === 0));
+  const b = pad((fixtures ?? []).filter((_, i) => i % 2 === 1).concat(fixtures && fixtures.length < 2 ? fixtures : []));
 
   return (
-    <section aria-label="Ejemplos de probabilidades" className="relative border-y border-line bg-[var(--bg-raise)]/60 py-2 my-10">
-      <div className="px-5 sm:px-6 pt-2 flex items-center gap-2 num text-[10px] tracking-[0.2em] uppercase text-lo">
-        <span className="live-dot" aria-hidden /> Recalculando
+    <section aria-label="Próximos partidos" className="relative border-y border-line bg-[var(--bg-raise)]/60 py-2 my-10">
+      <div className="px-5 sm:px-6 pt-2 flex flex-wrap items-center justify-between gap-2 num text-[10px] tracking-[0.2em] uppercase text-lo">
+        <span className="flex items-center gap-2">
+          <span className="live-dot" aria-hidden /> Próximos partidos
+          {fixtures && <span className="text-mid">· {fixtures.length}</span>}
+        </span>
+        <span className="hidden sm:inline">Hora Colombia</span>
       </div>
-      <Row items={a} dur="55s" flash={flash} row={0} />
-      <Row items={b} dur="70s" reverse flash={flash} row={1} />
-      <p className="px-5 sm:px-6 pb-2 text-[10px] num tracking-[0.18em] uppercase text-lo">
-        Ejemplos ilustrativos · el número dorado es el resultado más probable, no una garantía
+      {fixtures ? (
+        <>
+          <Row items={a} dur={`${Math.max(40, a.length * 6)}s`} scramble={scramble} />
+          <Row items={b} dur={`${Math.max(50, b.length * 7)}s`} reverse scramble={scramble} />
+        </>
+      ) : (
+        <div className="px-5 sm:px-6 py-6 space-y-4" aria-hidden>
+          <div className="h-4 w-3/4 rounded bg-[var(--seg-3)] animate-pulse" />
+          <div className="h-4 w-2/3 rounded bg-[var(--seg-3)] animate-pulse" />
+        </div>
+      )}
+      <p className="px-5 sm:px-6 pb-2 text-[11px] num tracking-[0.12em] uppercase text-lo">
+        ??? = probabilidad del modelo.{" "}
+        <Link href="/acceso" className="text-gold hover:underline underline-offset-4">Entra gratis para ver las de los partidos que cubrimos →</Link>
       </p>
     </section>
   );

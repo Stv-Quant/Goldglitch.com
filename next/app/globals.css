@@ -213,7 +213,7 @@ body {
 }
 
 /* ---------- Método: vortex / helix cylinder ---------- */
-.method { height: 440dvh; --R: 300px; --twist: 0deg; }
+.method { height: 230dvh; --R: 300px; --twist: 0deg; }
 @media (max-width: 640px) { .method { --R: 190px; } }
 .method-scene { perspective: 1100px; perspective-origin: 50% 22%; }
 .method-helix, .vortex {
@@ -233,10 +233,11 @@ body {
 .method-card[data-front] .method-progress { transform: scaleX(1); }
 
 .vortex > * { position: absolute; left: 0; top: 0; transform-style: preserve-3d; }
+.vortex { opacity: .45; }
 .vortex-axis {
-  width: 2px; height: 120vh; transform: translate(-50%, -50%);
+  width: 1px; height: 120vh; transform: translate(-50%, -50%);
   background: linear-gradient(180deg, transparent, rgba(212,175,55,.55) 45%, rgba(255,226,140,.9) 50%, rgba(212,175,55,.55) 55%, transparent);
-  box-shadow: 0 0 40px 6px rgba(212,175,55,.18);
+  box-shadow: 0 0 24px 2px rgba(212,175,55,.10);
 }
 .vortex-spin { transform: rotateY(var(--twist)); }
 .vortex-spin { animation: vortex-turn 46s linear infinite paused; }
@@ -249,30 +250,39 @@ body {
   --size: calc(var(--R) * 2.3 * var(--s));
   width: var(--size); height: var(--size); border-radius: 50%;
   border: 1px dashed rgba(212,175,55,.55);
-  box-shadow: 0 0 22px rgba(212,175,55,.08), inset 0 0 22px rgba(212,175,55,.06);
-  transform: translate(-50%, -50%) translateY(calc(var(--y) * 9.5vh)) rotateX(90deg) rotateZ(0deg);
+  transform: translate(-50%, -50%) translateY(calc(var(--y) * 16vh)) rotateX(90deg) rotateZ(0deg);
   animation: vortex-ring var(--d) linear infinite paused; animation-direction: var(--dir);
 }
 .vortex-ring:nth-child(odd) { border-style: dotted; border-width: 2px; border-color: rgba(212,175,55,.45); }
 .method[data-live] .vortex-ring, .method[data-live] .vortex-spin, .method[data-live] .method-helix { animation-play-state: running; }
-@keyframes vortex-ring { to { transform: translate(-50%, -50%) translateY(calc(var(--y) * 9.5vh)) rotateX(90deg) rotateZ(360deg); } }
+@keyframes vortex-ring { to { transform: translate(-50%, -50%) translateY(calc(var(--y) * 16vh)) rotateX(90deg) rotateZ(360deg); } }
 @keyframes vortex-turn { from { transform: rotateY(var(--twist)); } to { transform: rotateY(calc(var(--twist) - 360deg)); } }
 @keyframes vortex-breathe { 0%, 100% { translate: 0 0; } 50% { translate: 0 -10px; } }
 
-.method-dots {
-  position: absolute; right: max(1.25rem, calc((100vw - 72rem) / 2 + 1.5rem)); top: 50%; transform: translateY(-50%);
-  display: flex; flex-direction: column; gap: .9rem; font-size: 11px; color: var(--text-lo); z-index: 2;
+.method-count {
+  position: absolute; left: 50%; bottom: 1.5rem; transform: translateX(-50%); z-index: 2;
+  font-size: 10px; letter-spacing: .2em; text-transform: uppercase; color: var(--text-lo);
 }
-.method-dots li { transition: color 300ms ease, transform 300ms ease; }
-.method-dots li[data-on] { color: var(--gold); transform: translateX(-6px); }
-@media (max-width: 640px) { .method-dots { display: none; } }
+.match-bar {
+  height: 6px; border-radius: 999px; overflow: hidden; position: relative;
+  background: var(--seg-3);
+}
+.match-bar::after {
+  content: ""; position: absolute; inset: 0; border-radius: inherit;
+  background: linear-gradient(90deg, transparent, rgba(212,175,55,.55), transparent);
+  transform: translateX(-100%);
+  animation: match-scan 2.4s cubic-bezier(.45,0,.2,1) infinite; animation-delay: calc(var(--j) * 260ms);
+}
+@keyframes match-scan { to { transform: translateX(100%); } }
+.match-q { letter-spacing: .08em; text-shadow: 0 0 12px rgba(212,175,55,.45); }
+@media (prefers-reduced-motion: reduce) { .match-bar::after { animation: none; opacity: 0; } }
 
-.method[data-static] { height: auto; }
+.method[data-static] { height: auto !important; }
 .method[data-static] .method-stage { position: static; height: auto; }
-.method[data-static] .vortex, .method[data-static] .method-dots, .method[data-static] [data-dup] { display: none; }
+.method[data-static] .vortex, .method[data-static] .method-count { display: none; }
 .method[data-static] .method-scene { perspective: none; padding: 2rem 1.25rem 4rem; }
 .method[data-static] .method-helix { position: static; transform: none; width: auto; height: auto; display: grid; gap: 1rem; max-width: 72rem; margin: 0 auto; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
-.method[data-static] .method-card { position: static; transform: none; opacity: 1; width: auto; }
+.method[data-static] .method-card { position: static; transform: none !important; opacity: 1 !important; visibility: visible !important; width: auto; }
 
 .reveal-on-enter > * { opacity: 0; transform: translateY(24px); transition: opacity 800ms ease, transform 900ms cubic-bezier(0.16,1,0.3,1); }
 .reveal-on-enter.is-in > * { opacity: 1; transform: none; }
@@ -283,6 +293,7 @@ body {
 
 /* ---------- Live ticker ---------- */
 .live-dot { width: 6px; height: 6px; border-radius: 999px; background: var(--neon-up); box-shadow: 0 0 0 0 rgba(46,242,160,.6); }
+.tick-q { color: var(--gold); min-width: 2ch; text-align: center; text-shadow: 0 0 12px rgba(212,175,55,.45); }
 .tick-lit { background: rgba(212,175,55,0.08); border-radius: 6px; box-shadow: 0 0 0 1px var(--border-glass); padding: 0 8px; }
 @media (prefers-reduced-motion: no-preference) {
   .live-dot { animation: livepulse 1.6s ease-out infinite; }
