@@ -2,21 +2,23 @@
 
 /* ---------- Design tokens (StatsForge baseline) ---------- */
 :root {
-  --bg-void: #020202;
-  --bg-raise: #0b0b0c;
-  --bg-panel: rgba(18, 18, 20, 0.72);
-  --border-soft: rgba(245, 243, 238, 0.07);
+  /* Goldglitch identity: warm void, bone paper, gold = signal, flare = noise */
+  --bg-void: #0a0907;
+  --bg-raise: #12100d;
+  --bg-panel: rgba(22, 19, 15, 0.74);
+  --border-soft: rgba(237, 230, 214, 0.08);
   --border-glass: rgba(212, 175, 55, 0.18);
   --gold: #d4af37;
   --gold-dim: #8c7424;
   --gold-faint: rgba(212, 175, 55, 0.12);
   --neon-up: #2ef2a0;
-  --neon-down: #ff4d6d;
+  --neon-down: #ff5a3c;
+  --flare: #ff3b1f; /* noise / tipster red */
   --seg-2: #4a4843; /* secondary outcome segment */
   --seg-3: #2c2b28; /* tertiary outcome segment */
-  --text-hi: #f5f3ee;
-  --text-mid: #b5b2aa;
-  --text-lo: #8a8780;
+  --text-hi: #ede6d6;
+  --text-mid: #b8b0a0;
+  --text-lo: #8c8576;
   --blur-glass: 14px;
   --radius: 14px;
   --motion-fast: 120ms;
@@ -35,8 +37,10 @@
   --color-mid: var(--text-mid);
   --color-lo: var(--text-lo);
   --color-line: var(--border-soft);
-  --font-sans: ui-sans-serif, -apple-system, "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+  --color-flare: var(--flare);
+  --font-sans: "Bricolage Grotesque Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono Variable", ui-monospace, Menlo, monospace;
+  --font-display: "Instrument Serif", "Iowan Old Style", Georgia, serif;
   --radius-card: var(--radius);
 }
 
@@ -49,6 +53,7 @@ body {
   background: var(--bg-void);
   color: var(--text-hi);
   font-family: var(--font-sans);
+  font-optical-sizing: auto;
   -webkit-font-smoothing: antialiased;
   min-height: 100dvh;
 }
@@ -122,4 +127,50 @@ body {
 @media (prefers-reduced-motion: no-preference) {
   .rise { animation: rise var(--motion-base) ease-out both; }
   @keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+}
+
+/* Editorial display: serif for statements, mono for evidence. */
+.display {
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  line-height: 0.95;
+}
+.display em { font-style: italic; color: var(--gold); }
+
+/* Film grain keeps large dark fields from looking flat/digital. */
+.grain::after {
+  content: "";
+  position: fixed;
+  inset: -50%;
+  pointer-events: none;
+  z-index: 60;
+  opacity: 0.07;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+@media (prefers-reduced-motion: no-preference) {
+  .grain::after { animation: grain 0.9s steps(4) infinite; }
+  @keyframes grain { 0%{transform:translate(0,0)} 25%{transform:translate(-3%,2%)} 50%{transform:translate(2%,-3%)} 75%{transform:translate(-1%,3%)} 100%{transform:translate(0,0)} }
+}
+
+/* Tipster noise: red chromatic jitter. */
+.noise-word {
+  font-family: var(--font-mono);
+  color: var(--flare);
+  text-shadow: 2px 0 rgba(0, 255, 230, 0.35), -2px 0 rgba(255, 59, 31, 0.6);
+  white-space: nowrap;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .noise-word { animation: jitter 2.4s steps(1) infinite; }
+  @keyframes jitter {
+    0%, 86%, 100% { transform: none; clip-path: none; opacity: 0.9; }
+    88% { transform: translate(-3px, 1px) skewX(-8deg); clip-path: inset(10% 0 40% 0); }
+    90% { transform: translate(4px, -1px); clip-path: inset(55% 0 5% 0); opacity: 0.5; }
+    92% { transform: none; opacity: 1; }
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .scroll-cue { transform-origin: top; animation: cue 1.8s cubic-bezier(.65,0,.35,1) infinite; }
+  @keyframes cue { 0% { transform: scaleY(0); } 50% { transform: scaleY(1); transform-origin: top; } 51% { transform-origin: bottom; } 100% { transform: scaleY(0); transform-origin: bottom; } }
 }

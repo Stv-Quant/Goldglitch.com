@@ -5,8 +5,8 @@ import { getViewer } from "@/lib/auth";
 export async function SiteHeader() {
   const viewer = await getViewer().catch(() => null);
   return (
-    <header className="sticky top-0 z-30 border-b border-line bg-[rgba(2,2,2,0.78)] backdrop-blur-md">
-      <div className="mx-auto max-w-6xl px-4 sm:px-6 h-14 flex items-center justify-between">
+    <header className="sticky top-0 z-40 bg-gradient-to-b from-[rgba(10,9,7,0.92)] via-[rgba(10,9,7,0.6)] to-transparent">
+      <div className="mx-auto max-w-6xl px-4 sm:px-6 h-16 flex items-center justify-between">
         <Logo />
         <nav className="flex items-center gap-1 sm:gap-4 text-sm" aria-label="Principal">
           <Link href="/historial" className="hidden sm:inline px-2 py-1 text-mid hover:text-hi">Historial</Link>
