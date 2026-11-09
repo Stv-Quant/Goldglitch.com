@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef } from "react";
-import { dayTag, type Fixture } from "./ProbabilityTicker";
+import { isTodayBogota, type Fixture } from "./fixture";
 import { useFixtures } from "./useFixtures";
 
 const MAX = 10;
@@ -15,7 +15,7 @@ const timeFmt = new Intl.DateTimeFormat("es-CO", { hour: "2-digit", minute: "2-d
 
 function when(f: Fixture) {
   if (f.state === "in") return <span className="text-up">● EN VIVO</span>;
-  return <>{dayTag(f.kickoffAt) ? "MAÑANA" : "HOY"} · {timeFmt.format(f.kickoffAt)}</>;
+  return <>{isTodayBogota(f.kickoffAt) ? "HOY" : "MAÑANA"} · {timeFmt.format(f.kickoffAt)}</>;
 }
 
 function MatchCard({ f }: { f: Fixture }) {

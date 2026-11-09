@@ -1,6 +1,5 @@
 import { FounderLetter } from "@/components/experience/FounderLetter";
 import { MethodRing } from "@/components/experience/MethodRing";
-import { ProbabilityTicker } from "@/components/experience/ProbabilityTicker";
 import { RevealObserver } from "@/components/experience/RevealObserver";
 import { SignalStory } from "@/components/experience/SignalStory";
 import { PlanCards } from "@/components/site/PlanCards";
@@ -9,7 +8,6 @@ export default function Home() {
   return (
     <div className="grain -mt-16">
       <SignalStory />
-      <ProbabilityTicker />
       <MethodRing />
       <FounderLetter />
       <section className="reveal-on-enter relative mx-auto max-w-6xl px-5 sm:px-6 pt-24 pb-10" id="planes">

@@ -202,16 +202,6 @@ body {
 .act-rail li[data-active] .act-tick { width: 40px; background: var(--gold); opacity: 1; }
 .act-rail li[data-active] .act-label { opacity: 1; transform: none; color: var(--text-hi); }
 
-/* Probability ticker */
-.ticker { mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); }
-.ticker-track { display: flex; width: max-content; gap: 3rem; }
-@media (prefers-reduced-motion: no-preference) {
-  .ticker-track { animation: ticker var(--ticker-dur, 60s) linear infinite; }
-  .ticker-track[data-reverse] { animation-direction: reverse; }
-  .ticker:hover .ticker-track { animation-play-state: paused; }
-  @keyframes ticker { to { transform: translateX(-50%); } }
-}
-
 /* ---------- Método: vortex / helix cylinder ---------- */
 .method { height: 230dvh; --R: 300px; --twist: 0deg; }
 @media (max-width: 640px) { .method { --R: 190px; } }
@@ -291,13 +281,9 @@ body {
   .reveal-on-enter > * { opacity: 1; transform: none; transition: none; }
 }
 
-/* ---------- Live ticker ---------- */
+/* ---------- Live dot ---------- */
 .live-dot { width: 6px; height: 6px; border-radius: 999px; background: var(--neon-up); box-shadow: 0 0 0 0 rgba(46,242,160,.6); }
-.tick-q { color: var(--gold); min-width: 2ch; text-align: center; text-shadow: 0 0 12px rgba(212,175,55,.45); }
-.tick-lit { background: rgba(212,175,55,0.08); border-radius: 6px; box-shadow: 0 0 0 1px var(--border-glass); padding: 0 8px; }
 @media (prefers-reduced-motion: no-preference) {
   .live-dot { animation: livepulse 1.6s ease-out infinite; }
   @keyframes livepulse { 0% { box-shadow: 0 0 0 0 rgba(46,242,160,.55); } 100% { box-shadow: 0 0 0 8px rgba(46,242,160,0); } }
-  .tick-delta { animation: tickdelta 900ms ease-out both; }
-  @keyframes tickdelta { from { opacity: 0; transform: translateY(4px); } 30% { opacity: 1; transform: none; } to { opacity: .7; } }
 }

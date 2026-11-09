@@ -1,7 +1,8 @@
 import type { D1PreparedStatement } from "@cloudflare/workers-types";
 import { ingestBatchSchema } from "@/lib/contracts";
 import { hmacSha256Hex, safeEqual, sha256Hex } from "@/lib/crypto";
-import { getDB, getEnv } from "@/lib/env";
+import { getDB } from "@/lib/env";
+import { getIngestSecret } from "@/lib/ingestKey";
 
 const MAX_SKEW_MS = 5 * 60 * 1000;
 const MAX_BODY_BYTES = 5 * 1024 * 1024;
@@ -13,8 +14,8 @@ const CHUNK = 100;
  * Idempotent on batchId.
  */
 export async function POST(request: Request) {
-  const env = await getEnv();
-  if (!env.INGEST_HMAC_SECRET) return Response.json({ ok: false, error: "not_configured" }, { status: 503 });
+  const { secret } = await getIngestSecret();
+  if (!secret) return Response.json({ ok: false, error: "not_configured" }, { status: 503 });
 
   const ts = Number(request.headers.get("x-gg-timestamp"));
   const sig = request.headers.get("x-gg-signature") ?? "";
@@ -25,7 +26,7 @@ export async function POST(request: Request) {
   const raw = await request.text();
   if (raw.length > MAX_BODY_BYTES) return Response.json({ ok: false, error: "payload_too_large" }, { status: 413 });
 
-  const expected = await hmacSha256Hex(env.INGEST_HMAC_SECRET, `${ts}.${raw}`);
+  const expected = await hmacSha256Hex(secret, `${ts}.${raw}`);
   if (!safeEqual(expected, sig)) return Response.json({ ok: false, error: "bad_signature" }, { status: 401 });
 
   let json: unknown;
