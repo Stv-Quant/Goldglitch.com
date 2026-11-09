@@ -6,6 +6,8 @@ import { randomToken, sha256Hex } from "./crypto";
 import type { Tier } from "./plans";
 
 export const SESSION_COOKIE = "gg_session";
+/** Admin-only preview: see the product exactly as a Free / Pro / Elite member would. */
+export const VIEW_AS_COOKIE = "gg_view_as";
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 const LOGIN_TOKEN_TTL_MS = 15 * 60 * 1000;
 const LOGIN_TOKENS_PER_WINDOW = 3;
@@ -14,8 +16,13 @@ export type Viewer = {
   userId: string;
   email: string;
   isAdmin: boolean;
+  /** Effective tier used for gating (for admins: their "view as" choice, default elite). */
   tier: Tier;
+  /** The member's own paid tier, ignoring admin preview. */
+  ownTier: Tier;
+  viewingAs: Tier | null;
   periodEnd: number | null;
+  mustChangePassword: boolean;
 };
 
 export function normalizeEmail(raw: unknown): string | null {
@@ -108,26 +115,77 @@ export const getViewer = cache(async (): Promise<Viewer | null> => {
   const now = Date.now();
   const row = await db
     .prepare(
-      `SELECT u.id, u.email, u.is_admin, s2.plan, s2.current_period_end
+      `SELECT u.id, u.email, u.is_admin, u.status, u.must_change_password, s2.plan, s2.current_period_end
          FROM sessions s
          JOIN users u ON u.id = s.user_id
          LEFT JOIN subscriptions s2 ON s2.user_id = u.id
         WHERE s.id_hash = ? AND s.expires_at > ?`,
     )
     .bind(await sha256Hex(raw), now)
-    .first<{ id: string; email: string; is_admin: number; plan: "pro" | "elite" | null; current_period_end: number | null }>();
-  if (!row) return null;
+    .first<{
+      id: string; email: string; is_admin: number; status: string; must_change_password: number;
+      plan: "pro" | "elite" | null; current_period_end: number | null;
+    }>();
+  if (!row || row.status === "suspended") return null;
 
   const active = row.plan !== null && row.current_period_end !== null && row.current_period_end > now;
+  const ownTier: Tier = active ? row.plan! : "free";
+  const isAdmin = row.is_admin === 1;
+  let viewingAs: Tier | null = null;
+  if (isAdmin) {
+    const v = jar.get(VIEW_AS_COOKIE)?.value;
+    viewingAs = v === "free" || v === "pro" || v === "elite" ? v : "elite";
+  }
   return {
     userId: row.id,
     email: row.email,
-    isAdmin: row.is_admin === 1,
-    tier: active ? row.plan! : "free",
+    isAdmin,
+    tier: viewingAs ?? ownTier,
+    ownTier,
+    viewingAs,
     periodEnd: row.current_period_end,
+    mustChangePassword: row.must_change_password === 1,
   };
 });
 
 export async function getTier(): Promise<Tier> {
   return (await getViewer())?.tier ?? "free";
+}
+
+/** Throws a redirect-friendly null for non-admins; use in admin pages and API routes. */
+export async function requireAdmin(): Promise<Viewer | null> {
+  const v = await getViewer();
+  return v && v.isAdmin && !v.mustChangePassword ? v : null;
+}
+
+const ATTEMPT_WINDOW_MS = 15 * 60 * 1000;
+const MAX_FAILS = 8;
+
+export async function tooManyAttempts(key: string): Promise<boolean> {
+  const db = await getDB();
+  const r = await db
+    .prepare("SELECT COUNT(*) AS n FROM auth_attempts WHERE key = ? AND at > ? AND ok = 0")
+    .bind(key, Date.now() - ATTEMPT_WINDOW_MS)
+    .first<{ n: number }>();
+  return (r?.n ?? 0) >= MAX_FAILS;
+}
+
+export async function recordAttempt(key: string, ok: boolean): Promise<void> {
+  const db = await getDB();
+  await db.prepare("INSERT INTO auth_attempts (key, at, ok) VALUES (?, ?, ?)").bind(key, Date.now(), ok ? 1 : 0).run();
+}
+
+export async function audit(adminId: string, action: string, targetUserId: string | null, detail?: unknown): Promise<void> {
+  const db = await getDB();
+  await db
+    .prepare("INSERT INTO admin_audit (id, admin_id, action, target_user_id, detail, created_at) VALUES (?, ?, ?, ?, ?, ?)")
+    .bind(crypto.randomUUID(), adminId, action, targetUserId, detail === undefined ? null : JSON.stringify(detail), Date.now())
+    .run();
+}
+
+/** Rejects cross-site POSTs to state-changing endpoints (cookies are SameSite=Lax; this is defense in depth). */
+export function sameOrigin(request: Request): boolean {
+  const origin = request.headers.get("origin");
+  if (!origin) return true; // same-origin form posts from older browsers omit it
+  return origin === new URL(request.url).origin;
 }
