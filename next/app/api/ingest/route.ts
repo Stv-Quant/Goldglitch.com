@@ -87,19 +87,25 @@ export async function POST(request: Request) {
         ),
     );
   }
+  // Seal rule: a prediction is only accepted if generated before kickoff, and an existing one can
+  // only be replaced by a newer pre-kickoff version. After kickoff nothing — not even us — can edit it.
+  const predStart = stmts.length;
   for (const p of b.predictions) {
     stmts.push(
       db
         .prepare(
           `INSERT INTO predictions (match_id, model_version, generated_at, p_home, p_draw, p_away, payload)
-           VALUES (?, ?, ?, ?, ?, ?, ?)
+           SELECT ?1, ?2, ?3, ?4, ?5, ?6, ?7
+            WHERE ?3 < (SELECT kickoff_at FROM matches WHERE id = ?1)
            ON CONFLICT(match_id, model_version) DO UPDATE SET generated_at=excluded.generated_at,
              p_home=excluded.p_home, p_draw=excluded.p_draw, p_away=excluded.p_away, payload=excluded.payload
-           WHERE excluded.generated_at >= predictions.generated_at`,
+           WHERE excluded.generated_at >= predictions.generated_at
+             AND excluded.generated_at < (SELECT kickoff_at FROM matches WHERE id = excluded.match_id)`,
         )
         .bind(p.matchId, p.modelVersion, p.generatedAt, p.outcome.home, p.outcome.draw, p.outcome.away, JSON.stringify(p)),
     );
   }
+  const predEnd = stmts.length;
   for (const k of b.metrics) {
     stmts.push(
       db
@@ -118,8 +124,15 @@ export async function POST(request: Request) {
   }
 
   // Order matters (FKs): competitions → teams → matches → predictions → metrics. Chunks run sequentially.
+  let predictionsSealed = 0;
   try {
-    for (let i = 0; i < stmts.length; i += CHUNK) await db.batch(stmts.slice(i, i + CHUNK));
+    for (let i = 0; i < stmts.length; i += CHUNK) {
+      const res = await db.batch(stmts.slice(i, i + CHUNK));
+      res.forEach((r, j) => {
+        const idx = i + j;
+        if (idx >= predStart && idx < predEnd) predictionsSealed += r.meta?.changes ? 1 : 0;
+      });
+    }
   } catch (e) {
     return Response.json({ ok: false, error: "db_write_failed", detail: String(e).slice(0, 300) }, { status: 500 });
   }
@@ -135,8 +148,10 @@ export async function POST(request: Request) {
       competitions: b.competitions.length,
       teams: b.teams.length,
       matches: b.matches.length,
-      predictions: b.predictions.length,
+      predictions: predictionsSealed,
       metrics: b.metrics.length,
     },
+    // Predictions rejected because they were generated at/after kickoff or are older than the stored seal.
+    rejectedPredictions: b.predictions.length - predictionsSealed,
   });
 }

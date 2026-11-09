@@ -211,3 +211,49 @@ body {
   .ticker:hover .ticker-track { animation-play-state: paused; }
   @keyframes ticker { to { transform: translateX(-50%); } }
 }
+
+/* ---------- Método: 3D ring ---------- */
+.method { height: 420dvh; --R: 300px; }
+@media (max-width: 640px) { .method { --R: 205px; } }
+.method-scene { perspective: 1300px; perspective-origin: 50% 35%; }
+.method-ring {
+  position: absolute; left: 50%; top: 48%;
+  width: min(360px, 76vw); height: 320px;
+  transform-style: preserve-3d;
+  transform: translate(-50%, -50%) translateZ(calc(var(--R) * -1)) rotateX(-7deg)
+             rotateY(calc(var(--mp) * (var(--n) - 1) * -72deg));
+  will-change: transform;
+}
+.method-card {
+  position: absolute; inset: 0; padding: 1.75rem;
+  transform: rotateY(calc(var(--i) * 72deg)) translateZ(var(--R));
+  backface-visibility: hidden;
+  opacity: 0.28;
+  transition: opacity 400ms ease, border-color 400ms ease, box-shadow 400ms ease;
+}
+.method-card[data-front] { opacity: 1; border-color: var(--border-glass); box-shadow: 0 30px 120px -40px rgba(212,175,55,0.35); }
+.method-card .method-progress { transform-origin: left; transform: scaleX(0); transition: transform 700ms cubic-bezier(0.16,1,0.3,1); background: var(--gold); }
+.method-card[data-front] .method-progress { transform: scaleX(1); }
+.method-floor {
+  position: absolute; left: 50%; bottom: 6%; width: 110vw; height: 40%; transform: translateX(-50%);
+  background: radial-gradient(50% 50% at 50% 50%, rgba(212,175,55,0.10), transparent 70%);
+  pointer-events: none;
+}
+.method[data-static] { height: auto; }
+.method[data-static] .method-stage { position: static; height: auto; }
+.method[data-static] .method-scene { perspective: none; padding: 2rem 1.25rem 4rem; }
+.method[data-static] .method-ring { position: static; transform: none; width: auto; height: auto; display: grid; gap: 1rem; max-width: 72rem; margin: 0 auto; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+.method[data-static] .method-card { position: static; transform: none; opacity: 1; }
+
+/* ---------- Sello ---------- */
+.seal-scene { perspective: 1000px; }
+.seal-receipt { transform: rotateX(8deg) rotateY(-12deg); transform-style: preserve-3d; box-shadow: 0 40px 100px -30px rgba(0,0,0,0.8); }
+.seal-stamp { opacity: 0; transform: rotate(-14deg) scale(2.2); }
+.is-in .seal-stamp { opacity: 1; transform: rotate(-14deg) scale(1); transition: transform 380ms cubic-bezier(0.3, 1.6, 0.5, 1) 450ms, opacity 120ms linear 450ms; background: rgba(10,9,7,0.85); }
+.reveal-on-enter > * { opacity: 0; transform: translateY(24px); transition: opacity 800ms ease, transform 900ms cubic-bezier(0.16,1,0.3,1); }
+.reveal-on-enter.is-in > * { opacity: 1; transform: none; }
+.reveal-on-enter.is-in > *:nth-child(2) { transition-delay: 120ms; }
+@media (prefers-reduced-motion: reduce) {
+  .reveal-on-enter > *, .seal-stamp { opacity: 1; transform: none; transition: none; }
+  .seal-stamp { transform: rotate(-14deg); }
+}

@@ -2,7 +2,11 @@
 
 import Link from "next/link";
 import { useEffect, useRef } from "react";
-import { buildFormations, ENTROPY, PALETTE, WOBBLE, type Formation } from "./formations";
+import { buildFormations, CAMERAS, ENTROPY, stage, WOBBLE, type Formation } from "./formations";
+
+// 4 colors (dim, gold, flare, bone) × 3 depth bands (far, mid, near): fog without per-mark alpha changes.
+const RGB = [[140, 133, 118, 0.6], [212, 175, 55, 1], [255, 59, 31, 1], [237, 230, 214, 1]] as const;
+const PALETTE3D = RGB.flatMap(([r, g, b, a]) => [0.32, 0.72, 1].map((d) => `rgba(${r},${g},${b},${(a * d).toFixed(2)})`));
 
 const ACTS = ["Ruido", "Fútbol", "MLB", "NBA", "Tenis", "La percepción", "La forma", "La prueba", "Señal"];
 const NOISE = [
@@ -39,13 +43,15 @@ export function SignalStory() {
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const sections = Array.from(root.querySelectorAll<HTMLElement>("[data-act]"));
 
-    let W = 0, H = 0, dpr = 1, N = 0;
+    let W = 0, H = 0, dpr = 1, N = 0, CX = 0, CY = 0, FOV = 900, ZK = 1;
     let F: Formation[] = [];
-    let px = new Float32Array(0), py = new Float32Array(0);
-    let oy = new Float32Array(0);
+    // World state (smoothed toward targets) + last projected screen positions.
+    let wx = new Float32Array(0), wy = new Float32Array(0), wz = new Float32Array(0);
+    let sx = new Float32Array(0), sy = new Float32Array(0), ss = new Float32Array(0), psy = new Float32Array(0);
+    let ux = new Float32Array(0), uy = new Float32Array(0);
     let delay = new Float32Array(0), phase = new Float32Array(0);
     let buckets: Uint32Array[] = [];
-    const counts = new Uint32Array(4);
+    const counts = new Uint32Array(12);
     let tops: number[] = [], heights: number[] = [];
     let f = 0, raf = 0, running = false, lastAct = -1;
     let lastY = window.scrollY, vel = 0;
@@ -65,18 +71,23 @@ export function SignalStory() {
       canvas.height = Math.round(H * dpr);
       canvas.style.width = `${W}px`;
       canvas.style.height = `${H}px`;
+      const st = stage(W, H);
+      CX = st.cx; CY = st.cy; FOV = Math.max(W, H) * 1.05;
+      ZK = W < 700 ? 0.8 : 1; // phones: pull the camera back so tilted fields stay on screen
       const cores = navigator.hardwareConcurrency || 4;
       const nextN = W < 700 || cores <= 4 ? 3400 : 6500;
       const first = N === 0;
       F = buildFormations(nextN, W, H);
       if (nextN !== N) {
         N = nextN;
-        px = new Float32Array(N); py = new Float32Array(N); oy = new Float32Array(N);
+        wx = new Float32Array(N); wy = new Float32Array(N); wz = new Float32Array(N);
+        sx = new Float32Array(N); sy = new Float32Array(N); ss = new Float32Array(N); psy = new Float32Array(N);
+        ux = new Float32Array(N); uy = new Float32Array(N);
         delay = new Float32Array(N); phase = new Float32Array(N);
         for (let i = 0; i < N; i++) { delay[i] = Math.random() * 0.35; phase[i] = Math.random() * Math.PI * 2; }
-        buckets = [0, 1, 2, 3].map(() => new Uint32Array(N));
+        buckets = Array.from({ length: 12 }, () => new Uint32Array(N));
       }
-      if (first || reduce) { px.set(F[0].x); py.set(F[0].y); }
+      if (first || reduce) { wx.set(F[0].x); wy.set(F[0].y); wz.set(F[0].z); }
       measure();
     }
 
@@ -92,6 +103,13 @@ export function SignalStory() {
       };
     }
 
+    /** Camera for formation `i` at act-local phase `ph` (0..1), time `sec`. */
+    function cam(i: number, ph: number, sec: number) {
+      const c = CAMERAS[i];
+      const drift = reduce || !c.spinRate ? 0 : i === 0 ? sec * c.spinRate : Math.sin(sec * c.spinRate) * 0.6;
+      return { tilt: c.tilt, yaw: c.yaw + c.yawSweep * ((reduce ? 0.5 : ph) - 0.5), spin: c.spin + drift, zoom: c.zoom };
+    }
+
     function frame(time: number) {
       raf = 0;
       const pr = progress();
@@ -100,10 +118,22 @@ export function SignalStory() {
       const b = Math.min(F.length - 1, a + 1);
       const t = f - a;
       const A = F[a], B = F[b];
-      const wob = WOBBLE[a] + (WOBBLE[b] - WOBBLE[a]) * t;
-      const k = reduce ? 1 : 0.12;
+      const wob = reduce ? 0 : WOBBLE[a] + (WOBBLE[b] - WOBBLE[a]) * t;
+      const k = reduce ? 1 : 0.11;
       const sec = time * 0.001;
       const pointerLive = !reduce && time - pointer.t < 1800;
+
+      // Camera: interpolate the act's camera (swept by scroll) toward the next act's opening pose.
+      const phA = pr.idx === a ? clamp01(pr.p) : pr.idx > a ? 1 : 0;
+      const ca = cam(a, phA, sec), cb = cam(b, 0, sec);
+      const ct = ease(t);
+      const tilt = ca.tilt + (cb.tilt - ca.tilt) * ct;
+      const yaw = ca.yaw + (cb.yaw - ca.yaw) * ct;
+      const spin = ca.spin + (cb.spin - ca.spin) * ct;
+      const zoom = (ca.zoom + (cb.zoom - ca.zoom) * ct) * ZK;
+      const cY = Math.cos(yaw), sY = Math.sin(yaw);
+      const cT = Math.cos(tilt), sT = Math.sin(tilt);
+      const cS = Math.cos(spin), sS = Math.sin(spin);
 
       // Scroll velocity (px/frame, smoothed) → inertia + streaks.
       const y = window.scrollY;
@@ -112,7 +142,7 @@ export function SignalStory() {
       const streak = reduce ? 0 : Math.min(1, Math.abs(vel) / 38);
 
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      ctx.fillStyle = reduce ? "#0a0907" : `rgba(10,9,7,${0.34 - streak * 0.16})`;
+      ctx.fillStyle = reduce ? "#0a0907" : `rgba(10,9,7,${0.36 - streak * 0.16})`;
       ctx.fillRect(0, 0, W, H);
 
       counts.fill(0);
@@ -120,42 +150,74 @@ export function SignalStory() {
         const ti = reduce ? t : ease(clamp01((t - delay[i]) / 0.65));
         let tx = A.x[i] + (B.x[i] - A.x[i]) * ti;
         let ty = A.y[i] + (B.y[i] - A.y[i]) * ti;
-        if (!reduce) {
+        const tz = A.z[i] + (B.z[i] - A.z[i]) * ti;
+        if (wob) {
           const ph = phase[i];
           tx += Math.sin(sec * 0.9 + ph) * wob + (a === 0 ? Math.sin(sec * 0.3 + ty * 0.004) * wob * 1.4 : 0);
           ty += Math.cos(sec * 1.1 + ph * 1.3) * wob;
-          ty -= vel * (0.6 + delay[i] * 2.2); // particles trail the scroll like a fluid
         }
+        wx[i] += (tx - wx[i]) * k;
+        wy[i] += (ty - wy[i]) * k;
+        wz[i] += (tz - wz[i]) * k;
+
+        // Project: in-plane yaw → tilt about X → spin about Y → perspective.
+        const x1 = wx[i] * cY - wy[i] * sY;
+        const y1 = wx[i] * sY + wy[i] * cY;
+        const y2 = y1 * cT + wz[i] * sT;
+        const z2 = -y1 * sT + wz[i] * cT;
+        const x3 = x1 * cS + z2 * sS;
+        const z3 = -x1 * sS + z2 * cS;
+        const d = FOV + z3;
+        if (d < FOV * 0.15) { ss[i] = 0; continue; } // behind the lens
+        const sc = (FOV / d) * zoom;
+        psy[i] = sy[i];
+        let px = CX + x3 * sc;
+        let py = CY + y2 * sc - vel * (0.6 + delay[i] * 2.2); // particles trail the scroll like a fluid
+
         if (pointerLive) {
-          const dx = px[i] - pointer.x, dy = py[i] - pointer.y;
+          const dx = px - pointer.x, dy = py - pointer.y;
           const d2 = dx * dx + dy * dy;
+          let fx = 0, fy = 0;
           if (d2 < 9000) {
             const push = (1 - d2 / 9000) * 38;
-            const d = Math.sqrt(d2) + 0.001;
-            tx += (dx / d) * push;
-            ty += (dy / d) * push;
+            const dd = Math.sqrt(d2) + 0.001;
+            fx = (dx / dd) * push;
+            fy = (dy / dd) * push;
           }
+          ux[i] += (fx - ux[i]) * 0.15;
+          uy[i] += (fy - uy[i]) * 0.15;
+        } else if (ux[i] || uy[i]) {
+          ux[i] *= 0.9;
+          uy[i] *= 0.9;
         }
-        oy[i] = py[i];
-        px[i] += (tx - px[i]) * k;
-        py[i] += (ty - py[i]) * k;
-        const g = ti < 0.5 ? A.c[i] : B.c[i];
+        px += ux[i];
+        py += uy[i];
+        sx[i] = px;
+        sy[i] = py;
+        ss[i] = sc;
+
+        // Depth band: near / mid / far → brightness (fog). 4 colors × 3 bands = 12 batches.
+        const depth = sc / zoom; // fog follows true depth, not zoom (ZK included)
+        const band = depth > 1.12 ? 2 : depth > 0.9 ? 1 : 0;
+        const g = (ti < 0.5 ? A.c[i] : B.c[i]) * 3 + band;
         buckets[g][counts[g]++] = i;
       }
 
-      // Streaks: scroll inertia is vertical, so a stretched rect along y reads as a motion trail
-      // while staying on the fast fillRect path (stroked paths cost ~5x at this mark count).
-      const sz = W < 700 ? 1.5 : 1.7;
+      // Streaks: inertia is vertical, so a y-stretched rect reads as a motion trail on the fast fillRect path.
+      const base = W < 700 ? 1.4 : 1.6;
       const stretch = streak > 0.08 ? 1 + streak * 7 : 0;
-      for (let g = 0; g < 4; g++) {
-        ctx.fillStyle = PALETTE[g];
+      for (let g = 0; g < 12; g++) {
+        const c = counts[g];
+        if (!c) continue;
+        ctx.fillStyle = PALETTE3D[g];
         const list = buckets[g];
-        for (let j = 0, c = counts[g]; j < c; j++) {
+        for (let j = 0; j < c; j++) {
           const i = list[j];
+          const sz = Math.min(4, base * Math.min(ss[i], 2.2));
           if (stretch) {
-            const dy = Math.max(-70, Math.min(70, (py[i] - oy[i]) * stretch));
-            ctx.fillRect(px[i], dy > 0 ? py[i] - dy : py[i], sz, Math.max(sz, Math.abs(dy)));
-          } else ctx.fillRect(px[i], py[i], sz, sz);
+            const dy = Math.max(-70, Math.min(70, (sy[i] - psy[i]) * stretch));
+            ctx.fillRect(sx[i], dy > 0 ? sy[i] - dy : sy[i], sz, Math.max(sz, Math.abs(dy)));
+          } else ctx.fillRect(sx[i], sy[i], sz, sz);
         }
       }
 
