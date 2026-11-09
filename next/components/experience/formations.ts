@@ -3,19 +3,22 @@
  * positions (CSS px) and a color index. The story interpolates between consecutive formations.
  *
  *   0 RUIDO        tipster noise: random scatter, red flares
- *   1 EL JUEGO     the pitch: lines + 22 player clusters
- *   2 PERCEPCIÓN   100 versions of the match: 49 / 27 / 24
- *   3 LA FORMA     score matrix as dust density (Poisson λ 1.46 / 0.95)
- *   4 LA PRUEBA    calibration: clusters on the diagonal
- *   5 SEÑAL        the Goldglitch mark
+ *   1 FÚTBOL       the pitch: lines + 22 player clusters
+ *   2 MLB          the diamond: bases, foul lines, outfield arc, 9 fielders + batter
+ *   3 NBA          the court: keys, arcs, 10 players
+ *   4 TENIS        the court + the ball's arc over the net
+ *   5 PERCEPCIÓN   100 versions of the match: 49 / 27 / 24
+ *   6 LA FORMA     score matrix as dust density (Poisson λ 1.46 / 0.95)
+ *   7 LA PRUEBA    calibration: clusters on the diagonal
+ *   8 SEÑAL        the Goldglitch mark
  */
 
 export const COLOR = { dim: 0, gold: 1, flare: 2, bone: 3 } as const;
 export const PALETTE = ["rgba(140,133,118,0.55)", "#d4af37", "#ff3b1f", "#ede6d6"];
 
 /** Visual entropy per formation: drives wobble amplitude and the HUD reading. */
-export const ENTROPY = [0.97, 0.62, 0.38, 0.21, 0.09, 0.03];
-export const WOBBLE = [26, 2.4, 1.6, 1.3, 1.1, 0.7];
+export const ENTROPY = [0.97, 0.66, 0.6, 0.55, 0.5, 0.38, 0.21, 0.09, 0.03];
+export const WOBBLE = [26, 2.4, 2.2, 2.2, 2.2, 1.6, 1.3, 1.1, 0.7];
 
 export type Formation = { x: Float32Array; y: Float32Array; c: Uint8Array };
 type Box = { cx: number; cy: number; s: number; w: number; h: number };
@@ -249,7 +252,155 @@ function mark(n: number, b: Box): Formation {
   return f;
 }
 
+
+type Seg = [number, number, number, number];
+type Arc = { cx: number; cy: number; r: number; a0: number; a1: number };
+type Blob = { x: number; y: number; c: number; r?: number };
+
+/**
+ * Generic "field drawing": distributes particles along line segments and arcs (in field units),
+ * plus clusters (players/ball). `toPx` maps field units into the stage box.
+ */
+function drawField(
+  n: number, seed: number, toPx: (x: number, y: number) => [number, number],
+  segs: Seg[], arcs: Arc[], blobs: Blob[], blobShare: number, blobR: number, extra?: (f: Formation, i: number, r: () => number) => boolean,
+): Formation {
+  const f = alloc(n);
+  const r = rng(seed);
+  const segLen = segs.map(([a, b, c, d]) => Math.hypot(c - a, d - b));
+  const arcLen = arcs.map((a) => Math.abs(a.a1 - a.a0) * a.r);
+  const total = segLen.reduce((s, v) => s + v, 0) + arcLen.reduce((s, v) => s + v, 0);
+  const nBlobs = Math.floor(n * blobShare);
+  const per = Math.max(1, Math.floor(nBlobs / Math.max(1, blobs.length)));
+  let i = 0;
+  for (let b = 0; b < blobs.length; b++) {
+    const [bx, by] = toPx(blobs[b].x, blobs[b].y);
+    const rad = blobs[b].r ?? blobR;
+    for (let k = 0; k < per && i < n; k++, i++) {
+      const a = r() * Math.PI * 2;
+      const d = Math.sqrt(r()) * rad;
+      f.x[i] = bx + Math.cos(a) * d;
+      f.y[i] = by + Math.sin(a) * d;
+      f.c[i] = blobs[b].c;
+    }
+  }
+  for (; i < n; i++) {
+    if (extra && extra(f, i, r)) continue;
+    let d = r() * total;
+    let done = false;
+    for (let s = 0; s < segs.length && !done; s++) {
+      if (d <= segLen[s]) {
+        const t = d / segLen[s];
+        const [a, b, c, e] = segs[s];
+        const [x, y] = toPx(a + (c - a) * t, b + (e - b) * t);
+        f.x[i] = x + gauss(r) * 0.7;
+        f.y[i] = y + gauss(r) * 0.7;
+        done = true;
+      } else d -= segLen[s];
+    }
+    for (let s = 0; s < arcs.length && !done; s++) {
+      if (d <= arcLen[s] || s === arcs.length - 1) {
+        const A = arcs[s];
+        const t = Math.min(1, d / arcLen[s]);
+        const ang = A.a0 + (A.a1 - A.a0) * t;
+        const [x, y] = toPx(A.cx + Math.cos(ang) * A.r, A.cy + Math.sin(ang) * A.r);
+        f.x[i] = x + gauss(r) * 0.7;
+        f.y[i] = y + gauss(r) * 0.7;
+        done = true;
+      } else d -= arcLen[s];
+    }
+    f.c[i] = COLOR.dim;
+  }
+  return f;
+}
+
+function diamond(n: number, b: Box): Formation {
+  // Field units: home plate at (0,0), y grows toward center field. Fair territory = 90° wedge.
+  const S = b.s * 0.92;
+  const R = 1; // outfield fence radius (normalized)
+  const toPx = (x: number, y: number): [number, number] => [b.cx + x * S * 0.5, b.cy + S * 0.42 - y * S * 0.78];
+  const q = Math.SQRT1_2;
+  const base = 0.24; // 90 ft relative to ~400 ft fence
+  const first: [number, number] = [base * q, base * q];
+  const second: [number, number] = [0, base * 2 * q];
+  const third: [number, number] = [-base * q, base * q];
+  const segs: Seg[] = [
+    [0, 0, R * q, R * q], [0, 0, -R * q, R * q], // foul lines
+    [0, 0, ...first], [...first, ...second], [...second, ...third], [...third, 0, 0],
+  ];
+  const arcs: Arc[] = [
+    { cx: 0, cy: 0, r: R, a0: Math.PI / 4, a1: (3 * Math.PI) / 4 },
+    { cx: 0, cy: 0, r: 0.5, a0: Math.PI / 4, a1: (3 * Math.PI) / 4 }, // infield grass edge
+  ];
+  const G = COLOR.gold;
+  const blobs: Blob[] = [
+    { x: 0, y: base * q, c: G }, { x: 0, y: -0.04, c: G }, // pitcher, catcher
+    { x: first[0] + 0.03, y: first[1] + 0.04, c: G }, { x: 0.1, y: 0.42, c: G }, { x: -0.1, y: 0.42, c: G },
+    { x: third[0] - 0.03, y: third[1] + 0.04, c: G },
+    { x: -0.55, y: 0.62, c: G }, { x: 0, y: 0.82, c: G }, { x: 0.55, y: 0.62, c: G },
+    { x: 0.035, y: 0.0, c: COLOR.bone }, // batter
+    { x: 0, y: 0, c: COLOR.bone, r: b.s * 0.008 }, ...[first, second, third].map(([x, y]) => ({ x, y, c: COLOR.bone, r: b.s * 0.008 })),
+  ];
+  return drawField(n, 131, toPx, segs, arcs, blobs, 0.26, b.s * 0.016);
+}
+
+function basketball(n: number, b: Box): Formation {
+  // FIBA court 28 × 15 m, centered.
+  const W = b.s * 1.08;
+  const H = (W * 15) / 28;
+  const toPx = (x: number, y: number): [number, number] => [b.cx + ((x - 14) / 28) * W, b.cy + ((y - 7.5) / 15) * H];
+  const segs: Seg[] = [
+    [0, 0, 28, 0], [28, 0, 28, 15], [28, 15, 0, 15], [0, 15, 0, 0], [14, 0, 14, 15],
+    [0, 5.05, 5.8, 5.05], [5.8, 5.05, 5.8, 9.95], [5.8, 9.95, 0, 9.95],
+    [28, 5.05, 22.2, 5.05], [22.2, 5.05, 22.2, 9.95], [22.2, 9.95, 28, 9.95],
+    [0, 0.9, 2.99, 0.9], [0, 14.1, 2.99, 14.1], [28, 0.9, 25.01, 0.9], [28, 14.1, 25.01, 14.1],
+  ];
+  const a3 = Math.asin(6.6 / 6.75);
+  const arcs: Arc[] = [
+    { cx: 14, cy: 7.5, r: 1.8, a0: 0, a1: Math.PI * 2 },
+    { cx: 1.575, cy: 7.5, r: 6.75, a0: -a3, a1: a3 },
+    { cx: 26.425, cy: 7.5, r: 6.75, a0: Math.PI - a3, a1: Math.PI + a3 },
+    { cx: 5.8, cy: 7.5, r: 1.8, a0: -Math.PI / 2, a1: Math.PI / 2 },
+    { cx: 22.2, cy: 7.5, r: 1.8, a0: Math.PI / 2, a1: (3 * Math.PI) / 2 },
+  ];
+  const blobs: Blob[] = [
+    [4, 7.5], [7.5, 3.2], [7.5, 11.8], [10.5, 5.5], [11, 9.5],
+  ].flatMap(([x, y]): Blob[] => [
+    { x, y, c: COLOR.gold },
+    { x: x + 1.1, y: y + 0.6, c: COLOR.bone },
+  ]).concat([{ x: 1.575, y: 7.5, c: COLOR.flare, r: b.s * 0.012 }, { x: 26.425, y: 7.5, c: COLOR.flare, r: b.s * 0.012 }]);
+  return drawField(n, 151, toPx, segs, arcs, blobs, 0.22, b.s * 0.017);
+}
+
+function tennis(n: number, b: Box): Formation {
+  // Doubles court 23.77 × 10.97 m, drawn lengthwise (horizontal), net at x = 11.885.
+  const W = b.s * 1.1;
+  const H = (W * 10.97) / 23.77;
+  const toPx = (x: number, y: number): [number, number] => [b.cx + ((x - 11.885) / 23.77) * W, b.cy + ((y - 5.485) / 10.97) * H];
+  const segs: Seg[] = [
+    [0, 0, 23.77, 0], [23.77, 0, 23.77, 10.97], [23.77, 10.97, 0, 10.97], [0, 10.97, 0, 0],
+    [0, 1.37, 23.77, 1.37], [0, 9.6, 23.77, 9.6],
+    [5.485, 1.37, 5.485, 9.6], [18.285, 1.37, 18.285, 9.6], [5.485, 5.485, 18.285, 5.485],
+    [11.885, -0.9, 11.885, 11.87], [11.885, -0.9, 11.885, 11.87], // net, weighted double
+  ];
+  const blobs: Blob[] = [{ x: 1.2, y: 3.4, c: COLOR.gold }, { x: 22.4, y: 7.6, c: COLOR.bone }];
+  // The ball's trajectory: a dotted gold arc rising over the net (a rally in progress).
+  const arc = (f: Formation, i: number, r: () => number) => {
+    if (r() > 0.14) return false;
+    const t = Math.floor(r() * 46) / 46;
+    const x = 2 + t * 19.6;
+    const y = 3.6 + t * 3.6;
+    const lift = Math.sin(t * Math.PI) * 4.2;
+    const [px, py] = toPx(x, y);
+    f.x[i] = px + gauss(r) * 1.2;
+    f.y[i] = py - lift * (H / 10.97) + gauss(r) * 1.2;
+    f.c[i] = COLOR.gold;
+    return true;
+  };
+  return drawField(n, 171, toPx, segs, [], blobs, 0.1, b.s * 0.02, arc);
+}
+
 export function buildFormations(n: number, w: number, h: number): Formation[] {
   const b = stage(w, h);
-  return [noise(n, b), pitch(n, b), hundred(n, b), matrix(n, b), calibration(n, b), mark(n, b)];
+  return [noise(n, b), pitch(n, b), diamond(n, b), basketball(n, b), tennis(n, b), hundred(n, b), matrix(n, b), calibration(n, b), mark(n, b)];
 }
