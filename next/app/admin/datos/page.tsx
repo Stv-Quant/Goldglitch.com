@@ -17,7 +17,7 @@ export default async function DataPage() {
         </p>
       </div>
 
-      <div className="grid gap-3 grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 xl:grid-cols-4">
         <Stat label="Última publicación" value={last ? ago(last.received_at) : "Nunca"} sub={last ? dt(last.received_at) : "SQPC aún no ha enviado datos"} bad={!last || Date.now() - last.received_at > 86_400_000} />
         <Stat label="Predicciones guardadas" value={(d.predictions.n ?? 0).toLocaleString("es-CO")} sub={d.predictions.last ? `última ${ago(d.predictions.last)}` : "—"} />
         <Stat label="Próximos sin predicción" value={String(d.missing.length)} sub="partidos en los próximos 7 días" bad={d.missing.length > 0} />

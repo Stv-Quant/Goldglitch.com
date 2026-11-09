@@ -16,7 +16,7 @@ export function Metric({
     <div className="card p-4 sm:p-5 flex flex-col">
       <div className="text-xs text-lo">{label}</div>
       <div className="mt-1 flex items-baseline gap-2">
-        <span className="num text-2xl sm:text-[1.75rem] font-semibold" style={{ color }}>{value}</span>
+        <span className="num text-2xl sm:text-[1.75rem] font-semibold break-all" style={{ color }}>{value}</span>
         {delta && Number.isFinite(delta.value) && <Delta {...delta} />}
       </div>
       {sub && <div className="mt-0.5 text-[12px] text-mid">{sub}</div>}
@@ -40,8 +40,9 @@ function Delta({ value, good }: { value: number; good: "up" | "down" }) {
   );
 }
 
-export function pctChange(cur: number, prev: number): number | null {
-  if (!prev) return cur ? null : 0;
+/** Change vs the previous period; null when the base is too small for a % to mean anything. */
+export function pctChange(cur: number, prev: number, minBase = 1): number | null {
+  if (prev < minBase) return null;
   return (cur - prev) / prev;
 }
 

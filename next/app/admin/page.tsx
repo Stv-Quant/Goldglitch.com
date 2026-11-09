@@ -37,7 +37,7 @@ export default async function AdminHome() {
 
       <section className="space-y-4">
         <SectionTitle title="Ingresos" />
-        <div className="grid gap-3 grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 xl:grid-cols-4">
           <Metric label="MRR (ingreso mensual recurrente)" value={formatCOP(r.mrr)} tone="gold"
             sub={`${s.paying} miembro(s) que pagan`}
             how="Suma, para cada membresía activa pagada, del valor de su último pago llevado a un mes: el plan mensual cuenta completo y el anual dividido entre 12. Las membresías otorgadas a mano no cuentan."
@@ -57,9 +57,9 @@ export default async function AdminHome() {
 
       <section className="space-y-4">
         <SectionTitle title="Usuarios y membresías" />
-        <div className="grid gap-3 grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 xl:grid-cols-4">
           <Metric label="Usuarios registrados" value={n(u.total)} sub={`+${n(u.new7)} esta semana · +${n(u.new30)} en 30 días`}
-            delta={pctChange(u.new30, u.newPrev30) !== null ? { value: pctChange(u.new30, u.newPrev30)!, good: "up" } : null}
+            delta={pctChange(u.new30, u.newPrev30, 5) !== null ? { value: pctChange(u.new30, u.newPrev30, 5)!, good: "up" } : null}
             how="Cuentas creadas (por enlace o con contraseña). La flecha compara los registros de los últimos 30 días con los 30 anteriores." />
           <Metric label="Activos 7 días" value={n(u.active7)} sub={`${n(u.active30)} activos en 30 días`}
             how="Usuarios que iniciaron sesión al menos una vez en el periodo."
@@ -97,7 +97,7 @@ export default async function AdminHome() {
 
       <section className="space-y-4">
         <SectionTitle title="Datos y modelo"><Link href="/admin/datos" className="text-sm text-gold hover:underline underline-offset-4">Ver detalle →</Link></SectionTitle>
-        <div className="grid gap-3 grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 xl:grid-cols-4">
           <Metric label="Última publicación de SQPC" value={d.lastIngest ? ago(d.lastIngest.received_at) : "Nunca"}
             tone={ingestAgeH === null || ingestAgeH > 24 ? "down" : "up"}
             sub={d.lastIngest ? `${d.lastIngest.records} registros · ${d.lastIngest.source}` : "Sin datos todavía"}

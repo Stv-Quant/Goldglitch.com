@@ -28,8 +28,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           </div>
         </div>
       </header>
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 py-6 grid gap-6 lg:grid-cols-[200px_1fr]">
-        <aside className="lg:sticky lg:top-20 self-start space-y-6">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 py-6 grid gap-6 grid-cols-[minmax(0,1fr)] lg:grid-cols-[200px_minmax(0,1fr)]">
+        <aside className="lg:sticky lg:top-20 self-start space-y-6 min-w-0">
           <AdminNav />
           <div className="hidden lg:block border-t border-line pt-5">
             <ViewAs current={viewer.viewingAs ?? "elite"} />

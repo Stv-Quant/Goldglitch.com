@@ -126,7 +126,8 @@ export type UserRow = {
 export async function listUsers(q: string, segment: Segment, page: number, pageSize = 50) {
   const db = await getDB();
   const now = Date.now();
-  const where = `(?1 = '' OR u.email LIKE ?2 OR COALESCE(u.tags,'') LIKE ?2) AND ${SEGMENT_SQL[segment] ?? "1=1"}`;
+  // ?3 (now) is referenced in every variant: D1 rejects statements with unused bound parameters.
+  const where = `(?1 = '' OR u.email LIKE ?2 OR COALESCE(u.tags,'') LIKE ?2) AND ?3 > 0 AND ${SEGMENT_SQL[segment] ?? "1=1"}`;
   const like = `%${q.replace(/[%_]/g, "")}%`;
   const [rows, count] = await db.batch([
     db.prepare(
