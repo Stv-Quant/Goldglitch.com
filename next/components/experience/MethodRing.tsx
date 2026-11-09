@@ -39,8 +39,8 @@ const TURNS = 3; // the helix repeats the 5 steps three times; the middle turn i
 const STEP_DEG = 42; // tighter than 360/5 so neighbours stay visible around the cylinder
 const CARDS = Array.from({ length: STEPS.length * TURNS }, (_, k) => ({ k, s: STEPS[k % STEPS.length] }));
 // Funnel of spinning rings: narrow at the bottom, wide at the top (a whirlwind), alternating directions.
-const RINGS = [0.62, 0.72, 0.82, 0.93, 1.05, 1.18, 1.32, 1.48];
-const RIBS = 18;
+const RINGS = [0.66, 0.86, 1.08, 1.34];
+const RIBS = 10;
 
 /**
  * "Cómo calculamos" as a vortex: the steps sit on a helix wrapped around a cylinder of light.
@@ -74,7 +74,7 @@ export function MethodRing() {
 
     const frame = () => {
       raf = 0;
-      cur += (target - cur) * 0.11;
+      cur += (target - cur) * 0.22;
       if (Math.abs(target - cur) < 0.0005) cur = target;
       const mobile = window.innerWidth < 640;
       const R = mobile ? 190 : 300;
@@ -86,7 +86,9 @@ export function MethodRing() {
         const near = Math.exp(-(rel * rel) / 9);
         const focus = 0.4 + 0.6 * Math.exp(-(rel * rel) / 0.12); // the card being read is fully lit
         const o = focus * Math.max(0, facing) ** 0.8 * near;
-        c.style.transform = `translate(-50%, -50%) translateY(${(rel * pitch).toFixed(1)}px) rotateY(${a.toFixed(2)}deg) translateZ(${R}px)`;
+        // Neighbours sit on a slightly smaller radius so their near edge never pokes through the card being read.
+        const r = R * (0.72 + 0.28 * Math.exp(-(rel * rel) / 0.12));
+        c.style.transform = `translate(-50%, -50%) translateY(${(rel * pitch).toFixed(1)}px) rotateY(${a.toFixed(2)}deg) translateZ(${r.toFixed(1)}px)`;
         c.style.opacity = o < 0.02 ? "0" : o.toFixed(3);
         c.style.visibility = o < 0.02 ? "hidden" : "visible";
       }
@@ -145,7 +147,7 @@ export function MethodRing() {
             </div>
             {RINGS.map((s, j) => (
               <span key={j} className="vortex-ring"
-                style={{ ["--s" as string]: s, ["--y" as string]: (RINGS.length - 1) / 2 - j, ["--d" as string]: `${14 + j * 3}s`, ["--dir" as string]: j % 2 ? "reverse" : "normal" }} />
+                style={{ ["--s" as string]: s, ["--y" as string]: (RINGS.length - 1) / 2 - j, ["--d" as string]: `${16 + j * 5}s`, ["--dir" as string]: j % 2 ? "reverse" : "normal" }} />
             ))}
           </div>
 
