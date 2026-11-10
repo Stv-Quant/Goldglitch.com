@@ -1,6 +1,5 @@
 import { issueLoginToken, normalizeEmail } from "@/lib/auth";
-import { getEnv } from "@/lib/env";
-import { sendMagicLink } from "@/lib/mail";
+import { appUrl, sendMagicLink } from "@/lib/mail";
 
 export async function POST(request: Request) {
   const body = await request.json().catch(() => null);
@@ -10,8 +9,7 @@ export async function POST(request: Request) {
   const token = await issueLoginToken(email);
   if (!token) return Response.json({ ok: false, error: "rate_limited" }, { status: 429 });
 
-  const env = await getEnv();
-  const origin = env.APP_URL ?? new URL(request.url).origin;
+  const origin = await appUrl();
   const link = `${origin}/auth/verify?token=${encodeURIComponent(token)}`;
 
   const sent = await sendMagicLink(email, link);

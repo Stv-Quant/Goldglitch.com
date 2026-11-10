@@ -1,9 +1,10 @@
 import "server-only";
 import { getDB } from "./env";
+import { SPORT_TAG, isSport } from "./sports";
 
 export type TodayFixture = {
   id: string;
-  sport: "FÚT" | "NBA" | "NFL" | "NHL" | "MLB";
+  sport: string;
   league: string;
   home: string;
   away: string;
@@ -13,7 +14,7 @@ export type TodayFixture = {
 };
 
 // Public ESPN scoreboards: the schedule only (teams + kickoff). Probabilities never come from here.
-const FEEDS: { path: string; sport: TodayFixture["sport"]; league: string }[] = [
+const FEEDS: { path: string; sport: string; league: string }[] = [
   { path: "soccer/col.1", sport: "FÚT", league: "Liga BetPlay" },
   { path: "soccer/eng.1", sport: "FÚT", league: "Premier League" },
   { path: "soccer/esp.1", sport: "FÚT", league: "LaLiga" },
@@ -99,13 +100,14 @@ async function fromSqpc(start: number, end: number): Promise<TodayFixture[]> {
       .all<{ id: string; sport: string; kickoff_at: number; status: string; league: string; home: string; away: string }>();
     return results.map((r) => ({
       id: `sqpc:${r.id}`,
-      sport: r.sport === "baseball" ? "MLB" : "FÚT",
+      // US leagues read better by name (NBA, NHL, MLB) than by sport.
+      sport: r.sport === "football" ? "FÚT" : r.league.length <= 5 ? r.league.toUpperCase() : isSport(r.sport) ? SPORT_TAG[r.sport] : r.sport.toUpperCase(),
       league: r.league,
       home: r.home.toUpperCase(),
       away: r.away.toUpperCase(),
       kickoffAt: r.kickoff_at,
       state: r.status === "live" ? "in" : r.status === "finished" ? "post" : "pre",
-      outcomes: r.sport === "baseball" ? 2 : 3,
+      outcomes: r.sport === "football" ? 3 : 2,
     }));
   } catch {
     return [];
@@ -125,8 +127,10 @@ export async function getTodayFixtures(now = Date.now()): Promise<TodayFixture[]
     fromEspn(tomorrow.ymd, tomorrow.start, tomorrow.end),
   ]);
   const pub = [...pubA, ...pubB].filter((f) => f.state !== "post");
+  // SQPC ids are "espn-<event>"; the public feed's are "<path>:<event>". Same event → keep SQPC's.
+  const ownEvents = new Set(own.map((f) => f.id.match(/espn-(\d+)$/)?.[1]).filter(Boolean));
   const seen = new Set(own.map((f) => `${f.home}-${f.away}`));
-  const all = [...own, ...pub.filter((f) => !seen.has(`${f.home}-${f.away}`))];
+  const all = [...own, ...pub.filter((f) => !ownEvents.has(f.id.split(":").pop()) && !seen.has(`${f.home}-${f.away}`))];
   const rank = { in: 0, pre: 1, post: 2 } as const;
   return all
     .filter((f) => f.state !== "post")

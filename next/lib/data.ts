@@ -3,10 +3,11 @@ import type { ModelMetrics, Prediction } from "./contracts";
 import { canViewSport, redactPrediction, type RedactedPrediction } from "./entitlements";
 import { getDB } from "./env";
 import type { Tier } from "./plans";
+import { SPORTS, type Sport } from "./sports";
 
 export type MatchView = {
   id: string;
-  sport: "football" | "baseball";
+  sport: Sport;
   kickoffAt: number;
   status: string;
   homeScore: number | null;
@@ -19,7 +20,7 @@ export type MatchView = {
 };
 
 type Row = {
-  id: string; sport: "football" | "baseball"; kickoff_at: number; status: string;
+  id: string; sport: Sport; kickoff_at: number; status: string;
   home_score: number | null; away_score: number | null; venue: string | null;
   competition_id: string; competition_name: string; competition_country: string | null;
   home_id: string; home_name: string; home_short: string | null;
@@ -68,7 +69,7 @@ function toView(r: Row, tier: Tier): MatchView {
 
 export async function listMatches(tier: Tier, fromMs: number, toMs: number): Promise<MatchView[]> {
   const db = await getDB();
-  const sports = canViewSport(tier, "baseball") ? ["football", "baseball"] : ["football"];
+  const sports = SPORTS.filter((s) => canViewSport(tier, s));
   const { results } = await db
     .prepare(
       `${BASE_SELECT}
@@ -81,11 +82,11 @@ export async function listMatches(tier: Tier, fromMs: number, toMs: number): Pro
 }
 
 /** Returns null when not found; `{ locked: true }` when the sport requires a higher tier. */
-export async function getMatch(id: string, tier: Tier): Promise<MatchView | { locked: true } | null> {
+export async function getMatch(id: string, tier: Tier): Promise<MatchView | { locked: true; sport: Sport } | null> {
   const db = await getDB();
   const r = await db.prepare(`${BASE_SELECT} WHERE m.id = ?`).bind(id).first<Row>();
   if (!r) return null;
-  if (!canViewSport(tier, r.sport)) return { locked: true };
+  if (!canViewSport(tier, r.sport)) return { locked: true, sport: r.sport };
   return toView(r, tier);
 }
 
@@ -97,7 +98,7 @@ export async function latestMetrics(): Promise<ModelMetrics[]> {
          FROM model_metrics ORDER BY generated_at DESC LIMIT 12`,
     )
     .all<{
-      id: string; sport: "football" | "baseball"; competition_id: string | null; model_version: string;
+      id: string; sport: Sport; competition_id: string | null; model_version: string;
       window_start: number; window_end: number; n: number; brier: number; log_loss: number;
       baseline_brier: number | null; calibration: string; generated_at: number;
     }>();

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { SPORTS } from "./sports";
 
 /**
  * Data contract between SQPC (Python engine) and the PWA.
@@ -8,7 +9,7 @@ import { z } from "zod";
 const id = z.string().min(1).max(128);
 const prob = z.number().min(0).max(1);
 const interval = z.tuple([prob, prob]);
-const sport = z.enum(["football", "baseball"]);
+const sport = z.enum(SPORTS);
 
 export const competitionSchema = z.object({
   id,
@@ -81,7 +82,7 @@ export const predictionSchema = z.object({
   generatedAt: z.number().int().positive(),
   outcome: z.object({
     home: prob,
-    draw: prob.nullable(), // null for sports without draws (MLB)
+    draw: prob.nullable(), // null for sports without draws (MLB, NBA, NHL moneyline)
     away: prob,
     interval: z
       .object({ home: interval, draw: interval.nullable(), away: interval })

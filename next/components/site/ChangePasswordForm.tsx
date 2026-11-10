@@ -14,7 +14,8 @@ function strength(pw: string): { score: number; label: string } {
   return { score: s, label: ["Muy débil", "Débil", "Aceptable", "Fuerte", "Muy fuerte"][s] };
 }
 
-export function ChangePasswordForm() {
+/** Change the password (signed in) or, with `resetToken`, set a new one from a recovery email. */
+export function ChangePasswordForm({ resetToken }: { resetToken?: string } = {}) {
   const [current, setCurrent] = useState("");
   const [next, setNext] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -28,10 +29,10 @@ export function ChangePasswordForm() {
     setError(null);
     if (next !== confirm) return setError("Las contraseñas nuevas no coinciden.");
     setBusy(true);
-    const r = await fetch("/api/auth/change-password", {
+    const r = await fetch(resetToken ? "/api/auth/reset" : "/api/auth/change-password", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ current, next }),
+      body: JSON.stringify(resetToken ? { token: resetToken, password: next } : { current, next }),
     }).catch(() => null);
     const j = await r?.json().catch(() => null);
     if (j?.ok) return window.location.assign(j.next);
@@ -41,10 +42,12 @@ export function ChangePasswordForm() {
 
   return (
     <form onSubmit={submit} className="space-y-4">
-      <div className="space-y-1.5">
-        <label htmlFor="cur" className="text-sm text-mid">Contraseña actual (o temporal)</label>
-        <input id="cur" type={show ? "text" : "password"} autoComplete="current-password" required value={current} onChange={(e) => setCurrent(e.target.value)} className={input} />
-      </div>
+      {!resetToken && (
+        <div className="space-y-1.5">
+          <label htmlFor="cur" className="text-sm text-mid">Contraseña actual (o temporal)</label>
+          <input id="cur" type={show ? "text" : "password"} autoComplete="current-password" required value={current} onChange={(e) => setCurrent(e.target.value)} className={input} />
+        </div>
+      )}
       <div className="space-y-1.5">
         <label htmlFor="new" className="text-sm text-mid">Nueva contraseña</label>
         <input id="new" type={show ? "text" : "password"} autoComplete="new-password" required minLength={12} value={next} onChange={(e) => setNext(e.target.value)} className={input} aria-describedby="pw-help" />

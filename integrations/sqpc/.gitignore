@@ -1,0 +1,5 @@
+.env
+goldglitch_state.json
+goldglitch_last_batch.json
+goldglitch_sync.log
+__pycache__/

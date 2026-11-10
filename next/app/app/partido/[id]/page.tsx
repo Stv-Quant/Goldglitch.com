@@ -8,6 +8,7 @@ import { ScoreMatrix } from "@/components/stats/ScoreMatrix";
 import { getTier } from "@/lib/auth";
 import { getMatch } from "@/lib/data";
 import { dayLabel, pct, timeLabel } from "@/lib/format";
+import { SPORT_LABEL } from "@/lib/sports";
 
 export const dynamic = "force-dynamic";
 
@@ -19,8 +20,8 @@ export default async function MatchPage({ params }: { params: Promise<{ id: stri
   if ("locked" in m) {
     return (
       <div className="max-w-xl">
-        <LockedPanel tier="Elite" title="MLB es parte de Elite">
-          El modelo completo de béisbol (probabilidades, carreras esperadas y valor frente al mercado) está disponible en el plan Elite.
+        <LockedPanel tier="Elite" title={`${SPORT_LABEL[m.sport]} es parte de Elite`}>
+          {`El modelo completo de ${SPORT_LABEL[m.sport].toLowerCase()} (probabilidades, marcadores esperados y valor frente al mercado) está disponible en el plan Elite.`}
         </LockedPanel>
       </div>
     );
@@ -71,10 +72,12 @@ export default async function MatchPage({ params }: { params: Promise<{ id: stri
           </section>
 
           {p.locked.pro ? (
-            <LockedPanel tier="Pro" title="Goles esperados y marcadores">
-              xG de cada equipo, la probabilidad de cada marcador exacto, mercados de goles y el desglose por jugador.
+            <LockedPanel tier="Pro" title={m.sport === "football" ? "Goles esperados y marcadores" : "Mercados y rangos"}>
+              {m.sport === "football"
+                ? "xG de cada equipo, la probabilidad de cada marcador exacto, mercados de goles y el desglose por jugador."
+                : "Rango de incertidumbre, hándicap, totales y el resto de mercados que calcula el modelo."}
             </LockedPanel>
-          ) : (
+          ) : !p.xg && !p.scoreMatrix ? null : (
             <section className="card p-5 sm:p-6" aria-labelledby="h-goals">
               <h2 id="h-goals" className="text-sm text-mid">Goles esperados</h2>
               {p.xg && (

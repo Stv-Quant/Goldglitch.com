@@ -49,8 +49,8 @@ export async function issueLoginToken(email: string): Promise<string | null> {
   return token;
 }
 
-/** Consumes a login token atomically and returns the (possibly new) user id. */
-export async function consumeLoginToken(token: string): Promise<string | null> {
+/** Consumes a login token atomically and returns the user (created on first login). */
+export async function consumeLoginToken(token: string): Promise<{ id: string; email: string; isNew: boolean } | null> {
   const db = await getDB();
   const now = Date.now();
   const hash = await sha256Hex(token);
@@ -73,7 +73,7 @@ export async function consumeLoginToken(token: string): Promise<string | null> {
     )
     .bind(userId, row.email, now, now)
     .first<{ id: string }>();
-  return user?.id ?? null;
+  return user ? { id: user.id, email: row.email, isNew: user.id === userId } : null;
 }
 
 export async function createSession(userId: string, userAgent: string | null): Promise<void> {
@@ -161,13 +161,13 @@ export async function requireAdmin(): Promise<Viewer | null> {
 const ATTEMPT_WINDOW_MS = 15 * 60 * 1000;
 const MAX_FAILS = 8;
 
-export async function tooManyAttempts(key: string): Promise<boolean> {
+export async function tooManyAttempts(key: string, max = MAX_FAILS): Promise<boolean> {
   const db = await getDB();
   const r = await db
     .prepare("SELECT COUNT(*) AS n FROM auth_attempts WHERE key = ? AND at > ? AND ok = 0")
     .bind(key, Date.now() - ATTEMPT_WINDOW_MS)
     .first<{ n: number }>();
-  return (r?.n ?? 0) >= MAX_FAILS;
+  return (r?.n ?? 0) >= max;
 }
 
 export async function recordAttempt(key: string, ok: boolean): Promise<void> {

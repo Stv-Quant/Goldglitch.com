@@ -1,4 +1,5 @@
 import { getDB, getEnv } from "@/lib/env";
+import { later, sendPaymentApproved } from "@/lib/mail";
 import { PERIOD_DAYS, type BillingPeriod } from "@/lib/plans";
 import { verifyEventChecksum, type WompiEvent } from "@/lib/wompi";
 
@@ -74,5 +75,15 @@ export async function POST(request: Request) {
     .bind(payment.user_id, payment.plan, now, extension)
     .run();
 
+  const after = await db
+    .prepare("SELECT u.email, s.current_period_end FROM users u JOIN subscriptions s ON s.user_id = u.id WHERE u.id = ?")
+    .bind(payment.user_id)
+    .first<{ email: string; current_period_end: number }>();
+  if (after) {
+    await later(sendPaymentApproved({ id: payment.user_id, email: after.email }, {
+      reference: payment.id, plan: payment.plan, period: payment.period,
+      amountInCents: payment.amount_in_cents, periodEnd: after.current_period_end,
+    }));
+  }
   return Response.json({ ok: true, applied: true });
 }

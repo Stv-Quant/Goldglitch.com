@@ -1,7 +1,7 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "easygoldglitch-next",
-  "main": ".open-next/worker.js",
+  "main": "worker.ts",
   "compatibility_date": "2026-02-05",
   "compatibility_flags": ["nodejs_compat"],
   "assets": {
@@ -17,9 +17,11 @@
     }
   ],
   "vars": {
-    "APP_URL": "https://goldglitch.com",
-    "MAIL_FROM": "Goldglitch <acceso@goldglitch.com>"
-  }
-  // Secrets (wrangler secret put …): INGEST_HMAC_SECRET, WOMPI_PUBLIC_KEY,
-  // WOMPI_INTEGRITY_SECRET, WOMPI_EVENTS_SECRET, RESEND_API_KEY
+    "APP_URL": "https://easygoldglitch.com",
+    "MAIL_FROM": "Goldglitch <hola@easygoldglitch.com>"
+  },
+  // Daily 14:00 UTC = 9:00 a. m. Colombia: renewal reminders + token cleanup (worker.ts → /api/cron/reminders).
+  "triggers": { "crons": ["0 14 * * *"] }
+  // Secrets (dashboard or `wrangler secret put …`): RESEND_API_KEY, WOMPI_PUBLIC_KEY,
+  // WOMPI_INTEGRITY_SECRET, WOMPI_EVENTS_SECRET. The SQPC ingest key lives in D1 (Admin → Datos).
 }

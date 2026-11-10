@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { getViewer, sameOrigin, SESSION_COOKIE } from "@/lib/auth";
 import { sha256Hex } from "@/lib/crypto";
 import { getDB } from "@/lib/env";
+import { later, sendPasswordChanged } from "@/lib/mail";
 import { hashPassword, passwordProblem, verifyPassword } from "@/lib/password";
 
 export async function POST(request: Request) {
@@ -32,5 +33,6 @@ export async function POST(request: Request) {
   const raw = (await cookies()).get(SESSION_COOKIE)?.value ?? "";
   await db.prepare("DELETE FROM sessions WHERE user_id = ? AND id_hash != ?").bind(viewer.userId, await sha256Hex(raw)).run();
 
+  await later(sendPasswordChanged({ id: viewer.userId, email: viewer.email }));
   return Response.json({ ok: true, next: viewer.isAdmin ? "/admin" : "/app" });
 }

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { CalibrationChart } from "@/components/stats/CalibrationChart";
 import { latestMetrics } from "@/lib/data";
 import { dateLabel } from "@/lib/format";
+import { SPORT_LABEL } from "@/lib/sports";
 
 export const metadata: Metadata = {
   title: "Historial del modelo",
@@ -27,7 +28,7 @@ export default async function HistorialPage() {
       ) : (
         <div className="mt-10 grid gap-6 lg:grid-cols-[1fr_1.1fr]">
           <div className="card p-6">
-            <h2 className="text-sm text-mid">Calibración · {m.sport === "football" ? "Fútbol" : "MLB"}</h2>
+            <h2 className="text-sm text-mid">Calibración · {SPORT_LABEL[m.sport]}</h2>
             <div className="mt-4">
               <CalibrationChart bins={m.calibration} />
             </div>
