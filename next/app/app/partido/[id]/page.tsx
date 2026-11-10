@@ -10,6 +10,7 @@ import { getTier } from "@/lib/auth";
 import { getMatch } from "@/lib/data";
 import { dayLabel, pct, timeLabel } from "@/lib/format";
 import { SPORT_LABEL } from "@/lib/sports";
+import { PICK_FEATURED, PICK_MIN } from "@/lib/picks";
 
 export const dynamic = "force-dynamic";
 
@@ -60,6 +61,40 @@ export default async function MatchPage({ params }: { params: Promise<{ id: stri
           <p className="mt-6 text-sm text-lo">El modelo aún no publica este partido.</p>
         )}
       </header>
+
+      {p && m.status !== "finished" && (m.picks.length > 0 || m.picksLocked > 0) && (
+        <section className="card p-5 sm:p-6 border-[var(--border-glass)]" aria-labelledby="h-picks"
+          style={{ background: "linear-gradient(180deg, rgba(212,175,55,0.07), transparent 60%)" }}>
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <h2 id="h-picks" className="text-sm text-gold">Picks del modelo · {Math.round(PICK_MIN * 100)}% o más</h2>
+            <p className="text-[11px] text-lo">Probabilidad, no certeza: un 80% falla 1 de cada 5 veces.</p>
+          </div>
+          {m.picks.length > 0 ? (
+            <ul className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {m.picks.map((k) => (
+                <li key={k.key} className="rounded-[12px] border p-4"
+                  style={{ borderColor: k.p >= PICK_FEATURED ? "var(--gold)" : "var(--border-glass)" }}>
+                  <div className="flex items-center justify-between gap-2 text-[10px] uppercase tracking-[0.16em] text-lo">
+                    <span>{k.source}</span>
+                    {k.p >= PICK_FEATURED && <span className="text-gold">Destacado</span>}
+                  </div>
+                  <div className="mt-2 text-hi">{k.label}</div>
+                  <div className="mt-1 flex items-baseline justify-between">
+                    <span className="num text-2xl font-semibold text-gold">{Math.round(k.p * 100)}%</span>
+                    <span className="num text-[11px] text-lo">cuota justa {(1 / k.p).toFixed(2)}</span>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <div className="mt-4">
+              <LockedPanel tier="Pro" title={`${m.picksLocked} pick${m.picksLocked === 1 ? "" : "s"} del modelo en este partido`}>
+                {"Las selecciones con 75% o más de probabilidad según el modelo, con su cuota justa."}
+              </LockedPanel>
+            </div>
+          )}
+        </section>
+      )}
 
       {p && (p.lines.length > 0 || p.linesLocked > 0) && (
         <section className="card p-5 sm:p-6" aria-labelledby="h-lines">
@@ -117,9 +152,9 @@ export default async function MatchPage({ params }: { params: Promise<{ id: stri
               <h2 id="h-mk" className="text-sm text-mid mb-4">Mercados</h2>
               <ul className="space-y-4">
                 {p.markets!.map((mk) => (
-                  <li key={mk.key}>
+                  <li key={mk.key} className={mk.p >= PICK_MIN ? "-mx-2 rounded-lg border border-[var(--border-glass)] bg-[var(--gold-faint)] px-2 py-1.5" : undefined}>
                     <div className="flex items-baseline justify-between text-sm">
-                      <span>{mk.label}</span>
+                      <span>{mk.label}{mk.p >= PICK_MIN && <span className="ml-2 rounded border border-[var(--gold)] px-1.5 py-px text-[10px] uppercase tracking-[0.14em] text-gold">Pick</span>}</span>
                       <span className="num">
                         {pct(mk.p)}
                         {mk.interval && <span className="text-lo text-xs ml-1">[{pct(mk.interval[0])}–{pct(mk.interval[1])}]</span>}

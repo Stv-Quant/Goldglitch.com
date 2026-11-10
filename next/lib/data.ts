@@ -1,6 +1,8 @@
 import "server-only";
 import type { ModelMetrics, Prediction } from "./contracts";
 import { canViewSport, redactPrediction, type RedactedPrediction } from "./entitlements";
+import { picksFor, type Pick } from "./picks";
+import { hasTier } from "./plans";
 import { getDB } from "./env";
 import type { Tier } from "./plans";
 import { SPORTS, type Sport } from "./sports";
@@ -17,6 +19,9 @@ export type MatchView = {
   home: { id: string; name: string; short: string };
   away: { id: string; name: string; short: string };
   prediction: RedactedPrediction | null;
+  /** Selections at ≥75% (Pro and Elite). Free accounts only get the count. */
+  picks: Pick[];
+  picksLocked: number;
 };
 
 type Row = {
@@ -40,7 +45,7 @@ const SELECT_TEMPLATE = `
     JOIN teams ta ON ta.id = m.away_team_id`;
 const BASE_SELECT = SELECT_TEMPLATE.replace("__PAYLOAD__", "p.payload");
 // The match list only needs the 1X2: skip the heavy parts (distributions, score matrix, players).
-const LIST_SELECT = SELECT_TEMPLATE.replace("__PAYLOAD__", "json_remove(p.payload, '$.lines', '$.scoreMatrix', '$.players', '$.markets')");
+const LIST_SELECT = SELECT_TEMPLATE.replace("__PAYLOAD__", "json_remove(p.payload, '$.lines', '$.scoreMatrix', '$.players', '$.features', '$.edges')");
 
 function short(name: string, s: string | null): string {
   return s ?? name.slice(0, 3).toUpperCase();
@@ -48,13 +53,17 @@ function short(name: string, s: string | null): string {
 
 function toView(r: Row, tier: Tier): MatchView {
   let prediction: RedactedPrediction | null = null;
+  let picks: Pick[] = [];
   if (r.payload) {
     try {
-      prediction = redactPrediction(JSON.parse(r.payload) as Prediction, tier);
+      const raw = JSON.parse(r.payload) as Prediction;
+      prediction = redactPrediction(raw, tier);
+      picks = picksFor(raw, r.home_name, r.away_name);
     } catch {
       prediction = null;
     }
   }
+  const proPicks = hasTier(tier, "pro");
   return {
     id: r.id,
     sport: r.sport,
@@ -67,6 +76,8 @@ function toView(r: Row, tier: Tier): MatchView {
     home: { id: r.home_id, name: r.home_name, short: short(r.home_name, r.home_short) },
     away: { id: r.away_id, name: r.away_name, short: short(r.away_name, r.away_short) },
     prediction,
+    picks: proPicks ? picks : [],
+    picksLocked: proPicks ? 0 : picks.length,
   };
 }
 
