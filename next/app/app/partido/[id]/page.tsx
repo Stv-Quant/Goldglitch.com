@@ -83,6 +83,12 @@ export default async function MatchPage({ params }: { params: Promise<{ id: stri
                     <span className="num text-2xl font-semibold text-gold">{Math.round(k.p * 100)}%</span>
                     <span className="num text-[11px] text-lo">cuota justa {(1 / k.p).toFixed(2)}</span>
                   </div>
+                  {(k.lo != null && k.hi != null) || k.price ? (
+                    <div className="mt-1 flex justify-between gap-2 num text-[11px] text-lo">
+                      <span>{k.lo != null && k.hi != null ? `rango ${Math.round(k.lo * 100)}–${Math.round(k.hi * 100)}%` : ""}</span>
+                      <span>{k.price ? `${k.book ?? "casa"} ${k.price.toFixed(2)}` : ""}</span>
+                    </div>
+                  ) : null}
                 </li>
               ))}
             </ul>
@@ -148,28 +154,35 @@ export default async function MatchPage({ params }: { params: Promise<{ id: stri
           )}
 
           {!p.locked.pro && (p.markets?.length ?? 0) > 0 && (
-            <section className="card p-5 sm:p-6" aria-labelledby="h-mk">
+            <section className="card p-5 sm:p-6 lg:col-span-2" aria-labelledby="h-mk">
               <h2 id="h-mk" className="text-sm text-mid mb-4">Mercados</h2>
-              <ul className="space-y-4">
-                {p.markets!.map((mk) => (
-                  <li key={mk.key} className={mk.p >= PICK_MIN ? "-mx-2 rounded-lg border border-[var(--border-glass)] bg-[var(--gold-faint)] px-2 py-1.5" : undefined}>
-                    <div className="flex items-baseline justify-between text-sm">
-                      <span>{mk.label}{mk.p >= PICK_MIN && <span className="ml-2 rounded border border-[var(--gold)] px-1.5 py-px text-[10px] uppercase tracking-[0.14em] text-gold">Pick</span>}</span>
-                      <span className="num">
-                        {pct(mk.p)}
-                        {mk.interval && <span className="text-lo text-xs ml-1">[{pct(mk.interval[0])}–{pct(mk.interval[1])}]</span>}
-                      </span>
-                    </div>
-                    <div className="relative mt-1.5 h-1.5 rounded-full bg-[var(--seg-3)]">
-                      {mk.interval && (
-                        <div className="absolute inset-y-0 rounded-full bg-[var(--seg-2)]"
-                          style={{ left: `${mk.interval[0] * 100}%`, width: `${(mk.interval[1] - mk.interval[0]) * 100}%` }} />
-                      )}
-                      <div className="absolute -top-0.5 h-2.5 w-0.5 rounded bg-[var(--text-hi)]" style={{ left: `calc(${mk.p * 100}% - 1px)` }} />
-                    </div>
-                  </li>
+              <div className="grid gap-x-8 gap-y-6 md:grid-cols-2 xl:grid-cols-3">
+                {Array.from(Map.groupBy(p.markets!, (mk) => mk.group ?? "Otros")).map(([g, rows]) => (
+                  <div key={g}>
+                    <h3 className="mb-2 text-[11px] uppercase tracking-[0.16em] text-lo">{g}</h3>
+                    <ul className="space-y-3">
+                      {rows.map((mk) => (
+                        <li key={mk.key} className={mk.p >= PICK_MIN ? "-mx-2 rounded-lg border border-[var(--border-glass)] bg-[var(--gold-faint)] px-2 py-1.5" : undefined}>
+                          <div className="flex items-baseline justify-between gap-2 text-sm">
+                            <span className="min-w-0">{mk.label}{mk.p >= PICK_MIN && <span className="ml-2 rounded border border-[var(--gold)] px-1.5 py-px text-[10px] uppercase tracking-[0.14em] text-gold">Pick</span>}</span>
+                            <span className="num whitespace-nowrap">
+                              {pct(mk.p)}
+                              {mk.interval && <span className="text-lo text-xs ml-1">[{pct(mk.interval[0])}–{pct(mk.interval[1])}]</span>}
+                            </span>
+                          </div>
+                          <div className="relative mt-1.5 h-1.5 rounded-full bg-[var(--seg-3)]">
+                            {mk.interval && (
+                              <div className="absolute inset-y-0 rounded-full bg-[var(--seg-2)]"
+                                style={{ left: `${mk.interval[0] * 100}%`, width: `${(mk.interval[1] - mk.interval[0]) * 100}%` }} />
+                            )}
+                            <div className="absolute -top-0.5 h-2.5 w-0.5 rounded bg-[var(--text-hi)]" style={{ left: `calc(${mk.p * 100}% - 1px)` }} />
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
                 ))}
-              </ul>
+              </div>
             </section>
           )}
 
@@ -183,6 +196,10 @@ export default async function MatchPage({ params }: { params: Promise<{ id: stri
                     <th className="py-2 font-normal text-right">Min. esp.</th>
                     <th className="py-2 font-normal text-right">P(gol)</th>
                     <th className="py-2 font-normal text-right">P(asist.)</th>
+                    <th className="py-2 font-normal text-right hidden sm:table-cell">PJ</th>
+                    <th className="py-2 font-normal text-right hidden sm:table-cell">Goles</th>
+                    <th className="py-2 font-normal text-right hidden sm:table-cell">Asist.</th>
+                    <th className="py-2 font-normal text-right hidden md:table-cell">Remates</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -195,6 +212,10 @@ export default async function MatchPage({ params }: { params: Promise<{ id: stri
                       <td className="py-2.5 text-right num text-mid">{pl.expectedMinutes ?? "—"}</td>
                       <td className="py-2.5 text-right num">{pl.pScore !== undefined ? pct(pl.pScore) : "—"}</td>
                       <td className="py-2.5 text-right num text-mid">{pl.pAssist !== undefined ? pct(pl.pAssist) : "—"}</td>
+                      <td className="py-2.5 text-right num text-lo hidden sm:table-cell">{pl.season?.apps ?? "—"}</td>
+                      <td className="py-2.5 text-right num hidden sm:table-cell">{pl.season?.goals ?? "—"}</td>
+                      <td className="py-2.5 text-right num text-mid hidden sm:table-cell">{pl.season?.assists ?? "—"}</td>
+                      <td className="py-2.5 text-right num text-mid hidden md:table-cell">{pl.season?.shots ?? "—"}</td>
                     </tr>
                   ))}
                 </tbody>

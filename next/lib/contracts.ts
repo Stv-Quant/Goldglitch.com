@@ -53,6 +53,8 @@ const marketRow = z.object({
   label: z.string().max(60),
   p: prob,
   interval: interval.optional(),
+  /** Heading the market is listed under (Resultado, Goles, Hándicap…). */
+  group: z.string().max(30).optional(),
 });
 
 const playerRow = z.object({
@@ -63,7 +65,31 @@ const playerRow = z.object({
   pScore: prob.optional(),
   pAssist: prob.optional(),
   xg90: z.number().min(0).optional(),
+  /** Season totals as SQPC has them. */
+  season: z.object({
+    apps: z.number().int().min(0).optional(),
+    goals: z.number().int().min(0).optional(),
+    assists: z.number().int().min(0).optional(),
+    shots: z.number().int().min(0).optional(),
+    sot: z.number().int().min(0).optional(),
+    yellow: z.number().int().min(0).optional(),
+  }).optional(),
 });
+
+/** A selection SQPC itself ranked, with its uncertainty band and (when known) the best price found. */
+const sqpcPick = z.object({
+  group: z.string().max(30),
+  market: z.string().max(80),
+  selection: z.string().max(100),
+  p: prob,
+  lo: prob.nullish(),
+  hi: prob.nullish(),
+  price: z.number().gt(1).nullish(),
+  book: z.string().max(40).nullish(),
+  ev: z.number().nullish(),
+  grade: z.string().max(20).nullish(),
+});
+export type SqpcPick = z.infer<typeof sqpcPick>;
 
 const edgeRow = z.object({
   market: z.string().max(40),
@@ -105,10 +131,11 @@ export const predictionSchema = z.object({
   xg: z.object({ home: z.number().min(0), away: z.number().min(0) }).optional(),
   /** scoreMatrix[h][a] = P(home scores h, away scores a), typically 0..6 */
   scoreMatrix: z.array(z.array(prob).max(11)).max(11).optional(),
-  markets: z.array(marketRow).max(40).default([]),
+  markets: z.array(marketRow).max(120).default([]),
   players: z.array(playerRow).max(60).default([]),
   edges: z.array(edgeRow).max(40).default([]),
   lines: z.array(statLine).max(80).default([]),
+  picks: z.array(sqpcPick).max(80).default([]),
 });
 
 export const metricsSchema = z.object({
