@@ -202,77 +202,38 @@ body {
 .act-rail li[data-active] .act-tick { width: 40px; background: var(--gold); opacity: 1; }
 .act-rail li[data-active] .act-label { opacity: 1; transform: none; color: var(--text-hi); }
 
-/* ---------- Método: vortex / helix cylinder ---------- */
-.method { height: 230dvh; --R: 300px; --twist: 0deg; }
-@media (max-width: 640px) { .method { --R: 190px; } }
-.method-scene { perspective: 1100px; perspective-origin: 50% 22%; }
-.method-helix, .vortex {
-  position: absolute; left: 50%; top: 50%; width: 0; height: 0;
-  transform-style: preserve-3d;
-  transform: translateZ(calc(var(--R) * -1)) rotateX(-12deg);
+/* ---------- Top fixtures banner ---------- */
+.fixtures-banner {
+  height: 36px; display: flex; align-items: center; gap: 0;
+  border-bottom: 1px solid var(--border-soft); background: rgba(8,7,5,.96);
+  font-family: var(--font-mono); font-size: 11.5px; letter-spacing: .04em;
 }
-.vortex { transform: translateZ(calc(var(--R) * -1)) rotateX(-20deg); }
-.method-helix { animation: vortex-breathe 9s ease-in-out infinite paused; }
-.method-card {
-  position: absolute; left: 0; top: 0; width: min(340px, 74vw); padding: 1.6rem;
-  backface-visibility: hidden; will-change: transform, opacity;
-  transition: border-color 400ms ease, box-shadow 400ms ease;
+.banner-label, .banner-cta {
+  flex: none; height: 100%; display: flex; align-items: center; gap: .5rem; padding: 0 .9rem;
+  text-transform: uppercase; letter-spacing: .18em; font-size: 10px; white-space: nowrap;
 }
-.method-card[data-front] { background: rgba(16,14,10,0.94); border-color: var(--border-glass); box-shadow: 0 30px 120px -40px rgba(212,175,55,0.45); }
-.method-card .method-progress { background: var(--gold); transform-origin: left; transform: scaleX(0); transition: transform 700ms cubic-bezier(0.16,1,0.3,1); }
-.method-card[data-front] .method-progress { transform: scaleX(1); }
+.banner-label { color: var(--gold); border-right: 1px solid var(--border-soft); }
+.banner-cta { color: var(--gold); border-left: 1px solid var(--border-soft); }
+.banner-cta:hover, .banner-label:hover { background: rgba(212,175,55,.06); }
+@media (max-width: 640px) { .banner-cta { display: none; } }
+.banner-viewport {
+  flex: 1; min-width: 0; height: 100%; overflow: hidden; display: flex; align-items: center;
+  mask-image: linear-gradient(90deg, transparent, #000 3%, #000 97%, transparent);
+}
+.banner-track { display: flex; width: max-content; }
+.banner-run { display: flex; }
+.banner-item { display: inline-flex; align-items: center; gap: .55rem; padding: 0 1.4rem; white-space: nowrap; border-right: 1px solid var(--border-soft); }
+.banner-item:hover .banner-q { color: var(--text-hi); }
+.banner-chip { font-size: 9.5px; letter-spacing: .16em; color: var(--text-lo); border: 1px solid var(--border-soft); border-radius: 4px; padding: 1px 5px; }
+.banner-q { color: var(--gold); text-shadow: 0 0 10px rgba(212,175,55,.45); }
+.banner-loading { padding: 0 1rem; color: var(--text-lo); }
+@media (prefers-reduced-motion: no-preference) {
+  .banner-track { animation: banner-scroll var(--banner-dur, 60s) linear infinite; }
+  .fixtures-banner:hover .banner-track { animation-play-state: paused; }
+  @keyframes banner-scroll { to { transform: translateX(-50%); } }
+}
+@media (prefers-reduced-motion: reduce) { .banner-viewport { overflow-x: auto; } }
 
-.vortex > * { position: absolute; left: 0; top: 0; transform-style: preserve-3d; }
-.vortex { opacity: .45; }
-.vortex-axis {
-  width: 1px; height: 120vh; transform: translate(-50%, -50%);
-  background: linear-gradient(180deg, transparent, rgba(212,175,55,.55) 45%, rgba(255,226,140,.9) 50%, rgba(212,175,55,.55) 55%, transparent);
-  box-shadow: 0 0 24px 2px rgba(212,175,55,.10);
-}
-.vortex-spin { transform: rotateY(var(--twist)); }
-.vortex-spin { animation: vortex-turn 46s linear infinite paused; }
-.vortex-rib {
-  position: absolute; left: 0; top: 0; width: 1px; height: 110vh;
-  transform: translate(-50%, -50%) rotateY(calc(var(--j) * 360deg / var(--ribs))) translateZ(calc(var(--R) * 1.12));
-  background: linear-gradient(180deg, transparent, rgba(212,175,55,.22) 30%, rgba(212,175,55,.32) 50%, rgba(212,175,55,.22) 70%, transparent);
-}
-.vortex-ring {
-  --size: calc(var(--R) * 2.3 * var(--s));
-  width: var(--size); height: var(--size); border-radius: 50%;
-  border: 1px dashed rgba(212,175,55,.55);
-  transform: translate(-50%, -50%) translateY(calc(var(--y) * 16vh)) rotateX(90deg) rotateZ(0deg);
-  animation: vortex-ring var(--d) linear infinite paused; animation-direction: var(--dir);
-}
-.vortex-ring:nth-child(odd) { border-style: dotted; border-width: 2px; border-color: rgba(212,175,55,.45); }
-.method[data-live] .vortex-ring, .method[data-live] .vortex-spin, .method[data-live] .method-helix { animation-play-state: running; }
-@keyframes vortex-ring { to { transform: translate(-50%, -50%) translateY(calc(var(--y) * 16vh)) rotateX(90deg) rotateZ(360deg); } }
-@keyframes vortex-turn { from { transform: rotateY(var(--twist)); } to { transform: rotateY(calc(var(--twist) - 360deg)); } }
-@keyframes vortex-breathe { 0%, 100% { translate: 0 0; } 50% { translate: 0 -10px; } }
-
-.method-count {
-  position: absolute; left: 50%; bottom: 1.5rem; transform: translateX(-50%); z-index: 2;
-  font-size: 10px; letter-spacing: .2em; text-transform: uppercase; color: var(--text-lo);
-}
-.match-bar {
-  height: 6px; border-radius: 999px; overflow: hidden; position: relative;
-  background: var(--seg-3);
-}
-.match-bar::after {
-  content: ""; position: absolute; inset: 0; border-radius: inherit;
-  background: linear-gradient(90deg, transparent, rgba(212,175,55,.55), transparent);
-  transform: translateX(-100%);
-  animation: match-scan 2.4s cubic-bezier(.45,0,.2,1) infinite; animation-delay: calc(var(--j) * 260ms);
-}
-@keyframes match-scan { to { transform: translateX(100%); } }
-.match-q { letter-spacing: .08em; text-shadow: 0 0 12px rgba(212,175,55,.45); }
-@media (prefers-reduced-motion: reduce) { .match-bar::after { animation: none; opacity: 0; } }
-
-.method[data-static] { height: auto !important; }
-.method[data-static] .method-stage { position: static; height: auto; }
-.method[data-static] .vortex, .method[data-static] .method-count { display: none; }
-.method[data-static] .method-scene { perspective: none; padding: 2rem 1.25rem 4rem; }
-.method[data-static] .method-helix { position: static; transform: none; width: auto; height: auto; display: grid; gap: 1rem; max-width: 72rem; margin: 0 auto; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
-.method[data-static] .method-card { position: static; transform: none !important; opacity: 1 !important; visibility: visible !important; width: auto; }
 
 .reveal-on-enter > * { opacity: 0; transform: translateY(24px); transition: opacity 800ms ease, transform 900ms cubic-bezier(0.16,1,0.3,1); }
 .reveal-on-enter.is-in > * { opacity: 1; transform: none; }

@@ -8,7 +8,7 @@ const COLUMNS = [
     links: [
       { href: "/app", label: "Partidos" },
       { href: "/historial", label: "Historial del modelo" },
-      { href: "/#metodo", label: "Metodología" },
+      { href: "/historial", label: "Metodología" },
       { href: "/planes", label: "Planes" },
     ],
   },
@@ -17,8 +17,8 @@ const COLUMNS = [
     links: [
       { href: "/app", label: "Fútbol" },
       { href: "/app", label: "MLB" },
-      { href: "/#metodo", label: "NBA · pronto" },
-      { href: "/#metodo", label: "Tenis · pronto" },
+      { href: "/planes", label: "NBA · pronto" },
+      { href: "/planes", label: "Tenis · pronto" },
     ],
   },
   { title: "Legal", links: LEGAL_LINKS },
