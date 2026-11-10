@@ -94,10 +94,10 @@ export function StatLines({ lines }: { lines: StatLine[] }) {
     <div>
       {groups.length > 1 && (
         <div className="flex flex-wrap gap-2 text-sm" role="tablist" aria-label="Tipo de estadística">
-          {groups.map(([g, ls]) => (
+          {groups.map(([g]) => (
             <button key={g} type="button" role="tab" aria-selected={g === active} onClick={() => setActive(g)}
               className={`rounded-full border px-3 py-1 transition-colors ${g === active ? "border-[var(--border-glass)] bg-[var(--gold-faint)] text-hi" : "border-line text-lo hover:text-hi"}`}>
-              {g} <span className="num text-[11px] text-lo">{ls.length}</span>
+              {g}
             </button>
           ))}
         </div>
