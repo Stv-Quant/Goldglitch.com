@@ -76,6 +76,19 @@ const edgeRow = z.object({
   capturedAt: z.number().int().positive(),
 });
 
+/** Full distribution of a count (goals, corners, points…): pmf[i] = P(X = start + i). Lets the site price any .5 line. */
+const statLine = z.object({
+  key: z.string().max(40),
+  label: z.string().max(60),
+  group: z.string().max(30),
+  mean: z.number().min(0),
+  start: z.number().int().min(0),
+  pmf: z.array(z.number().min(0).max(1)).min(2).max(400),
+  /** Visible on the free plan. */
+  free: z.boolean().optional(),
+});
+export type StatLine = z.infer<typeof statLine>;
+
 export const predictionSchema = z.object({
   matchId: id,
   modelVersion: z.string().min(1).max(40),
@@ -95,6 +108,7 @@ export const predictionSchema = z.object({
   markets: z.array(marketRow).max(40).default([]),
   players: z.array(playerRow).max(60).default([]),
   edges: z.array(edgeRow).max(40).default([]),
+  lines: z.array(statLine).max(80).default([]),
 });
 
 export const metricsSchema = z.object({

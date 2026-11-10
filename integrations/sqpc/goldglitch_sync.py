@@ -29,6 +29,7 @@ from typing import Any
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 from goldglitch_publish import load_env, publish  # noqa: E402
+from goldglitch_lines import basketball_lines, football_lines, hockey_lines  # noqa: E402
 
 STATE_FILE = os.path.join(HERE, "goldglitch_state.json")
 LAST_BATCH = os.path.join(HERE, "goldglitch_last_batch.json")
@@ -184,7 +185,8 @@ def football(d: dict, generated: int) -> tuple[dict, dict] | None:
             edges.append({"market": str(pk.get("market", ""))[:40], "selection": str(pk.get("selection", ""))[:60],
                           "modelP": clamp(pk["p"]), "bookmaker": str(pk["book"])[:40], "odds": float(pk["price"]),
                           "ev": float(pk["ev"]), "capturedAt": generated})
-    pred: dict[str, Any] = {"outcome": outcome, "features": features[:40], "markets": markets, "players": players[:60], "edges": edges[:40]}
+    pred: dict[str, Any] = {"outcome": outcome, "features": features[:40], "markets": markets, "players": players[:60], "edges": edges[:40],
+                            "lines": football_lines(d)}
     eg = d.get("expected_goals") or {}
     if pt(eg.get("home")) is not None and pt(eg.get("away")) is not None:
         pred["xg"] = {"home": round(pt(eg["home"]), 3), "away": round(pt(eg["away"]), 3)}
@@ -224,7 +226,8 @@ def us_sport(d: dict, league: str) -> tuple[dict, dict] | None:
     inj = m.get("injuries") or {}
     if inj:
         features.append({"label": "Lesionados reportados", "home": len(inj.get("home") or []), "away": len(inj.get("away") or []), "better": "lower"})
-    pred = {"outcome": {"home": clamp(h), "draw": None, "away": clamp(a)}, "features": features,
+    lines = basketball_lines(d) if sport == "basketball" else hockey_lines(d) if sport == "hockey" else []
+    pred = {"outcome": {"home": clamp(h), "draw": None, "away": clamp(a)}, "features": features, "lines": lines,
             "markets": [r for r in markets if r][:40], "players": [], "edges": []}
     info = {"home": m["home"], "away": m["away"], "league": league, "kickoff": m.get("kickoff"),
             "event": m.get("event_id"), "slug": slug_, "sport": sport}

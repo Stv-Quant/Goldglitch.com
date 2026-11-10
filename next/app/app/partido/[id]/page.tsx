@@ -5,6 +5,7 @@ import { FeatureCompare } from "@/components/stats/FeatureCompare";
 import { LockedPanel } from "@/components/stats/LockedPanel";
 import { ProbabilityBar } from "@/components/stats/ProbabilityBar";
 import { ScoreMatrix } from "@/components/stats/ScoreMatrix";
+import { StatLines } from "@/components/stats/StatLines";
 import { getTier } from "@/lib/auth";
 import { getMatch } from "@/lib/data";
 import { dayLabel, pct, timeLabel } from "@/lib/format";
@@ -59,6 +60,23 @@ export default async function MatchPage({ params }: { params: Promise<{ id: stri
           <p className="mt-6 text-sm text-lo">El modelo aún no publica este partido.</p>
         )}
       </header>
+
+      {p && (p.lines.length > 0 || p.linesLocked > 0) && (
+        <section className="card p-5 sm:p-6" aria-labelledby="h-lines">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <h2 id="h-lines" className="text-sm text-mid">Estadísticas del partido</h2>
+            <p className="text-[11px] text-lo">Mueve la línea de 0.5 en 0.5. Por defecto: la línea con el lado más probable (≥65%).</p>
+          </div>
+          {p.lines.length > 0 && <div className="mt-4"><StatLines lines={p.lines} /></div>}
+          {p.linesLocked > 0 && (
+            <div className="mt-4">
+              <LockedPanel tier="Pro" title={`${p.linesLocked} estadísticas más con Pro`}>
+                {"Goles por equipo, remates, remates al arco, faltas, tarjetas, fueras de juego y jugadores, cada una con su línea ajustable."}
+              </LockedPanel>
+            </div>
+          )}
+        </section>
+      )}
 
       {p && (
         <div className="grid gap-6 lg:grid-cols-2">

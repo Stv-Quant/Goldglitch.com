@@ -28,16 +28,19 @@ type Row = {
   payload: string | null;
 };
 
-const BASE_SELECT = `
+const SELECT_TEMPLATE = `
   SELECT m.id, m.sport, m.kickoff_at, m.status, m.home_score, m.away_score, m.venue,
          c.id AS competition_id, c.name AS competition_name, c.country AS competition_country,
          th.id AS home_id, th.name AS home_name, th.short_name AS home_short,
          ta.id AS away_id, ta.name AS away_name, ta.short_name AS away_short,
-         (SELECT p.payload FROM predictions p WHERE p.match_id = m.id ORDER BY p.generated_at DESC LIMIT 1) AS payload
+         (SELECT __PAYLOAD__ FROM predictions p WHERE p.match_id = m.id ORDER BY p.generated_at DESC LIMIT 1) AS payload
     FROM matches m
     JOIN competitions c ON c.id = m.competition_id
     JOIN teams th ON th.id = m.home_team_id
     JOIN teams ta ON ta.id = m.away_team_id`;
+const BASE_SELECT = SELECT_TEMPLATE.replace("__PAYLOAD__", "p.payload");
+// The match list only needs the 1X2: skip the heavy parts (distributions, score matrix, players).
+const LIST_SELECT = SELECT_TEMPLATE.replace("__PAYLOAD__", "json_remove(p.payload, '$.lines', '$.scoreMatrix', '$.players', '$.markets')");
 
 function short(name: string, s: string | null): string {
   return s ?? name.slice(0, 3).toUpperCase();
@@ -72,7 +75,7 @@ export async function listMatches(tier: Tier, fromMs: number, toMs: number): Pro
   const sports = SPORTS.filter((s) => canViewSport(tier, s));
   const { results } = await db
     .prepare(
-      `${BASE_SELECT}
+      `${LIST_SELECT}
        WHERE m.kickoff_at >= ? AND m.kickoff_at < ? AND m.sport IN (${sports.map(() => "?").join(",")})
        ORDER BY m.kickoff_at ASC LIMIT 200`,
     )
