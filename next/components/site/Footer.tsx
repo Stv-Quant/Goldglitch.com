@@ -17,7 +17,7 @@ const COLUMNS = [
     links: [
       { href: "/app", label: "Fútbol" },
       { href: "/app", label: "Béisbol · Baloncesto · Hockey" },
-      { href: "/planes", label: "NBA · pronto" },
+      { href: "/planes", label: "E-sports · pronto" },
       { href: "/planes", label: "Tenis · pronto" },
     ],
   },
