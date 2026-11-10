@@ -1,6 +1,16 @@
 import type { Prediction } from "./contracts";
 
-export type Pick = { key: string; label: string; p: number; source: "resultado" | "mercado" };
+export type Pick = {
+  key: string;
+  label: string;
+  p: number;
+  /** Where it comes from: SQPC's group (Goles, Jugadores, Córners…) or resultado / mercado. */
+  source: string;
+  lo?: number | null;
+  hi?: number | null;
+  price?: number | null;
+  book?: string | null;
+};
 
 export const PICK_MIN = 0.75;     // highlighted in each match
 export const PICK_FEATURED = 0.8; // featured on the app home
@@ -19,6 +29,19 @@ const flip = (label: string) => label.replace("Más de", "Menos de").replace("m�
  * every over/under and "ambos marcan" market. Nothing is invented: each pick is a probability SQPC already published.
  */
 export function picksFor(p: Prediction, home: string, away: string, min = PICK_MIN): Pick[] {
+  // SQPC ranks its own selections (players, half-time, corners…): prefer those when the batch carries them.
+  if (p.picks?.length) {
+    const seen = new Set<string>();
+    return p.picks
+      .filter((k) => k.p >= min && k.p < 0.995)
+      .map((k, i) => ({
+        key: `sqpc_${i}`,
+        label: k.selection.toLowerCase().includes(k.market.toLowerCase()) || !k.market ? k.selection : `${k.market}: ${k.selection}`,
+        p: k.p, source: k.group, lo: k.lo, hi: k.hi, price: k.price, book: k.book,
+      }))
+      .sort((a, b) => b.p - a.p)
+      .filter((x) => (seen.has(x.label) ? false : (seen.add(x.label), true)));
+  }
   const out: Pick[] = [];
   const add = (key: string, label: string, prob: number | null | undefined, source: Pick["source"]) => {
     if (typeof prob === "number" && prob >= min && prob < 0.995) out.push({ key, label, p: prob, source });

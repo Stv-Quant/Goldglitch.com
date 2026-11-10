@@ -18,3 +18,19 @@ describe("picksFor", () => {
     expect(k.every((x) => x.p >= 0.75)).toBe(true);
   });
 });
+
+describe("picksFor with SQPC picks", () => {
+  it("uses SQPC's own selections when the batch carries them", () => {
+    const p = {
+      matchId: "m", modelVersion: "v", generatedAt: 1, outcome: { home: 0.5, draw: 0.3, away: 0.2 },
+      markets: [], features: [], players: [], edges: [], lines: [],
+      picks: [
+        { group: "Goles", market: "Total de goles", selection: "Menos de 3.5", p: 0.88 },
+        { group: "Jugadores", market: "Remates de X", selection: "Más de 0.5", p: 0.7 },
+      ],
+    } as never;
+    const k = picksFor(p, "A", "B");
+    expect(k).toHaveLength(1);
+    expect(k[0]).toMatchObject({ label: "Total de goles: Menos de 3.5", source: "Goles" });
+  });
+});

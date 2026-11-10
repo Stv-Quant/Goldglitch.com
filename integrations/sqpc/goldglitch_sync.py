@@ -98,11 +98,13 @@ def clamp(p: float) -> float:
     return max(0.0, min(1.0, p))
 
 
-def market(key: str, label: str, x: Any) -> dict | None:
+def market(key: str, label: str, x: Any, group: str | None = None) -> dict | None:
     p = pt(x)
     if p is None:
         return None
     row = {"key": key[:40], "label": label[:60], "p": clamp(p)}
+    if group:
+        row["group"] = group[:30]
     if ci(x):
         row["interval"] = ci(x)
     return row
@@ -118,6 +120,34 @@ def main_line(lines: dict, side: str) -> tuple[str, dict] | None:
     return best
 
 
+PICK_MIN = 0.75
+
+
+def sqpc_picks(d: dict) -> list[dict]:
+    """SQPC's own ranked selections at ≥75% (players, goals, half-time, corners…), best first."""
+    out = []
+    for pk in d.get("picks") or []:
+        p = pk.get("p")
+        if not isinstance(p, (int, float)) or not (PICK_MIN <= p < 0.995):
+            continue
+        row = {"group": str(pk.get("group") or "Otros")[:30], "market": str(pk.get("market") or "")[:80],
+               "selection": str(pk.get("selection") or "")[:100], "p": clamp(p)}
+        for k in ("lo", "hi"):
+            if isinstance(pk.get(k), (int, float)):
+                row[k] = clamp(pk[k])
+        if isinstance(pk.get("price"), (int, float)) and pk["price"] > 1:
+            row["price"] = float(pk["price"])
+            if pk.get("book"):
+                row["book"] = str(pk["book"])[:40]
+            if isinstance(pk.get("ev"), (int, float)):
+                row["ev"] = float(pk["ev"])
+        if pk.get("grade"):
+            row["grade"] = str(pk["grade"])[:20]
+        out.append(row)
+    out.sort(key=lambda r: -r["p"])
+    return out[:80]
+
+
 # ---------- per-sport converters ----------
 
 def football(d: dict, generated: int) -> tuple[dict, dict] | None:
@@ -131,17 +161,51 @@ def football(d: dict, generated: int) -> tuple[dict, dict] | None:
     if ci(one.get("home")) and ci(one.get("draw")) and ci(one.get("away")):
         outcome["interval"] = {"home": ci(one["home"]), "draw": ci(one["draw"]), "away": ci(one["away"])}
 
-    markets = [market("btts_yes", "Ambos marcan", mk.get("btts", {}).get("yes"))]
-    for line in ("1.5", "2.5", "3.5"):
-        markets.append(market(f"over_{line.replace('.', '_')}", f"Más de {line} goles", mk.get("totals", {}).get(line, {}).get("over")))
-    dc = mk.get("extra", {}).get("double_chance", {})
-    for k, label in (("1X", "Doble oportunidad 1X"), ("X2", "Doble oportunidad X2"), ("12", "Doble oportunidad 12")):
-        markets.append(market(f"dc_{k.lower()}", label, dc.get(k)))
+    H, A = m["home"], m["away"]
+    ex = mk.get("extra", {})
+    markets = []
+    add = lambda *r: markets.append(market(*r))  # noqa: E731
+    dc = ex.get("double_chance", {})
+    add("dc_1x", "Doble oportunidad 1X", dc.get("1X"), "Resultado")
+    add("dc_x2", "Doble oportunidad X2", dc.get("X2"), "Resultado")
+    add("dc_12", "Doble oportunidad 12", dc.get("12"), "Resultado")
+    dnb = ex.get("draw_no_bet", {})
+    add("dnb_home", f"{H} (empate no apuesta)", dnb.get("home"), "Resultado")
+    add("dnb_away", f"{A} (empate no apuesta)", dnb.get("away"), "Resultado")
+    mg = ex.get("margin", {})
+    for k, lab in (("home_1", f"{H} gana por 1"), ("home_2", f"{H} gana por 2"), ("home_3+", f"{H} gana por 3+"),
+                   ("away_1", f"{A} gana por 1"), ("away_2", f"{A} gana por 2"), ("away_3+", f"{A} gana por 3+")):
+        add(f"margin_{k.replace('+', 'p')}", lab, mg.get(k), "Margen")
+    add("btts_yes", "Ambos marcan", mk.get("btts", {}).get("yes"), "Goles")
+    for line in ("0.5", "1.5", "2.5", "3.5", "4.5"):
+        add(f"over_{line.replace('.', '_')}", f"Más de {line} goles", mk.get("totals", {}).get(line, {}).get("over"), "Goles")
+    for side, name in (("home", H), ("away", A)):
+        for line in ("0.5", "1.5", "2.5"):
+            add(f"tt_{side}_over_{line.replace('.', '_')}", f"{name}: más de {line} goles", (ex.get("team_totals", {}).get(side) or {}).get(line), "Goles por equipo")
+    cs = ex.get("clean_sheet", {})
+    add("cs_home", f"{H} no recibe gol", cs.get("home"), "Goles por equipo")
+    add("cs_away", f"{A} no recibe gol", cs.get("away"), "Goles por equipo")
+    for k, v in sorted((ex.get("exact_total") or {}).items(), key=lambda kv: int(kv[0]) if kv[0].isdigit() else 99)[:7]:
+        add(f"exact_total_{k}", f"Exactamente {k} gol{'es' if k != '1' else ''}", v, "Total exacto")
+    ah = mk.get("asian_handicap_home") or {}
+    for line in ("-1.50", "-0.50", "+0.50", "+1.50", "-1.5", "-0.5", "+0.5", "+1.5", "0.50", "1.50"):
+        row = ah.get(line)
+        if isinstance(row, dict) and pt(row.get("win")) is not None:
+            add(f"ah_home_{line.replace('.', '_').replace('+', 'p').replace('-', 'm')}", f"Hándicap {H} {line.rstrip('0').rstrip('.') if '.' in line else line}", row["win"], "Hándicap")
+    names = {"btts_over2.5": "Ambos marcan y más de 2.5", "btts_home": f"Ambos marcan y gana {H}", "btts_away": f"Ambos marcan y gana {A}",
+             "btts_draw": "Ambos marcan y empate", "home_over1.5": f"Gana {H} y más de 1.5", "away_over1.5": f"Gana {A} y más de 1.5",
+             "home_under3.5": f"Gana {H} y menos de 3.5", "away_under3.5": f"Gana {A} y menos de 3.5"}
+    for k, v in (ex.get("combos") or {}).items():
+        add(f"combo_{k}".replace(".", "_"), names.get(k, k.replace("_", " ")), v, "Combinadas")
+    fh = mk.get("first_half") or ex.get("first_half") or {}
+    for k, v in (fh.items() if isinstance(fh, dict) else []):
+        if pt(v) is not None:
+            add(f"ht_{k}".replace(".", "_"), f"1er tiempo: {k}", v, "Medio tiempo")
     for key, act in (d.get("actions") or {}).items():
         best = main_line(act.get("total_lines") or {}, "over")
         if best:
-            markets.append(market(f"{key}_over_{best[0].replace('.', '_')}", f"{act.get('label', key)}: más de {best[0]}", best[1]["over"]))
-    markets = [r for r in markets if r][:40]
+            add(f"{key}_over_{best[0].replace('.', '_')}", f"{act.get('label', key)}: más de {best[0]}", best[1]["over"], act.get("label", key))
+    markets = [r for r in markets if r][:120]
 
     features = []
     comp = d.get("comparison") or {}
@@ -177,6 +241,10 @@ def football(d: dict, generated: int) -> tuple[dict, dict] | None:
                 r["pScore"] = clamp(p["p"]["goal"])
             if isinstance(p["p"].get("assist"), (int, float)):
                 r["pAssist"] = clamp(p["p"]["assist"])
+            ss = p.get("season") or {}
+            season = {k: int(ss[k]) for k in ("apps", "goals", "assists", "shots", "sot", "yellow") if isinstance(ss.get(k), (int, float)) and ss[k] >= 0}
+            if season:
+                r["season"] = season
             players.append(r)
 
     edges = []
@@ -186,7 +254,7 @@ def football(d: dict, generated: int) -> tuple[dict, dict] | None:
                           "modelP": clamp(pk["p"]), "bookmaker": str(pk["book"])[:40], "odds": float(pk["price"]),
                           "ev": float(pk["ev"]), "capturedAt": generated})
     pred: dict[str, Any] = {"outcome": outcome, "features": features[:40], "markets": markets, "players": players[:60], "edges": edges[:40],
-                            "lines": football_lines(d)}
+                            "lines": football_lines(d), "picks": sqpc_picks(d)}
     eg = d.get("expected_goals") or {}
     if pt(eg.get("home")) is not None and pt(eg.get("away")) is not None:
         pred["xg"] = {"home": round(pt(eg["home"]), 3), "away": round(pt(eg["away"]), 3)}
@@ -205,20 +273,29 @@ def us_sport(d: dict, league: str) -> tuple[dict, dict] | None:
     h, a = pt(ml.get("home")), pt(ml.get("away"))
     if h is None or a is None:
         return None
+    H, A = m["home"], m["away"]
     markets = []
+    add = lambda *r: markets.append(market(*r))  # noqa: E731
     reg = mk.get("regulation") or {}
     if pt(reg.get("draw")) is not None:  # hockey 60-minute 1X2
-        markets += [market("reg_home", "Gana local en 60'", reg.get("home")), market("reg_draw", "Empate en 60'", reg.get("draw")),
-                    market("reg_away", "Gana visitante en 60'", reg.get("away"))]
-    best = main_line(mk.get("spread") or {}, "home")
-    if best:
-        markets.append(market("spread_home", f"Local cubre {best[0]}", best[1]["home"]))
+        add("reg_home", f"Gana {H} en 60'", reg.get("home"), "Tiempo regular")
+        add("reg_draw", "Empate en 60'", reg.get("draw"), "Tiempo regular")
+        add("reg_away", f"Gana {A} en 60'", reg.get("away"), "Tiempo regular")
+    for line, v in sorted((mk.get("spread") or {}).items(), key=lambda kv: float(kv[0]))[:9]:
+        add(f"spread_home_{line}".replace(".", "_").replace("-", "m").replace("+", "p"), f"{H} {line}", (v or {}).get("home"), "Hándicap")
     for k, v in (mk.get("puck_line") or {}).items():
-        if k in ("home_-1.5", "away_-1.5"):
-            markets.append(market(f"pl_{k.split('_')[0]}", f"{'Local' if k.startswith('home') else 'Visitante'} -1.5", v))
-    best = main_line(mk.get("totals") or {}, "over")
-    if best:
-        markets.append(market("total_over", f"Más de {best[0]}", best[1]["over"]))
+        side, line = (k.split("_", 1) + [""])[:2]
+        add(f"pl_{k}".replace(".", "_").replace("-", "m").replace("+", "p"), f"{H if side == 'home' else A} {line}", v, "Hándicap")
+    for line, v in sorted((mk.get("totals") or {}).items(), key=lambda kv: float(kv[0]))[:9]:
+        add(f"total_over_{line}".replace(".", "_"), f"Más de {line}", (v or {}).get("over"), "Total")
+    for side, name in (("home", H), ("away", A)):
+        best = main_line((mk.get("team_totals") or {}).get(side) or {}, "over")
+        if best:
+            add(f"tt_{side}_over", f"{name}: más de {best[0]}", best[1]["over"], "Total por equipo")
+    for k, v in (mk.get("margin") or {}).items() if isinstance(mk.get("margin"), dict) else []:
+        add(f"margin_{k}".replace(" ", "_")[:40], k.replace("Local", H).replace("Visita", A), v, "Margen")
+    if pt((mk.get("btts") or {}).get("yes")) is not None:
+        add("btts_yes", "Ambos marcan", mk["btts"]["yes"], "Goles")
     features = []
     mod = d.get("model") or {}
     if isinstance(mod.get("mh"), (int, float)) and isinstance(mod.get("ma"), (int, float)):
@@ -227,8 +304,8 @@ def us_sport(d: dict, league: str) -> tuple[dict, dict] | None:
     if inj:
         features.append({"label": "Lesionados reportados", "home": len(inj.get("home") or []), "away": len(inj.get("away") or []), "better": "lower"})
     lines = basketball_lines(d) if sport == "basketball" else hockey_lines(d) if sport == "hockey" else []
-    pred = {"outcome": {"home": clamp(h), "draw": None, "away": clamp(a)}, "features": features, "lines": lines,
-            "markets": [r for r in markets if r][:40], "players": [], "edges": []}
+    pred = {"outcome": {"home": clamp(h), "draw": None, "away": clamp(a)}, "features": features, "lines": lines, "picks": sqpc_picks(d),
+            "markets": [r for r in markets if r][:120], "players": [], "edges": []}
     info = {"home": m["home"], "away": m["away"], "league": league, "kickoff": m.get("kickoff"),
             "event": m.get("event_id"), "slug": slug_, "sport": sport}
     return info, pred
