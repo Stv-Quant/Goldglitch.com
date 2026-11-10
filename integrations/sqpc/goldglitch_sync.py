@@ -313,6 +313,20 @@ def metrics_from_analysis(reports: str) -> list[dict]:
                     "modelVersion": "sqpc-football", "windowStart": ms(f"{a.get('test_start')}T00:00:00+00:00") or now,
                     "windowEnd": now, "n": int(r["n"]), "brier": float(one["brier"]), "logLoss": float(one["log_loss"]),
                     "calibration": cal[:50], "generatedAt": int(os.path.getmtime(files[-1]) * 1000)})
+    if out:
+        # Pooled football row (weighted by n) so the public history shows all leagues together, not just one.
+        n = sum(m["n"] for m in out)
+        bins: dict[int, list[float]] = {}
+        for m in out:
+            for c in m["calibration"]:
+                acc = bins.setdefault(c["bin"], [0.0, 0.0, 0.0])
+                acc[0] += c["predicted"] * c["n"]; acc[1] += c["observed"] * c["n"]; acc[2] += c["n"]
+        out.append({"id": "football-all-sqpc", "sport": "football", "modelVersion": "sqpc-football",
+                    "windowStart": min(m["windowStart"] for m in out), "windowEnd": now, "n": n,
+                    "brier": sum(m["brier"] * m["n"] for m in out) / n, "logLoss": sum(m["logLoss"] * m["n"] for m in out) / n,
+                    "calibration": [{"bin": k, "predicted": v[0] / v[2], "observed": v[1] / v[2], "n": int(v[2])}
+                                    for k, v in sorted(bins.items()) if v[2] > 0],
+                    "generatedAt": max(m["generatedAt"] for m in out) + 1})
     return out
 
 
