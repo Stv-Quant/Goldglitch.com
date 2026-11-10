@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   metadataBase: new URL("https://goldglitch.com"),
   title: { default: "Goldglitch · La objetividad de los datos", template: "%s · Goldglitch" },
   description:
-    "Estadísticas y probabilidades de fútbol y MLB con incertidumbre visible e historial auditable. Datos, no corazonadas.",
+    "Estadísticas y probabilidades de fútbol, béisbol, baloncesto y hockey con incertidumbre visible e historial auditable. Datos, no corazonadas.",
   applicationName: "Goldglitch",
   appleWebApp: { capable: true, title: "Goldglitch", statusBarStyle: "black-translucent" },
   icons: {

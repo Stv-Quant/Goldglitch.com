@@ -1,4 +1,5 @@
 import { Badge, ago, dt } from "@/components/admin/ui";
+import { SPORT_LABEL, type Sport } from "@/lib/sports";
 import { headers } from "next/headers";
 import { IngestKeyPanel } from "@/components/admin/IngestKeyPanel";
 import { getDataHealth } from "@/lib/admin";
@@ -67,7 +68,7 @@ export default async function DataPage() {
                 return (
                   <tr key={m.id} className="border-t border-line num">
                     <td className="px-4 py-2.5">{m.model_version}</td>
-                    <td className="px-4 py-2.5">{m.sport === "football" ? "Fútbol" : "MLB"}</td>
+                    <td className="px-4 py-2.5">{SPORT_LABEL[m.sport as Sport] ?? m.sport}</td>
                     <td className="px-4 py-2.5 text-right">{m.n.toLocaleString("es-CO")}</td>
                     <td className="px-4 py-2.5 text-right">{m.brier.toFixed(3)}</td>
                     <td className="px-4 py-2.5 text-right text-lo">{m.baseline_brier?.toFixed(3) ?? "—"}</td>
@@ -89,7 +90,7 @@ export default async function DataPage() {
           <ul className="card mt-3 divide-y divide-[var(--border-soft)] text-sm">
             {d.competitions.map((c) => (
               <li key={c.name} className="flex justify-between gap-2 px-4 py-2.5">
-                <span>{c.name} <Badge>{c.sport === "football" ? "fútbol" : "MLB"}</Badge></span>
+                <span>{c.name} <Badge>{(SPORT_LABEL[c.sport as Sport] ?? c.sport).toLowerCase()}</Badge></span>
                 <span className="num text-xs text-lo">{c.n} partidos · {c.upcoming} próximos</span>
               </li>
             ))}

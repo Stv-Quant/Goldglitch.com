@@ -6,7 +6,7 @@ import { dayKey, dayLabel, timeLabel } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
-const WINDOW_MS = 4 * 24 * 60 * 60 * 1000;
+const WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 
 export default async function MatchesPage({ searchParams }: { searchParams: Promise<{ liga?: string }> }) {
   const { liga } = await searchParams;
@@ -27,7 +27,7 @@ export default async function MatchesPage({ searchParams }: { searchParams: Prom
     <div>
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="eyebrow">Próximos 4 días</p>
+          <p className="eyebrow">Próximos 7 días</p>
           <h1 className="mt-1 text-2xl font-semibold tracking-tight">Partidos</h1>
         </div>
         {competitions.length > 1 && (

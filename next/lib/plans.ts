@@ -49,7 +49,7 @@ export const PLANS: Record<Tier, PlanDef> = {
     features: [
       "Todo lo de Pro",
       "Valor esperado (EV) frente a cuotas de casas",
-      "MLB: modelo completo",
+      "Béisbol, baloncesto y hockey: modelo completo",
       "Alertas cuando el modelo y el mercado divergen",
     ],
   },

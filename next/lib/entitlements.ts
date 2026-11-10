@@ -1,5 +1,6 @@
 import type { Prediction } from "./contracts";
 import { hasTier, type Tier } from "./plans";
+import type { Sport } from "./sports";
 
 /**
  * What a viewer is allowed to receive. Redaction happens on the server so locked data
@@ -22,7 +23,8 @@ export type RedactedPrediction = {
   locked: { pro: boolean; elite: boolean };
 };
 
-export function canViewSport(tier: Tier, sport: "football" | "baseball"): boolean {
+/** Football is in every plan; every other sport is part of Elite. */
+export function canViewSport(tier: Tier, sport: Sport): boolean {
   return sport === "football" || hasTier(tier, "elite");
 }
 

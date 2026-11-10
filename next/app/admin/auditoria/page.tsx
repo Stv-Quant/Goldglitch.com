@@ -7,6 +7,8 @@ const LABEL: Record<string, string> = {
   suspend: "Suspendió cuenta", activate: "Reactivó cuenta", make_admin: "Hizo administrador", remove_admin: "Quitó rol admin",
   logout_all: "Cerró sesiones", force_password_change: "Obligó cambio de contraseña",
   export_usuarios: "Exportó usuarios (CSV)", export_pagos: "Exportó pagos (CSV)",
+  ingest_key_created: "Generó clave de SQPC", ingest_key_rotated: "Cambió clave de SQPC",
+  mail_test: "Envió correo de prueba", reminders_run: "Ejecutó recordatorios",
 };
 
 export default async function AuditPage() {

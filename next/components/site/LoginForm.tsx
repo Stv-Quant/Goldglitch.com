@@ -63,6 +63,7 @@ export function LoginForm() {
           <>
             <label htmlFor="password" className="text-sm text-mid block pt-1">Contraseña</label>
             <input id="password" type="password" required autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} className={input} />
+            <a href="/acceso/recuperar" className="inline-block pt-1 text-xs text-gold hover:underline underline-offset-4">¿Olvidaste tu contraseña?</a>
           </>
         )}
         {error && <p role="alert" className="text-sm" style={{ color: "var(--neon-down)" }}>{error}</p>}
