@@ -12,6 +12,9 @@ export type RedactedPrediction = {
   generatedAt: number;
   outcome: { home: number; draw: number | null; away: number };
   features: Prediction["features"];
+  /** Free plan gets the lines marked free; Pro and Elite get all of them. */
+  lines: Prediction["lines"];
+  linesLocked: number;
   // Pro
   interval?: NonNullable<Prediction["outcome"]["interval"]>;
   xg?: Prediction["xg"];
@@ -35,6 +38,8 @@ export function redactPrediction(p: Prediction, tier: Tier): RedactedPrediction 
     generatedAt: p.generatedAt,
     outcome: { home: p.outcome.home, draw: p.outcome.draw, away: p.outcome.away },
     features: p.features,
+    lines: hasTier(tier, "pro") ? (p.lines ?? []) : (p.lines ?? []).filter((l) => l.free),
+    linesLocked: hasTier(tier, "pro") ? 0 : (p.lines ?? []).filter((l) => !l.free).length,
     locked: { pro: !hasTier(tier, "pro"), elite: !hasTier(tier, "elite") },
   };
   if (hasTier(tier, "pro")) {
