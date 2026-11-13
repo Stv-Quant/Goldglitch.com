@@ -3,6 +3,7 @@ import { ingestBatchSchema } from "@/lib/contracts";
 import { hmacSha256Hex, safeEqual, sha256Hex } from "@/lib/crypto";
 import { getDB } from "@/lib/env";
 import { getIngestSecret } from "@/lib/ingestKey";
+import { ensureTrackedTable, trackedPickStatements } from "@/lib/tracked";
 
 const MAX_SKEW_MS = 5 * 60 * 1000;
 const MAX_BODY_BYTES = 5 * 1024 * 1024;
@@ -124,14 +125,27 @@ export async function POST(request: Request) {
     );
   }
 
+  // Picks SQPC chose before kickoff and their results (public track record). No FKs: a pick can outlive its match row.
+  const trackStart = stmts.length;
+  if (b.trackedPicks.length) {
+    try {
+      await ensureTrackedTable(db);
+    } catch (e) {
+      return Response.json({ ok: false, error: "db_write_failed", detail: String(e).slice(0, 300) }, { status: 500 });
+    }
+    stmts.push(...trackedPickStatements(db, b.trackedPicks, now));
+  }
+
   // Order matters (FKs): competitions → teams → matches → predictions → metrics. Chunks run sequentially.
   let predictionsStored = 0;
+  let trackedStored = 0;
   try {
     for (let i = 0; i < stmts.length; i += CHUNK) {
       const res = await db.batch(stmts.slice(i, i + CHUNK));
       res.forEach((r, j) => {
         const idx = i + j;
         if (idx >= predStart && idx < predEnd) predictionsStored += r.meta?.changes ? 1 : 0;
+        if (idx >= trackStart) trackedStored += r.meta?.changes ? 1 : 0;
       });
     }
   } catch (e) {
@@ -151,6 +165,7 @@ export async function POST(request: Request) {
       matches: b.matches.length,
       predictions: predictionsStored,
       metrics: b.metrics.length,
+      trackedPicks: trackedStored,
     },
     // Predictions rejected because they were generated at/after kickoff or are older than the stored version.
     rejectedPredictions: b.predictions.length - predictionsStored,

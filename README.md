@@ -56,6 +56,17 @@ publish(batch, url="https://goldglitch.com/api/ingest", secret=os.environ["GG_IN
 
 `batchId` es la clave de idempotencia: reenviar el mismo batch no duplica nada.
 
+### Seguimiento de picks (`trackedPicks`)
+SQPC registra en `data/tracked_picks.json` el pick destacado de cada partido (la selección más probable, ≥80%, la misma que muestra "Picks destacados") y cada apuesta de valor validada, **antes del inicio**. Después los liquida con el resultado real (ESPN / MLB Stats API). `goldglitch_sync.py` los envía en `trackedPicks` y `/historial` muestra aciertos contra probabilidad prometida, por rango, deporte y tipo, más los últimos liquidados.
+
+Reglas en `lib/tracked.ts` (SQL):
+- Solo se acepta un pick hecho antes del inicio.
+- Mientras está pendiente, solo lo cambia una versión más nueva y anterior al inicio.
+- Un resultado solo se acepta después del inicio.
+- Liquidado (acertado / fallado / nulo), ya no cambia.
+
+Los picks pendientes no se muestran en público: son contenido Pro. La tabla se crea sola si falta la migración `0008_tracked_picks.sql`.
+
 ## Legado
 
 La tienda EGG (pago en ETH) se retiró en la rama `feat/stats-pwa-foundation`. Sigue disponible en el historial de git. La tabla `orders` se mantiene en D1 sin cambios.

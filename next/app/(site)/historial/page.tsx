@@ -1,18 +1,26 @@
 import type { Metadata } from "next";
 import { CalibrationChart } from "@/components/stats/CalibrationChart";
+import { TrackRecord } from "@/components/stats/TrackRecord";
 import { latestMetrics } from "@/lib/data";
+import { getDB } from "@/lib/env";
+import { summarize, trackedPicks } from "@/lib/tracked";
 import { dateLabel } from "@/lib/format";
 import { SPORT_LABEL } from "@/lib/sports";
 
 export const metadata: Metadata = {
   title: "Historial del modelo",
-  description: "Calibración, Brier y log-loss del modelo sobre partidos ya jugados. Auditable y público.",
+  description: "Cada pick del sistema, acertado o fallado, y la calibración del modelo sobre partidos ya jugados. Auditable y público.",
 };
 export const dynamic = "force-dynamic";
 
 export default async function HistorialPage() {
   const metrics = await latestMetrics().catch(() => []);
   const m = metrics[0];
+  const rows = await getDB()
+    .then((db) => trackedPicks(db, 365))
+    .catch(() => []);
+  const featured = summarize(rows, "featured");
+  const value = summarize(rows, "value");
 
   return (
     <section className="mx-auto max-w-6xl px-4 sm:px-6 py-16">
@@ -23,10 +31,22 @@ export default async function HistorialPage() {
         al entrenar. Si se equivoca, se ve.
       </p>
 
+      <div className="mt-12">
+        <p className="eyebrow">Seguimiento de picks</p>
+        <h2 className="mt-2 text-2xl font-semibold tracking-tight">Cada pick que el sistema escoge, acertado o fallado</h2>
+        <p className="mt-2 text-mid max-w-3xl text-sm leading-relaxed">
+          El pick destacado de cada partido (la selección más probable del modelo, 80% o más) queda guardado antes de que
+          empiece y se liquida con el resultado real. No se borra ni se edita nada después del inicio. Un pick de 85% debe
+          fallar más o menos 15 de cada 100 veces: lo que importa es que la tasa real se parezca a la prometida.
+        </p>
+        <TrackRecord featured={featured} value={value} rows={rows} />
+      </div>
+
+      <h2 className="mt-16 text-2xl font-semibold tracking-tight">Calibración del modelo (1X2)</h2>
       {!m ? (
         <div className="card mt-10 p-8 text-mid">El primer reporte de rendimiento se publica cuando el modelo acumule suficientes partidos evaluados.</div>
       ) : (
-        <div className="mt-10 grid gap-6 lg:grid-cols-[1fr_1.1fr]">
+        <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_1.1fr]">
           <div className="card p-6">
             <h2 className="text-sm text-mid">Calibración · {SPORT_LABEL[m.sport]}</h2>
             <div className="mt-4">
