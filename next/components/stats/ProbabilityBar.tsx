@@ -1,10 +1,11 @@
 import { pct } from "@/lib/format";
+import { isHot, probColor } from "@/lib/probScale";
 
 type Outcome = { key: "home" | "draw" | "away"; label: string; p: number; interval?: [number, number] | null };
 
 /**
- * 1X2 probability strip. The most likely outcome is the only gold element (first fixation);
- * the others step down in luminance. Uncertainty ranges render as brackets under each value.
+ * 1X2 probability strip. Every segment and number takes its colour from the probability scale, so the
+ * favourite stands out by itself; the less likely outcomes recede. Uncertainty ranges render under each value.
  */
 export function ProbabilityBar({
   home,
@@ -28,8 +29,7 @@ export function ProbabilityBar({
   ];
   const total = outcomes.reduce((s, o) => s + o.p, 0) || 1;
   const ranked = [...outcomes].sort((a, b) => b.p - a.p).map((o) => o.key);
-  const fill = (k: Outcome["key"]) =>
-    k === ranked[0] ? "var(--gold)" : k === ranked[1] ? "var(--seg-2)" : "var(--seg-3)";
+  const fill = (o: Outcome) => (o.key === ranked[0] ? probColor(o.p) : `color-mix(in srgb, ${probColor(o.p)} 45%, var(--seg-3))`);
 
   const h = size === "sm" ? "h-1.5" : "h-2.5";
 
@@ -41,7 +41,7 @@ export function ProbabilityBar({
         aria-label={outcomes.map((o) => `${o.label} ${pct(o.p)}`).join(", ")}
       >
         {outcomes.map((o) => (
-          <div key={o.key} style={{ width: `${(o.p / total) * 100}%`, background: fill(o.key) }} />
+          <div key={o.key} style={{ width: `${(o.p / total) * 100}%`, background: fill(o) }} />
         ))}
       </div>
       <div className={`mt-2 grid ${draw !== null ? "grid-cols-3" : "grid-cols-2"}`}>
@@ -50,10 +50,13 @@ export function ProbabilityBar({
           const lead = o.key === ranked[0];
           return (
             <div key={o.key} className={align}>
-              <div className={`num ${size === "sm" ? "text-sm" : "text-lg"} ${lead ? "text-gold font-semibold" : "text-mid"}`}>
+              <div className={`num ${size === "sm" ? "text-base" : "text-2xl"} ${lead ? "font-semibold" : ""} ${lead && isHot(o.p) ? "p-glow" : ""}`}
+                style={{ color: lead ? probColor(o.p) : `color-mix(in srgb, ${probColor(o.p)} 70%, var(--text-lo))` }}>
                 {pct(o.p)}
               </div>
-              {size === "md" && (
+              {size === "sm" ? (
+                <div className="text-[10px] text-lo truncate">{o.label}</div>
+              ) : (
                 <div className="text-[11px] text-lo truncate">
                   {o.label}
                   {o.interval && (

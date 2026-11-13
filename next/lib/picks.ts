@@ -10,6 +10,8 @@ export type Pick = {
   hi?: number | null;
   price?: number | null;
   book?: string | null;
+  /** SQPC's confidence label ("Muy alta", "Alta"…), when it sent one. */
+  grade?: string | null;
 };
 
 export const PICK_MIN = 0.75;     // highlighted in each match
@@ -37,7 +39,7 @@ export function picksFor(p: Prediction, home: string, away: string, min = PICK_M
       .map((k, i) => ({
         key: `sqpc_${i}`,
         label: k.selection.toLowerCase().includes(k.market.toLowerCase()) || !k.market ? k.selection : `${k.market}: ${k.selection}`,
-        p: k.p, source: k.group, lo: k.lo, hi: k.hi, price: k.price, book: k.book,
+        p: k.p, source: k.group, lo: k.lo, hi: k.hi, price: k.price, book: k.book, grade: k.grade,
       }))
       .sort((a, b) => b.p - a.p)
       .filter((x) => (seen.has(x.label) ? false : (seen.add(x.label), true)));

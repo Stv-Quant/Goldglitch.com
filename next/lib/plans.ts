@@ -11,7 +11,7 @@ export function hasTier(current: Tier, required: Tier): boolean {
 type PlanDef = {
   name: string;
   tagline: string;
-  /** Prices in COP cents (Wompi amount_in_cents). Placeholders — adjust before launch. */
+  /** Prices in COP cents (Wompi amount_in_cents).  */
   price: Record<BillingPeriod, number>;
   features: string[];
 };
@@ -21,36 +21,38 @@ export const CURRENCY = "COP";
 export const PLANS: Record<Tier, PlanDef> = {
   free: {
     name: "Free",
-    tagline: "Los datos, sin humo.",
+    tagline: "Los datos, sin humo. Solo necesitas una cuenta.",
     price: { monthly: 0, annual: 0 },
     features: [
+      "Cuenta gratis, siempre",
       "Calendario y resultados de las ligas cubiertas",
-      "Probabilidades 1X2 del modelo",
-      "Forma reciente y estadísticas descriptivas",
-      "Historial público de aciertos y calibración",
+      "Probabilidades 1X2 de fútbol",
+      "Comparativa y forma de los equipos",
+      "Historial público de aciertos",
     ],
   },
   pro: {
     name: "Pro",
-    tagline: "El modelo completo, partido a partido.",
-    price: { monthly: 39_900_00, annual: 399_000_00 },
+    tagline: "Todas las estadísticas, partido a partido.",
+    price: { monthly: 50_000_00, annual: 500_000_00 },
     features: [
       "Todo lo de Free",
-      "Rango de incertidumbre de cada probabilidad",
-      "Goles esperados (xG) y matriz de marcadores",
-      "Mercados: más/menos de 2.5, ambos marcan",
-      "Desglose por jugador",
+      "Fútbol, béisbol, baloncesto, hockey y NFL",
+      "Picks del modelo con 75% o más",
+      "Todas las líneas: goles, córners, tarjetas, remates y jugadores",
+      "xG, marcadores más probables y portería a cero",
+      "Mercados completos con su rango de incertidumbre",
+      "Modelo contra cuotas de las casas (EV)",
     ],
   },
   elite: {
     name: "Elite",
-    tagline: "Modelo contra mercado.",
-    price: { monthly: 89_900_00, annual: 899_000_00 },
+    tagline: "Todo Pro, más funciones exclusivas.",
+    price: { monthly: 250_000_00, annual: 2_500_000_00 },
     features: [
       "Todo lo de Pro",
-      "Valor esperado (EV) frente a cuotas de casas",
-      "Béisbol, baloncesto y hockey: modelo completo",
-      "Alertas cuando el modelo y el mercado divergen",
+      "Funciones exclusivas de Elite (se anuncian pronto)",
+      "Acceso anticipado a cada novedad",
     ],
   },
 };

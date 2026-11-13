@@ -16,6 +16,13 @@
   --flare: #ff3b1f; /* noise / tipster red */
   --seg-2: #4a4843; /* secondary outcome segment */
   --seg-3: #2c2b28; /* tertiary outcome segment */
+  /* Probability scale (app only): cold → gold → neon. */
+  --p1: #8c8576;
+  --p2: #c98a4b;
+  --p3: #e8a93c;
+  --p4: #f2d25c;
+  --p5: #b4f25a;
+  --p6: #2ef2a0;
   --text-hi: #ede6d6;
   --text-mid: #b8b0a0;
   --text-lo: #8c8576;
@@ -248,3 +255,8 @@ body {
   .live-dot { animation: livepulse 1.6s ease-out infinite; }
   @keyframes livepulse { 0% { box-shadow: 0 0 0 0 rgba(46,242,160,.55); } 100% { box-shadow: 0 0 0 8px rgba(46,242,160,0); } }
 }
+
+/* App: hot probabilities glow softly so the eye lands on them first. */
+.p-glow { text-shadow: 0 0 18px color-mix(in srgb, currentColor 45%, transparent); }
+.scroll-x { overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+.scroll-x::-webkit-scrollbar { display: none; }

@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import type { StatLine } from "@/lib/contracts";
+import { isHot, probColor } from "@/lib/probScale";
 
 /** P(X > line) from a pmf that starts at `start`. */
 function over(l: StatLine, line: number): number {
@@ -62,19 +63,46 @@ function LineCard({ l }: { l: StatLine }) {
           className="grid h-9 w-9 place-items-center rounded-lg border border-line text-mid hover:text-hi disabled:opacity-30">+</button>
       </div>
 
-      <div className="mt-3 flex h-2 overflow-hidden rounded-full bg-[var(--seg-3)]" aria-hidden>
-        <div className="h-full transition-[width] duration-200" style={{ width: `${u * 100}%`, background: favOver ? "var(--seg-2)" : "var(--gold)" }} />
-        <div className="h-full flex-1 transition-[width] duration-200" style={{ background: favOver ? "var(--gold)" : "var(--seg-2)" }} />
+      <Histogram l={l} line={line} over={o} />
+      <div className="mt-3 grid grid-cols-2 gap-2 text-sm" aria-live="polite">
+        <div className={`rounded-lg px-2.5 py-2 ${!favOver ? "bg-[var(--gold-faint)]" : ""}`}>
+          <div className={`num text-lg font-semibold ${isHot(u) ? "p-glow" : ""}`} style={{ color: probColor(u) }}>{pct(u)}</div>
+          <div className="text-[11px] text-lo">Menos de {fmtLine(line)} · cuota {fair(u)}</div>
+        </div>
+        <div className={`rounded-lg px-2.5 py-2 text-right ${favOver ? "bg-[var(--gold-faint)]" : ""}`}>
+          <div className={`num text-lg font-semibold ${isHot(o) ? "p-glow" : ""}`} style={{ color: probColor(o) }}>{pct(o)}</div>
+          <div className="text-[11px] text-lo">Más de {fmtLine(line)} · cuota {fair(o)}</div>
+        </div>
       </div>
-      <div className="mt-2 grid grid-cols-2 gap-2 text-sm" aria-live="polite">
-        <div>
-          <div className={`num font-semibold ${!favOver ? "text-gold" : ""}`}>{pct(u)}</div>
-          <div className="text-[11px] text-lo">Menos de {fmtLine(line)} · cuota justa {fair(u)}</div>
-        </div>
-        <div className="text-right">
-          <div className={`num font-semibold ${favOver ? "text-gold" : ""}`}>{pct(o)}</div>
-          <div className="text-[11px] text-lo">Más de {fmtLine(line)} · cuota justa {fair(o)}</div>
-        </div>
+    </div>
+  );
+}
+
+/** The full distribution as bars; the ones above the line take the "Más" colour, the rest the "Menos" colour. */
+function Histogram({ l, line, over: o }: { l: StatLine; line: number; over: number }) {
+  // Trim the long tail so the bars stay readable.
+  let lo = 0, hi = l.pmf.length - 1, acc = 0;
+  while (lo < hi && acc + l.pmf[lo] < 0.003) acc += l.pmf[lo++];
+  acc = 0;
+  while (hi > lo && acc + l.pmf[hi] < 0.003) acc += l.pmf[hi--];
+  const bars = l.pmf.slice(lo, hi + 1);
+  const max = Math.max(...bars) || 1;
+  const cOver = probColor(o), cUnder = probColor(1 - o);
+  return (
+    <div className="mt-3" aria-hidden>
+      <div className="flex h-12 items-end gap-[2px]">
+        {bars.map((v, i) => {
+          const x = l.start + lo + i;
+          const isOver = x > line;
+          return (
+            <div key={x} className="flex-1 rounded-t-[2px] transition-colors duration-200"
+              style={{ height: `${Math.max(4, (v / max) * 100)}%`, background: isOver ? cOver : cUnder, opacity: isOver === o >= 0.5 ? 1 : 0.35 }} />
+          );
+        })}
+      </div>
+      <div className="mt-1 flex justify-between num text-[10px] text-lo">
+        <span>{l.start + lo}</span>
+        <span>{l.start + hi}{hi < l.pmf.length - 1 ? "+" : ""}</span>
       </div>
     </div>
   );
@@ -93,10 +121,10 @@ export function StatLines({ lines }: { lines: StatLine[] }) {
   return (
     <div>
       {groups.length > 1 && (
-        <div className="flex flex-wrap gap-2 text-sm" role="tablist" aria-label="Tipo de estadística">
+        <div className="scroll-x -mx-1 flex gap-2 px-1 text-sm" role="tablist" aria-label="Tipo de estadística">
           {groups.map(([g]) => (
             <button key={g} type="button" role="tab" aria-selected={g === active} onClick={() => setActive(g)}
-              className={`rounded-full border px-3 py-1 transition-colors ${g === active ? "border-[var(--border-glass)] bg-[var(--gold-faint)] text-hi" : "border-line text-lo hover:text-hi"}`}>
+              className={`whitespace-nowrap rounded-full border px-3 py-1 transition-colors ${g === active ? "border-[var(--border-glass)] bg-[var(--gold-faint)] text-hi" : "border-line text-lo hover:text-hi"}`}>
               {g}
             </button>
           ))}
