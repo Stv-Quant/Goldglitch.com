@@ -5,6 +5,7 @@ Reads what SQPC already wrote to disk and publishes it to easygoldglitch.com:
   reports/predictions/<fecha>/*.json   → partidos + predicciones (fútbol, NBA, NHL, MLB)
   reports/analysis_<fecha>.json        → métricas de validación fuera de muestra (historial público)
   ESPN (gratis)                        → marcador final de los partidos ya publicados
+  data/tracked_picks.json              → seguimiento de los picks que el sistema escogió (acertados / fallados)
 
 Nothing is recalculated here: SQPC's numbers are sent as-is. Run from the SQPC folder:
     python goldglitch_sync.py            # publica
@@ -461,6 +462,64 @@ def results(state: dict, comps: dict, teams: dict, now_ms: int, limit: int) -> l
     return out
 
 
+def tracked_picks(reports: str, days: int, limit: int = 1500) -> tuple[list[dict], dict]:
+    """Register this run's picks (before kickoff), settle finished ones and export them for /historial."""
+    import hashlib
+    try:
+        from sqpc import tracker
+    except Exception as e:  # SQPC not importable (e.g. run from another folder): publish without tracking
+        print(f"  seguimiento de picks no disponible: {e}")
+        return [], {}
+    data_dir = os.path.join(HERE, "data")
+    stats = {}
+    try:
+        stats["record"] = tracker.record(reports, data_dir, days=days)
+    except Exception as e:
+        print(f"  seguimiento (registro): {e}")
+    try:
+        from sqpc.ingest import espn
+        from sqpc.pipeline import Config, other_outcome
+        from sqpc.mlb.ingest import final_outcome
+        from sqpc.ingest.http import CachedClient
+        es, cfg = espn.Espn(), Config(data_dir=data_dir, reports_dir=reports)
+        cc = CachedClient(os.path.join(data_dir, "raw"))
+        stats["settled"] = tracker.settle(data_dir, lambda slug_, eid: es.summary(slug_, eid),
+                                          mlb_fetch=lambda pk: final_outcome(cc, pk), other_fetch=lambda lg: other_outcome(cfg, lg))
+    except Exception as e:
+        print(f"  seguimiento (liquidación): {e}")
+    rows = tracker.TrackStore(data_dir).load()
+    cutoff = int(time.time() * 1000) - 180 * 86400_000
+    rows = sorted([r for r in rows if r.get("kickoff_ms", 0) >= cutoff], key=lambda r: -r.get("updated_ms", 0))[:limit]
+    out = []
+    for r in rows:
+        st = r.get("status", "pending")
+        st = "void" if st == "no_data" else st
+        if st not in ("pending", "won", "lost", "void"):
+            continue
+        sport, league = r["sport"], r["league"]
+        name = FOOTBALL_NAMES.get(league, league) if sport == "football" else US_LEAGUES.get(league, (None, league))[1]
+        row = {"id": "tp-" + hashlib.sha1(r["id"].encode()).hexdigest()[:24], "kind": r["kind"], "sport": sport,
+               "competitionId": f"{sport}-{league.lower()}", "competitionName": str(name)[:120], "matchId": r["match_id"][:128],
+               "home": r["home"][:120], "away": r["away"][:120], "kickoffAt": int(r["kickoff_ms"]),
+               "group": str(r.get("group") or "Otros")[:30], "label": str(r["label"])[:140], "p": clamp(float(r["p"])),
+               "status": st, "pickedAt": int(r.get("updated_ms") or r.get("created_ms")), "updatedAt": int(r.get("updated_ms") or 0)}
+        for k_src, k_dst in (("lo", "lo"), ("hi", "hi")):
+            if isinstance(r.get(k_src), (int, float)):
+                row[k_dst] = clamp(float(r[k_src]))
+        if isinstance(r.get("price"), (int, float)) and r["price"] > 1:
+            row["price"] = float(r["price"])
+        if isinstance(r.get("ev"), (int, float)):
+            row["ev"] = float(r["ev"])
+        if r.get("actual"):
+            row["result"] = str(r["actual"])[:60]
+        if r.get("settled_ms"):
+            row["settledAt"] = int(r["settled_ms"])
+        if isinstance(r.get("profit"), (int, float)):
+            row["profit"] = float(r["profit"])
+        out.append(row)
+    return out, stats
+
+
 def main() -> int:
     load_env(os.path.join(HERE, ".env"))
     ap = argparse.ArgumentParser(description="Publica en easygoldglitch.com lo que SQPC ya calculó")
@@ -491,11 +550,13 @@ def main() -> int:
     batch["competitions"] = [c for c in comps.values() if c]
     batch["teams"] = [t for t in teams.values() if t]
     batch["metrics"] = metrics_from_analysis(a.reports)
+    batch["trackedPicks"], tstats = tracked_picks(a.reports, a.days)
     batch["batchId"] = str(uuid.uuid4())
     batch["source"] = "sqpc"
 
     print(f"Lote: {len(batch['matches']) - len(finished)} próximos · {len(batch['predictions'])} predicciones · "
-          f"{len(finished)} resultados · {len(batch['metrics'])} métricas")
+          f"{len(finished)} resultados · {len(batch['metrics'])} métricas · "
+          f"{len(batch['trackedPicks'])} picks en seguimiento {tstats or ''}")
     if a.dry_run:
         with open(LAST_BATCH, "w", encoding="utf-8") as f:
             json.dump(batch, f, ensure_ascii=False)

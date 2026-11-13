@@ -155,6 +155,38 @@ export const metricsSchema = z.object({
   generatedAt: z.number().int().positive(),
 });
 
+/**
+ * A pick SQPC chose before kickoff and then settled against the real result. "featured" = the strongest selection
+ * (≥80%) of a match, the one shown in "Picks destacados"; "value" = a validated value bet with its price.
+ */
+export const trackedPickSchema = z.object({
+  id,
+  kind: z.enum(["featured", "value"]),
+  sport,
+  competitionId: id,
+  competitionName: z.string().max(120).optional(),
+  matchId: id,
+  home: z.string().min(1).max(120),
+  away: z.string().min(1).max(120),
+  kickoffAt: z.number().int().positive(),
+  group: z.string().max(30),
+  label: z.string().min(1).max(140),
+  p: prob,
+  lo: prob.nullish(),
+  hi: prob.nullish(),
+  price: z.number().gt(1).nullish(),
+  ev: z.number().nullish(),
+  status: z.enum(["pending", "won", "lost", "void"]),
+  result: z.string().max(60).nullish(),
+  /** When this selection was made (must be before kickoff). */
+  pickedAt: z.number().int().positive(),
+  updatedAt: z.number().int().min(0).optional(),
+  settledAt: z.number().int().positive().nullish(),
+  /** Units won/lost at `price` with stake 1 (value bets). */
+  profit: z.number().nullish(),
+});
+export type TrackedPick = z.infer<typeof trackedPickSchema>;
+
 export const ingestBatchSchema = z.object({
   batchId: id,
   source: z.string().min(1).max(40),
@@ -163,6 +195,7 @@ export const ingestBatchSchema = z.object({
   matches: z.array(matchSchema).max(2000).default([]),
   predictions: z.array(predictionSchema).max(2000).default([]),
   metrics: z.array(metricsSchema).max(200).default([]),
+  trackedPicks: z.array(trackedPickSchema).max(3000).default([]),
 });
 
 export type Competition = z.infer<typeof competitionSchema>;
