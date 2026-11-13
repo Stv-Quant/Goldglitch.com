@@ -10,6 +10,15 @@ export function FeatureCompare({ rows, homeShort, awayShort }: { rows: Row[]; ho
         <span className="num">{awayShort}</span>
       </div>
       {rows.map((r) => {
+        if (typeof r.home === "string" && typeof r.away === "string" && /^[VEDWLT]+$/i.test(r.home + r.away)) {
+          return (
+            <div key={r.label} className="flex items-center justify-between gap-2">
+              <FormChips s={r.home} />
+              <span className="text-xs text-lo">{r.label}</span>
+              <FormChips s={r.away} reverse />
+            </div>
+          );
+        }
         const h = typeof r.home === "number" ? r.home : NaN;
         const a = typeof r.away === "number" ? r.away : NaN;
         const numeric = Number.isFinite(h) && Number.isFinite(a) && h + a > 0;
@@ -34,5 +43,26 @@ export function FeatureCompare({ rows, homeShort, awayShort }: { rows: Row[]; ho
         );
       })}
     </div>
+  );
+}
+
+const FORM: Record<string, { c: string; t: string }> = {
+  V: { c: "var(--neon-up)", t: "Victoria" }, W: { c: "var(--neon-up)", t: "Victoria" },
+  E: { c: "var(--seg-2)", t: "Empate" }, T: { c: "var(--seg-2)", t: "Empate" },
+  D: { c: "var(--neon-down)", t: "Derrota" }, L: { c: "var(--neon-down)", t: "Derrota" },
+};
+
+/** Last results as coloured chips, oldest → newest (mirrored for the away side). */
+function FormChips({ s, reverse = false }: { s: string; reverse?: boolean }) {
+  const chars = s.toUpperCase().split("");
+  return (
+    <span className={`flex gap-1 ${reverse ? "flex-row-reverse" : ""}`} aria-label={chars.map((c) => FORM[c]?.t ?? c).join(", ")}>
+      {chars.map((c, i) => (
+        <span key={i} className="num grid h-5 w-5 place-items-center rounded text-[10px] font-semibold"
+          style={{ background: `color-mix(in srgb, ${FORM[c]?.c ?? "var(--seg-2)"} 22%, transparent)`, color: FORM[c]?.c ?? "var(--text-mid)" }}>
+          {c === "W" ? "V" : c === "L" ? "D" : c === "T" ? "E" : c}
+        </span>
+      ))}
+    </span>
   );
 }

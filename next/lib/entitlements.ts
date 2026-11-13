@@ -15,20 +15,19 @@ export type RedactedPrediction = {
   /** Free plan gets the lines marked free; Pro and Elite get all of them. */
   lines: Prediction["lines"];
   linesLocked: number;
-  // Pro
+  // Pro (Elite includes everything in Pro)
   interval?: NonNullable<Prediction["outcome"]["interval"]>;
   xg?: Prediction["xg"];
   scoreMatrix?: Prediction["scoreMatrix"];
   markets?: Prediction["markets"];
   players?: Prediction["players"];
-  // Elite
   edges?: Prediction["edges"];
   locked: { pro: boolean; elite: boolean };
 };
 
-/** Football is in every plan; every other sport is part of Elite. */
+/** Football is in every plan; every other sport is part of Pro (and so of Elite). */
 export function canViewSport(tier: Tier, sport: Sport): boolean {
-  return sport === "football" || hasTier(tier, "elite");
+  return sport === "football" || hasTier(tier, "pro");
 }
 
 export function redactPrediction(p: Prediction, tier: Tier): RedactedPrediction {
@@ -48,8 +47,6 @@ export function redactPrediction(p: Prediction, tier: Tier): RedactedPrediction 
     out.scoreMatrix = p.scoreMatrix;
     out.markets = p.markets;
     out.players = p.players;
-  }
-  if (hasTier(tier, "elite")) {
     out.edges = p.edges;
   }
   return out;

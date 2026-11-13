@@ -3,7 +3,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { ingestBatchSchema, predictionSchema } from "@/lib/contracts";
 import { hmacSha256Hex, safeEqual, sha256Hex } from "@/lib/crypto";
-import { redactPrediction } from "@/lib/entitlements";
+import { canViewSport, redactPrediction } from "@/lib/entitlements";
 import { buildCheckoutUrl, integritySignature, verifyEventChecksum, type WompiEvent } from "@/lib/wompi";
 
 const PY = path.resolve(__dirname, "../../integrations/sqpc/goldglitch_publish.py");
@@ -90,10 +90,12 @@ describe("Entitlements", () => {
     expect(s).not.toContain("bookmaker");
     expect(r.locked).toEqual({ pro: true, elite: true });
   });
-  it("pro gets model depth but not market edges", () => {
+  it("pro gets every statistic, market edges included", () => {
     const r = redactPrediction(p, "pro");
     expect(r.scoreMatrix).toBeDefined();
-    expect(r.edges).toBeUndefined();
+    expect(r.edges?.length).toBeGreaterThan(0);
+    expect(canViewSport("pro", "basketball")).toBe(true);
+    expect(canViewSport("free", "basketball")).toBe(false);
   });
   it("elite gets everything", () => {
     expect(redactPrediction(p, "elite").edges?.length).toBeGreaterThan(0);
