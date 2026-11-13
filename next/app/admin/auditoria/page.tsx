@@ -9,6 +9,7 @@ const LABEL: Record<string, string> = {
   export_usuarios: "Exportó usuarios (CSV)", export_pagos: "Exportó pagos (CSV)",
   ingest_key_created: "Generó clave de SQPC", ingest_key_rotated: "Cambió clave de SQPC",
   mail_test: "Envió correo de prueba", reminders_run: "Ejecutó recordatorios",
+  invite_create: "Creó invitación", invite_revoke: "Desactivó invitación",
 };
 
 export default async function AuditPage() {

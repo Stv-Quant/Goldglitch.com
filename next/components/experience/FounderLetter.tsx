@@ -31,8 +31,8 @@ export function FounderLetter() {
         <div className="mt-10 flex items-center gap-4">
           <Mark size={40} />
           <div>
-            <div className="text-hi font-medium">Steven</div>
-            <div className="text-sm text-lo">Fundador de Goldglitch · Cali, Colombia</div>
+            <div className="text-hi font-medium">Equipo Goldglitch</div>
+            <div className="text-sm text-lo">Hecho en Cali, Colombia</div>
           </div>
         </div>
       </div>

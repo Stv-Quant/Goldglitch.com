@@ -14,8 +14,8 @@ const ERRORS: Record<string, string> = {
 const input =
   "w-full rounded-[10px] bg-raise border border-line px-4 py-3 text-hi placeholder:text-lo focus:border-[var(--border-glass)] outline-none";
 
-export function LoginForm() {
-  const [mode, setMode] = useState<"password" | "link">("password");
+export function LoginForm({ defaultMode = "password" }: { defaultMode?: "password" | "link" } = {}) {
+  const [mode, setMode] = useState<"password" | "link">(defaultMode);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [state, setState] = useState<"idle" | "sending" | "sent">("idle");
