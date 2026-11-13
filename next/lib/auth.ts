@@ -32,7 +32,7 @@ export function normalizeEmail(raw: unknown): string | null {
 }
 
 /** Issues a single-use login token. Returns null when rate limited. */
-export async function issueLoginToken(email: string): Promise<string | null> {
+export async function issueLoginToken(email: string, inviteCode: string | null = null): Promise<string | null> {
   const db = await getDB();
   const now = Date.now();
   const recent = await db
@@ -43,14 +43,14 @@ export async function issueLoginToken(email: string): Promise<string | null> {
 
   const token = randomToken(32);
   await db
-    .prepare("INSERT INTO login_tokens (token_hash, email, created_at, expires_at) VALUES (?, ?, ?, ?)")
-    .bind(await sha256Hex(token), email, now, now + LOGIN_TOKEN_TTL_MS)
+    .prepare("INSERT INTO login_tokens (token_hash, email, created_at, expires_at, invite_code) VALUES (?, ?, ?, ?, ?)")
+    .bind(await sha256Hex(token), email, now, now + LOGIN_TOKEN_TTL_MS, inviteCode)
     .run();
   return token;
 }
 
 /** Consumes a login token atomically and returns the user (created on first login). */
-export async function consumeLoginToken(token: string): Promise<{ id: string; email: string; isNew: boolean } | null> {
+export async function consumeLoginToken(token: string): Promise<{ id: string; email: string; isNew: boolean; inviteCode: string | null } | null> {
   const db = await getDB();
   const now = Date.now();
   const hash = await sha256Hex(token);
@@ -58,10 +58,10 @@ export async function consumeLoginToken(token: string): Promise<{ id: string; em
   // Single UPDATE ... RETURNING makes consumption race-free.
   const row = await db
     .prepare(
-      "UPDATE login_tokens SET used_at = ? WHERE token_hash = ? AND used_at IS NULL AND expires_at > ? RETURNING email",
+      "UPDATE login_tokens SET used_at = ? WHERE token_hash = ? AND used_at IS NULL AND expires_at > ? RETURNING email, invite_code",
     )
     .bind(now, hash, now)
-    .first<{ email: string }>();
+    .first<{ email: string; invite_code: string | null }>();
   if (!row) return null;
 
   const userId = crypto.randomUUID();
@@ -73,7 +73,7 @@ export async function consumeLoginToken(token: string): Promise<{ id: string; em
     )
     .bind(userId, row.email, now, now)
     .first<{ id: string }>();
-  return user ? { id: user.id, email: row.email, isNew: user.id === userId } : null;
+  return user ? { id: user.id, email: row.email, isNew: user.id === userId, inviteCode: row.invite_code ?? null } : null;
 }
 
 export async function createSession(userId: string, userAgent: string | null): Promise<void> {
