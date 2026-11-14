@@ -2,7 +2,8 @@
 SQPC → Goldglitch sync.
 
 Reads what SQPC already wrote to disk and publishes it to easygoldglitch.com:
-  reports/predictions/<fecha>/*.json   → partidos + predicciones (fútbol, NBA, NHL, MLB)
+  reports/predictions/<fecha>/*.json   → partidos + predicciones (fútbol, NBA, NCAAB, NHL, MLB)
+  reports/esports_events.json          → series de e-sports (Valorant, Dota 2); resultados desde data/sqpc.db
   reports/analysis_<fecha>.json        → métricas de validación fuera de muestra (historial público)
   ESPN (gratis)                        → marcador final de los partidos ya publicados
   data/tracked_picks.json              → seguimiento de los picks que el sistema escogió (acertados / fallados)
@@ -31,7 +32,7 @@ from typing import Any
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 from goldglitch_publish import load_env, publish  # noqa: E402
-from goldglitch_lines import basketball_lines, football_lines, hockey_lines  # noqa: E402
+from goldglitch_lines import basketball_lines, football_lines, hockey_lines, pack  # noqa: E402
 
 STATE_FILE = os.path.join(HERE, "goldglitch_state.json")
 LAST_BATCH = os.path.join(HERE, "goldglitch_last_batch.json")
@@ -52,7 +53,8 @@ FOOTBALL_NAMES = {
     "LIB": "Copa Libertadores", "SUD": "Copa Sudamericana", "AUT": "Bundesliga Austria", "DNK": "Superliga Dinamarca",
     "NOR": "Eliteserien", "SWE": "Allsvenskan", "SWZ": "Super League Suiza", "POL": "Ekstraklasa",
 }
-SKIP_PREFIXES = {"NCAAB"}  # dozens of games a day; enable with --include-ncaab
+ESPORTS = {"valorant": ("VAL", "Valorant"), "dota2": ("DOTA2", "Dota 2")}   # game → (league code, name)
+ES_LEAGUE = {code: (game, name) for game, (code, name) in ESPORTS.items()}
 NOISE = {"fc", "cf", "sc", "ac", "cd", "club", "deportivo", "deportes", "atletico", "atlético", "de", "la", "el",
          "the", "afc", "sk", "fk", "rj", "real", "sporting", "independiente", "united", "city"}
 
@@ -317,6 +319,9 @@ def football(d: dict, generated: int) -> tuple[dict, dict] | None:
                           "ev": float(pk["ev"]), "capturedAt": generated})
     pred: dict[str, Any] = {"outcome": outcome, "features": features[:40], "markets": markets, "players": players[:60], "edges": edges[:40],
                             "lines": football_lines(d), "picks": sqpc_picks(d)}
+    st = football_stakes(d.get("stakes"))
+    if st:
+        pred["stakes"] = st
     eg = d.get("expected_goals") or {}
     if pt(eg.get("home")) is not None and pt(eg.get("away")) is not None:
         pred["xg"] = {"home": round(pt(eg["home"]), 3), "away": round(pt(eg["away"]), 3)}
@@ -325,6 +330,94 @@ def football(d: dict, generated: int) -> tuple[dict, dict] | None:
         pred["scoreMatrix"] = [[round(clamp(float(v)), 6) for v in r[:11]] for r in sm[:11]]
     info = {"home": m["home"], "away": m["away"], "league": m["league"], "kickoff": m.get("kickoff"),
             "event": m.get("espn_event"), "slug": m.get("espn_slug"), "sport": "football"}
+    return info, pred
+
+
+def _f(x: Any, lo: float, hi: float) -> float | None:
+    return round(min(hi, max(lo, float(x))), 4) if _num(x) else None
+
+
+def football_stakes(s: Any) -> dict | None:
+    """SQPC's "what each side plays for" block (models/stakes.py) in the site's shape."""
+    if not isinstance(s, dict):
+        return None
+    out: dict[str, Any] = {}
+    f = s.get("format") or {}
+    if all(_num(f.get(k)) for k in ("teams", "games", "top", "zone", "releg")):
+        out["format"] = {"teams": int(f["teams"]), "games": int(f["games"]), "top": int(f["top"]), "zone": int(f["zone"]),
+                         "releg": int(f["releg"]), "topLabel": str(f.get("top_label") or "Título")[:40],
+                         "zoneLabel": str(f.get("zone_label") or "Europa")[:40]}
+    if _num(s.get("progress")):
+        out["progress"] = _f(s["progress"], 0, 1)
+    for side in ("home", "away"):
+        x = s.get(side)
+        if not isinstance(x, dict) or not all(_num(x.get(k)) for k in ("pos", "pts", "gp", "gd", "p_top", "p_zone", "p_releg")):
+            continue
+        out[side] = {"team": str(x.get("team") or "")[:120], "pos": max(1, int(x["pos"])), "pts": max(0, int(x["pts"])),
+                     "gp": max(0, int(x["gp"])), "gd": int(max(-200, min(200, x["gd"]))),
+                     "pTop": _f(x["p_top"], 0, 1), "pZone": _f(x["p_zone"], 0, 1), "pReleg": _f(x["p_releg"], 0, 1),
+                     "levTop": _f(x.get("lev_top", 0), -1, 1), "levZone": _f(x.get("lev_zone", 0), -1, 1),
+                     "levDown": _f(x.get("lev_dn", 0), -1, 1), "dead": bool(x.get("dead")), "need": str(x.get("need") or "")[:120]}
+    mood = {}
+    for side, mo in ((s.get("mood") or {}).items()):
+        if side in ("home", "away") and isinstance(mo, dict) and _num(mo.get("form")):
+            mood[side] = {"form": _f(mo["form"], -3, 3), "slump": bool(mo.get("slump")), "last": str(mo.get("last") or "")[:10]}
+    if mood:
+        out["mood"] = mood
+    e = s.get("effect") or {}
+    if _num(e.get("home")) and _num(e.get("away")):
+        out["effect"] = {"home": _f(e["home"], 0.5, 2), "away": _f(e["away"], 0.5, 2), "applied": bool(e.get("applied"))}
+    return out if (out.get("home") or out.get("away") or out.get("mood")) else None
+
+
+def esports(e: dict) -> tuple[dict, dict] | None:
+    """One Valorant / Dota 2 series from reports/esports_events.json (map-rating model, no bookmaker prices)."""
+    game = e.get("game")
+    if game not in ESPORTS or e.get("live"):
+        return None
+    mk, t1, t2, bo = e.get("markets") or {}, e["team1"], e["team2"], int(e.get("bo") or 3)
+    w1, w2 = pt(mk.get("win1")), pt(mk.get("win2"))
+    if w1 is None or w2 is None:
+        return None
+    markets = []
+    add = lambda *r: markets.append(market(*r))  # noqa: E731
+    add("series_1", f"Gana {t1}", w1, "Ganador de la serie")
+    add("series_2", f"Gana {t2}", w2, "Ganador de la serie")
+    if bo >= 3:
+        h = mk.get("hcp") or {}
+        for k, lab in (("t1_-1.5", f"{t1} −1.5 mapas"), ("t1_+1.5", f"{t1} +1.5 mapas"),
+                       ("t2_-1.5", f"{t2} −1.5 mapas"), ("t2_+1.5", f"{t2} +1.5 mapas")):
+            add(f"hcp_{k}".replace(".", "_").replace("-", "m").replace("+", "p"), lab, h.get(k), "Hándicap de mapas")
+        T = mk.get("total") or {}
+        if _num(T.get("line")):
+            add("maps_over", f"Más de {T['line']:g} mapas", T.get("over"), "Total de mapas")
+            add("maps_under", f"Menos de {T['line']:g} mapas", T.get("under"), "Total de mapas")
+        for sc, p in sorted((mk.get("scores") or {}).items(), key=lambda kv: -(kv[1] or 0)):
+            a, b = sc.split("-")
+            add(f"score_{a}_{b}", f"{t1} {a}-{b} {t2}", p, "Marcador de la serie")
+    if _num(mk.get("p_map")):
+        add("map_1", f"{t1} gana un mapa cualquiera", mk["p_map"], "Por mapa")
+    features = []
+    if _num(e.get("r1")) and _num(e.get("r2")):
+        features.append({"label": "Rating por mapas (Elo)", "home": round(e["r1"]), "away": round(e["r2"]), "better": "higher"})
+    if _num(e.get("n1")) and _num(e.get("n2")):
+        features.append({"label": "Mapas en el historial", "home": int(e["n1"]), "away": int(e["n2"]), "better": "higher"})
+    lines = []
+    if bo >= 3 and mk.get("scores"):
+        pmf = [0.0] * (bo + 1)
+        for sc, p in mk["scores"].items():
+            a, b = (int(x) for x in sc.split("-"))
+            if _num(p) and a + b <= bo:
+                pmf[a + b] += p
+        ln = pack("maps_total", "Mapas jugados", "Mapas", pmf, free=True)
+        if ln:
+            lines.append(ln)
+    pred = {"outcome": {"home": clamp(w1), "draw": None, "away": clamp(w2)}, "features": features, "markets": [r for r in markets if r][:120],
+            "lines": lines, "picks": sqpc_picks(e), "players": [], "edges": []}
+    code, _ = ESPORTS[game]
+    venue = " · ".join(x for x in (str(e.get("event") or ""), str(e.get("stage") or ""), f"Bo{bo}") if x)
+    info = {"home": t1, "away": t2, "league": code, "kickoff": e.get("date"), "event": str(e["match_id"]), "slug": "esports",
+            "sport": "esports", "game": game, "venue": venue[:120]}
     return info, pred
 
 
@@ -375,16 +468,40 @@ def us_sport(d: dict, league: str) -> tuple[dict, dict] | None:
 
 # ---------- batch assembly ----------
 
+def match_id(info: dict, kickoff: int) -> str:
+    """Same id SQPC's tracker gives the match (sqpc/tracker.py site_match_id)."""
+    if info.get("sport") == "esports":
+        return f"es-{info['event']}"
+    return f"espn-{info['event']}" if info.get("event") else slug(f"{info['league']}-{kickoff}-{info['home']}-{info['away']}")
+
+
 def build(reports: str, days: int, include_ncaab: bool, now_ms: int) -> tuple[dict, dict]:
     dirs = sorted(glob.glob(os.path.join(reports, "predictions", "20*")))[-days:]
     latest: dict[str, tuple[int, dict, dict]] = {}
+    ep = os.path.join(reports, "esports_events.json")
+    if os.path.exists(ep):
+        try:
+            with open(ep, encoding="utf-8") as f:
+                events = json.load(f)
+            generated = int(os.path.getmtime(ep) * 1000)
+        except (OSError, ValueError):
+            events = []
+        for e in events if isinstance(events, list) else []:
+            try:
+                res = esports(e)
+            except (KeyError, TypeError, ValueError) as err:
+                print(f"  omitido e-sports {e.get('match_id')}: {err}")
+                continue
+            kickoff = ms(res[0]["kickoff"]) if res else None
+            if res and kickoff and kickoff > now_ms:
+                latest[match_id(res[0], kickoff)] = (generated, res[0] | {"kickoff_ms": kickoff}, res[1])
     for d_ in dirs:
         for path in glob.glob(os.path.join(d_, "*.json")):
             name = os.path.basename(path)
             if name in ("picks.json", "sharp_meta.json"):
                 continue
             prefix = name.split("_", 1)[0]
-            if prefix in SKIP_PREFIXES and not include_ncaab:
+            if prefix == "NCAAB" and not include_ncaab:
                 continue
             try:
                 with open(path, encoding="utf-8") as f:
@@ -408,29 +525,39 @@ def build(reports: str, days: int, include_ncaab: bool, now_ms: int) -> tuple[di
             kickoff = ms(info["kickoff"])
             if not kickoff or kickoff <= now_ms:
                 continue  # the site only accepts predictions made before kickoff
-            mid = f"espn-{info['event']}" if info.get("event") else slug(f"{info['league']}-{kickoff}-{info['home']}-{info['away']}")
+            mid = match_id(info, kickoff)
             if mid not in latest or generated > latest[mid][0]:
                 latest[mid] = (generated, info | {"kickoff_ms": kickoff}, pred)
 
     comps, teams, matches, preds, state_add = {}, {}, [], [], {}
     for mid, (generated, info, pred) in latest.items():
         sport, league = info["sport"], info["league"]
-        comp_id = f"{sport}-{league.lower()}"
-        comps[comp_id] = {"id": comp_id, "sport": sport,
-                          "name": FOOTBALL_NAMES.get(league, league) if sport == "football" else US_LEAGUES[league][1]}
+        comp_id, comp_name = competition(sport, league)
+        comps[comp_id] = {"id": comp_id, "sport": sport, "name": comp_name}
         ids = []
         for side in ("home", "away"):
-            tid = f"{sport}-{slug(info[side])}"
+            # e-sports clubs field teams in several games (Team Liquid, Team Spirit…): keep them apart per game
+            tid = f"esports-{info['game']}-{slug(info[side])}" if sport == "esports" else f"{sport}-{slug(info[side])}"
             teams[tid] = {"id": tid, "sport": sport, "name": info[side][:120], "shortName": short_code(info[side], sport)}
             ids.append(tid)
         match = {"id": mid, "sport": sport, "competitionId": comp_id, "homeTeamId": ids[0], "awayTeamId": ids[1],
                  "kickoffAt": info["kickoff_ms"], "status": "scheduled"}
+        if info.get("venue"):
+            match["venue"] = info["venue"]
         matches.append(match)
         preds.append({"matchId": mid, "modelVersion": f"sqpc-{sport}", "generatedAt": generated, **pred})
         if info.get("event") and info.get("slug"):
             state_add[mid] = {"event": str(info["event"]), "slug": info["slug"], "match": match}
     return {"competitions": list(comps.values()), "teams": list(teams.values()), "matches": matches,
             "predictions": preds}, state_add
+
+
+def competition(sport: str, league: str) -> tuple[str, str]:
+    if sport == "esports":
+        game, name = ES_LEAGUE.get(league, (league.lower(), league))
+        return f"esports-{game}", name
+    name = FOOTBALL_NAMES.get(league, league) if sport == "football" else US_LEAGUES.get(league, (None, league))[1]
+    return f"{sport}-{league.lower()}", str(name)
 
 
 def metrics_from_analysis(reports: str) -> list[dict]:
@@ -495,6 +622,26 @@ def espn_result(slug_: str, event: str) -> tuple[str, int, int] | None:
     return None
 
 
+_ES_DB: Any = None
+
+
+def esports_result(series_id: str) -> tuple[str, int, int] | None:
+    """Final maps score of a series from SQPC's database (VLR.gg / OpenDota, refreshed by "Otros deportes")."""
+    global _ES_DB
+    if _ES_DB is None:
+        try:
+            from sqpc.pipeline import Config
+            _ES_DB = Config(data_dir=os.path.join(HERE, "data"), reports_dir=os.path.join(HERE, "reports")).wh
+        except Exception as e:
+            print(f"  resultados e-sports no disponibles: {e}")
+            _ES_DB = False
+    if not _ES_DB:
+        return None
+    from sqpc.esports.predict import final_outcome
+    o = final_outcome(_ES_DB, series_id)
+    return ("finished", int(o["g_home"]), int(o["g_away"])) if o else None
+
+
 def results(state: dict, comps: dict, teams: dict, now_ms: int, limit: int) -> list[dict]:
     """Final scores for published matches whose kickoff has passed."""
     out, checked = [], 0
@@ -507,7 +654,7 @@ def results(state: dict, comps: dict, teams: dict, now_ms: int, limit: int) -> l
             continue
         checked += 1
         try:
-            r = espn_result(s["slug"], s["event"])
+            r = esports_result(s["event"]) if s["slug"] == "esports" else espn_result(s["slug"], s["event"])
         except Exception as e:  # network errors: retry next run
             print(f"  resultado {mid}: {e}")
             continue
@@ -558,9 +705,9 @@ def tracked_picks(reports: str, days: int, limit: int = 1500) -> tuple[list[dict
         if st not in ("pending", "won", "lost", "void"):
             continue
         sport, league = r["sport"], r["league"]
-        name = FOOTBALL_NAMES.get(league, league) if sport == "football" else US_LEAGUES.get(league, (None, league))[1]
+        comp_id, name = competition(sport, league)
         row = {"id": "tp-" + hashlib.sha1(r["id"].encode()).hexdigest()[:24], "kind": r["kind"], "sport": sport,
-               "competitionId": f"{sport}-{league.lower()}", "competitionName": str(name)[:120], "matchId": r["match_id"][:128],
+               "competitionId": comp_id, "competitionName": str(name)[:120], "matchId": r["match_id"][:128],
                "home": r["home"][:120], "away": r["away"][:120], "kickoffAt": int(r["kickoff_ms"]),
                "group": str(r.get("group") or "Otros")[:30], "label": str(r["label"])[:140], "p": clamp(float(r["p"])),
                "status": st, "pickedAt": int(r.get("updated_ms") or r.get("created_ms")), "updatedAt": int(r.get("updated_ms") or 0)}
@@ -579,6 +726,22 @@ def tracked_picks(reports: str, days: int, limit: int = 1500) -> tuple[list[dict
             row["profit"] = float(r["profit"])
         out.append(row)
     return out, stats
+
+
+def split_sport(batch: dict, sport: str) -> tuple[dict, dict | None]:
+    """(batch without `sport`, batch with only `sport` or None). Competitions/teams follow their sport."""
+    ids = {m["id"] for m in batch["matches"] if m["sport"] == sport}
+    tps = [t for t in batch.get("trackedPicks", []) if t["sport"] == sport]
+    if not ids and not tps:
+        return batch, None
+    pick = lambda rows, keep: [r for r in rows if (r["sport"] == sport) == keep]  # noqa: E731
+    main_b = {**batch, "competitions": pick(batch["competitions"], False), "teams": pick(batch["teams"], False),
+              "matches": pick(batch["matches"], False), "predictions": [p for p in batch["predictions"] if p["matchId"] not in ids],
+              "metrics": pick(batch.get("metrics", []), False), "trackedPicks": pick(batch.get("trackedPicks", []), False)}
+    side = {**batch, "batchId": str(uuid.uuid4()), "competitions": pick(batch["competitions"], True), "teams": pick(batch["teams"], True),
+            "matches": pick(batch["matches"], True), "predictions": [p for p in batch["predictions"] if p["matchId"] in ids],
+            "metrics": [], "trackedPicks": tps}
+    return main_b, side
 
 
 MAX_PART_BYTES = 1_500_000  # the site accepts up to 5 MB; smaller parts keep each request quick
@@ -618,7 +781,8 @@ def main() -> int:
     ap = argparse.ArgumentParser(description="Publica en easygoldglitch.com lo que SQPC ya calculó")
     ap.add_argument("--reports", default=os.path.join(HERE, "reports"))
     ap.add_argument("--days", type=int, default=3, help="carpetas de predicciones recientes a leer")
-    ap.add_argument("--include-ncaab", action="store_true")
+    ap.add_argument("--skip-ncaab", action="store_true", help="no publicar NCAA baloncesto (decenas de partidos al día)")
+    ap.add_argument("--include-ncaab", action="store_true", help=argparse.SUPPRESS)  # compat: NCAAB is published by default
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--results-limit", type=int, default=80)
     a = ap.parse_args()
@@ -630,7 +794,7 @@ def main() -> int:
     except (OSError, ValueError):
         state = {}
 
-    batch, state_add = build(a.reports, a.days, a.include_ncaab, now)
+    batch, state_add = build(a.reports, a.days, not a.skip_ncaab, now)
     comps = {c["id"]: c for c in batch["competitions"]}
     teams = {t["id"]: t for t in batch["teams"]}
     for mid, s in state_add.items():
@@ -647,8 +811,12 @@ def main() -> int:
     batch["batchId"] = str(uuid.uuid4())
     batch["source"] = "sqpc"
 
-    print(f"Lote: {len(batch['matches']) - len(finished)} próximos · {len(batch['predictions'])} predicciones · "
-          f"{len(finished)} resultados · {len(batch['metrics'])} métricas · "
+    by_sport: dict[str, int] = {}
+    for m in batch["matches"]:
+        if m.get("status") == "scheduled":
+            by_sport[m["sport"]] = by_sport.get(m["sport"], 0) + 1
+    print(f"Lote: {len(batch['matches']) - len(finished)} próximos {by_sport} · {len(batch['predictions'])} predicciones · "
+          f"{len(batch['competitions'])} competiciones · {len(finished)} resultados · {len(batch['metrics'])} métricas · "
           f"{len(batch['trackedPicks'])} picks en seguimiento {tstats or ''}")
     if a.dry_run:
         with open(LAST_BATCH, "w", encoding="utf-8") as f:
@@ -661,7 +829,8 @@ def main() -> int:
         print("Falta .env con GG_INGEST_URL y GG_INGEST_SECRET (Admin → Datos → Conexión con SQPC).", file=sys.stderr)
         return 2
     res: dict[str, Any] = {"ok": True}
-    parts = split_batch(batch)
+    main_batch, side = split_sport(batch, "esports")
+    parts = split_batch(main_batch)
     for i, part in enumerate(parts, 1):
         try:
             r = publish(part, url, secret)
@@ -672,6 +841,15 @@ def main() -> int:
         if not r.get("ok"):
             res = r
             break
+    # E-sports travel apart: a site without e-sports yet (deploy or migration 0009 pending) must never block the rest.
+    if res.get("ok") and side:
+        for part in split_batch(side):
+            try:
+                r = publish(part, url, secret)
+                print(f"E-sports: {json.dumps(r, ensure_ascii=False)}")
+            except RuntimeError as e:
+                print(f"  e-sports no publicados (¿falta desplegar la web o aplicar la migración 0009?): {e}")
+                break
     if res.get("ok"):
         # Keep state small: drop matches finalized more than 14 days ago.
         cutoff = now - 14 * 86400_000

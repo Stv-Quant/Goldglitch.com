@@ -67,6 +67,14 @@ Reglas en `lib/tracked.ts` (SQL):
 
 Los picks pendientes no se muestran en público: son contenido Pro. La tabla se crea sola si falta la migración `0008_tracked_picks.sql`.
 
+### Qué publica SQPC (todas las ligas y deportes)
+- **Fútbol:** todas las ligas que SQPC predice, sin lista fija: las del archivo football-data, más Liga BetPlay, Champions, Europa y Conference League, Libertadores y Sudamericana. Lleva 1X2, xG, matriz de marcadores, mercados, líneas, jugadores y picks. Además, el bloque `stakes` ("En juego", Pro): posición, P(título / zona alta / descenso) a fin de temporada, cuánto mueve el partido cada una y el estado anímico.
+- **NBA, NCAA baloncesto y NHL:** moneyline, hándicap, totales y picks. NCAAB se publica por defecto; se desactiva con `--skip-ncaab`. La NBA incluye las líneas de puntos, rebotes, asistencias y triples de toda la rotación (8 por equipo).
+- **MLB**, en temporada.
+- **E-sports (Valorant, Dota 2):** ganador de la serie, hándicap y total de mapas, marcador exacto y rating por mapas. Ids `es-<serie>`; los resultados salen de la base de SQPC.
+
+**E-sports necesita la migración `0009_esports.sql`** (`npm run db:migrate:remote`). Hasta aplicarla, `/api/ingest` omite las filas de e-sports y responde `skippedSports`, sin bloquear el resto. Además, el sync envía los e-sports en un lote aparte.
+
 ## Legado
 
 La tienda EGG (pago en ETH) se retiró en la rama `feat/stats-pwa-foundation`. Sigue disponible en el historial de git. La tabla `orders` se mantiene en D1 sin cambios.

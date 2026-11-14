@@ -1,4 +1,4 @@
-export const SPORTS = ["football", "baseball", "basketball", "hockey"] as const;
+export const SPORTS = ["football", "baseball", "basketball", "hockey", "esports"] as const;
 export type Sport = (typeof SPORTS)[number];
 
 export const SPORT_LABEL: Record<Sport, string> = {
@@ -6,6 +6,7 @@ export const SPORT_LABEL: Record<Sport, string> = {
   baseball: "Béisbol",
   basketball: "Baloncesto",
   hockey: "Hockey",
+  esports: "E-sports",
 };
 
 /** Short tag for compact UI (banner chips). */
@@ -14,6 +15,7 @@ export const SPORT_TAG: Record<Sport, string> = {
   baseball: "MLB",
   basketball: "BAL",
   hockey: "NHL",
+  esports: "ESP",
 };
 
 export function isSport(v: string): v is Sport {

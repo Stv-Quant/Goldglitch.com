@@ -3,6 +3,7 @@ import { ingestBatchSchema } from "@/lib/contracts";
 import { hmacSha256Hex, safeEqual, sha256Hex } from "@/lib/crypto";
 import { getDB } from "@/lib/env";
 import { getIngestSecret } from "@/lib/ingestKey";
+import { acceptedSports, filterBySport } from "@/lib/schema";
 import { ensureTrackedTable, trackedPickStatements } from "@/lib/tracked";
 
 const MAX_SKEW_MS = 5 * 60 * 1000;
@@ -43,12 +44,19 @@ export async function POST(request: Request) {
       { status: 422 },
     );
   }
-  const b = parsed.data;
   const db = await getDB();
   const now = Date.now();
 
-  const seen = await db.prepare("SELECT id FROM ingest_batches WHERE id = ?").bind(b.batchId).first();
+  const seen = await db.prepare("SELECT id FROM ingest_batches WHERE id = ?").bind(parsed.data.batchId).first();
   if (seen) return Response.json({ ok: true, duplicate: true });
+  // A sport whose migration has not run yet (e.g. e-sports before 0009) is skipped instead of failing the batch.
+  let accepted = null;
+  try {
+    accepted = await acceptedSports(db);
+  } catch {
+    accepted = null;
+  }
+  const { batch: b, skipped } = filterBySport(parsed.data, accepted);
 
   const stmts: D1PreparedStatement[] = [];
 
@@ -169,5 +177,6 @@ export async function POST(request: Request) {
     },
     // Predictions rejected because they were generated at/after kickoff or are older than the stored version.
     rejectedPredictions: b.predictions.length - predictionsStored,
+    ...(Object.keys(skipped).length ? { skippedSports: skipped, hint: "falta aplicar la migración de ese deporte (npm run db:migrate:remote)" } : {}),
   });
 }

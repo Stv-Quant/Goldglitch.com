@@ -7,6 +7,7 @@ import { GoalsPanel } from "@/components/stats/GoalsPanel";
 import { LockedPanel } from "@/components/stats/LockedPanel";
 import { MarketsPanel, PicksList } from "@/components/stats/MatchPanels";
 import { PlayersExplorer } from "@/components/stats/PlayersExplorer";
+import { StakesPanel } from "@/components/stats/StakesPanel";
 import { ProbLegend } from "@/components/stats/Prob";
 import { ProbabilityBar } from "@/components/stats/ProbabilityBar";
 import { StatLines } from "@/components/stats/StatLines";
@@ -98,6 +99,21 @@ export default async function MatchPage({ params }: { params: Promise<{ id: stri
         ) : (
           <LockedPanel tier="Pro" title="Desglose por jugador">
             {"Ficha completa de cada jugador: probabilidad de ser titular, minutos, gol, asistencia, remates y remates al arco, faltas, tarjetas, atajadas, su temporada por 90 minutos y su historial contra el rival."}
+          </LockedPanel>
+        ),
+      });
+    }
+
+    if (p.stakes || p.stakesLocked) {
+      tabs.push({
+        id: "en-juego",
+        label: "En juego",
+        badge: pro ? undefined : "PRO",
+        content: pro ? (
+          <StakesPanel s={p.stakes!} home={m.home.name} away={m.away.name} />
+        ) : (
+          <LockedPanel tier="Pro" title="Lo que se juega cada equipo">
+            {"Posición, probabilidad de título, plazas europeas o de ascenso y descenso al final de la temporada, cuánto mueve este partido cada una y el estado anímico (racha frente a lo esperado). Ya está incluido en las probabilidades."}
           </LockedPanel>
         ),
       });

@@ -15,6 +15,8 @@ export type RedactedPrediction = {
   /** Free plan gets the lines marked free; Pro and Elite get all of them. */
   lines: Prediction["lines"];
   linesLocked: number;
+  /** The match has a "what they play for" block the viewer's plan does not include. */
+  stakesLocked: boolean;
   // Pro (Elite includes everything in Pro)
   interval?: NonNullable<Prediction["outcome"]["interval"]>;
   xg?: Prediction["xg"];
@@ -22,6 +24,7 @@ export type RedactedPrediction = {
   markets?: Prediction["markets"];
   players?: Prediction["players"];
   edges?: Prediction["edges"];
+  stakes?: Prediction["stakes"];
   locked: { pro: boolean; elite: boolean };
 };
 
@@ -39,6 +42,7 @@ export function redactPrediction(p: Prediction, tier: Tier): RedactedPrediction 
     features: p.features,
     lines: hasTier(tier, "pro") ? (p.lines ?? []) : (p.lines ?? []).filter((l) => l.free),
     linesLocked: hasTier(tier, "pro") ? 0 : (p.lines ?? []).filter((l) => !l.free).length,
+    stakesLocked: !hasTier(tier, "pro") && !!p.stakes,
     locked: { pro: !hasTier(tier, "pro"), elite: !hasTier(tier, "elite") },
   };
   if (hasTier(tier, "pro")) {
@@ -48,6 +52,7 @@ export function redactPrediction(p: Prediction, tier: Tier): RedactedPrediction 
     out.markets = p.markets;
     out.players = p.players;
     out.edges = p.edges;
+    out.stakes = p.stakes;
   }
   return out;
 }
