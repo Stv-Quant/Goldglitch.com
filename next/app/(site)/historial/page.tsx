@@ -17,11 +17,10 @@ export default async function HistorialPage() {
   const metrics = await latestMetrics().catch(() => []);
   const m = metrics[0];
   const db = await getDB();
-  const [featured, value, recent, upcoming] = await Promise.all([
+  const [featured, value, recent] = await Promise.all([
     summarizeDb(db, "featured").catch(() => summarize([], "featured")),
     summarizeDb(db, "value").catch(() => summarize([], "value")),
     trackedPicks(db, "settled", 60).catch(() => []),
-    trackedPicks(db, "pending", 60).catch(() => []),
   ]);
 
   return (
@@ -41,7 +40,7 @@ export default async function HistorialPage() {
           de que empiece el partido y se liquida con el resultado real. No se borra ni se edita nada después del inicio. Un pick de 85% debe
           fallar más o menos 15 de cada 100 veces: lo que importa es que la tasa real se parezca a la prometida.
         </p>
-        <TrackRecord featured={featured} value={value} rows={recent} upcoming={upcoming} />
+        <TrackRecord featured={featured} value={value} rows={recent} />
       </div>
 
       <h2 className="mt-16 text-2xl font-semibold tracking-tight">Calibración del modelo (1X2)</h2>

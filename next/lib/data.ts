@@ -45,7 +45,13 @@ const SELECT_TEMPLATE = `
     JOIN teams ta ON ta.id = m.away_team_id`;
 const BASE_SELECT = SELECT_TEMPLATE.replace("__PAYLOAD__", "p.payload");
 // The match list only needs the 1X2: skip the heavy parts (distributions, score matrix, players).
-const LIST_SELECT = SELECT_TEMPLATE.replace("__PAYLOAD__", "json_remove(p.payload, '$.lines', '$.scoreMatrix', '$.players', '$.features', '$.edges')");
+// Markets only travel when SQPC sent no picks (they are the fallback source of picks).
+const LIST_SELECT = SELECT_TEMPLATE.replace(
+  "__PAYLOAD__",
+  `CASE WHEN json_array_length(p.payload, '$.picks') > 0
+        THEN json_remove(p.payload, '$.lines', '$.scoreMatrix', '$.players', '$.features', '$.edges', '$.markets', '$.stakes')
+        ELSE json_remove(p.payload, '$.lines', '$.scoreMatrix', '$.players', '$.features', '$.edges', '$.stakes') END`,
+);
 
 function short(name: string, s: string | null): string {
   return s ?? name.slice(0, 3).toUpperCase();
@@ -88,7 +94,7 @@ export async function listMatches(tier: Tier, fromMs: number, toMs: number): Pro
     .prepare(
       `${LIST_SELECT}
        WHERE m.kickoff_at >= ? AND m.kickoff_at < ? AND m.sport IN (${sports.map(() => "?").join(",")})
-       ORDER BY m.kickoff_at ASC LIMIT 200`,
+       ORDER BY m.kickoff_at ASC LIMIT 1500`,
     )
     .bind(fromMs, toMs, ...sports)
     .all<Row>();

@@ -4,6 +4,7 @@ import { ProbabilityBar } from "@/components/stats/ProbabilityBar";
 import { getTier } from "@/lib/auth";
 import { listMatches, type MatchView } from "@/lib/data";
 import { dayKey, dayLabel, timeLabel } from "@/lib/format";
+import { LEAGUE_GROUPS, compareLeagues, leagueInfo } from "@/lib/leagues";
 import { PICK_FEATURED } from "@/lib/picks";
 import { probColor } from "@/lib/probScale";
 
@@ -17,38 +18,51 @@ const DAYS = [
   { id: "todo", label: "Todo" },
 ] as const;
 
-export default async function MatchesPage({ searchParams }: { searchParams: Promise<{ liga?: string; dia?: string }> }) {
-  const { liga, dia } = await searchParams;
+export default async function MatchesPage({ searchParams }: { searchParams: Promise<{ liga?: string; dia?: string; region?: string }> }) {
+  const { liga, dia, region } = await searchParams;
   const tier = await getTier();
   const now = Date.now();
   const all = await listMatches(tier, now - 3 * 60 * 60 * 1000, now + WINDOW_MS);
 
   const today = dayKey(now);
   const tomorrow = dayKey(now + 86_400_000);
-  // Default: today if there is still something to play, otherwise the next 7 days.
-  // Default: everything SQPC published (all sports and leagues); the day buttons narrow it down.
-  const day = DAYS.some((d) => d.id === dia) ? dia! : "todo";
+  const open = (m: MatchView) => m.status !== "finished";
+  // Default: today when something is still to be played; otherwise the next 7 days.
+  const day = DAYS.some((d) => d.id === dia) ? dia! : all.some((m) => open(m) && dayKey(m.kickoffAt) === today) ? "hoy" : "semana";
   const inDay = (m: MatchView) =>
     day === "todo" ? true
     : day === "semana" ? m.kickoffAt < now + 7 * 86_400_000
     : dayKey(m.kickoffAt) === (day === "hoy" ? today : tomorrow);
 
-  const competitions = Array.from(new Map(all.filter(inDay).map((m) => [m.competition.id, m.competition])).values());
-  const matches = all.filter((m) => inDay(m) && (!liga || m.competition.id === liga));
-  const upcoming = matches.filter((m) => m.status !== "finished" && m.kickoffAt > now - 3 * 3_600_000);
+  const dayMatches = all.filter(inDay);
+  // Regions and leagues present in the chosen day, in the app's order.
+  const comps = Array.from(new Map(dayMatches.map((m) => [m.competition.id, { ...m.competition, sport: m.sport }])).values())
+    .sort((x, y) => compareLeagues(x, y, x.sport, y.sport));
+  const count = (f: (m: MatchView) => boolean) => dayMatches.filter(f).length;
+  const regions = LEAGUE_GROUPS.map((g) => ({ ...g, n: count((m) => leagueInfo(m.competition.id, m.sport).group === g.id) })).filter((g) => g.n > 0);
+  const selLeague = comps.find((c) => c.id === liga);
+  const reg = selLeague ? leagueInfo(selLeague.id, selLeague.sport).group : regions.some((g) => g.id === region) ? region! : null;
+  const regionComps = reg ? comps.filter((c) => leagueInfo(c.id, c.sport).group === reg) : [];
+
+  const matches = dayMatches.filter((m) =>
+    selLeague ? m.competition.id === selLeague.id : reg ? leagueInfo(m.competition.id, m.sport).group === reg : true);
+  const upcoming = matches.filter((m) => open(m) && m.kickoffAt > now - 3 * 3_600_000);
 
   const picks = upcoming.flatMap((m) => m.picks).length;
   const lockedPicks = upcoming.reduce((n, m) => n + m.picksLocked, 0);
   const best = upcoming.flatMap((m) => m.picks).reduce((b, k) => Math.max(b, k.p), 0);
 
-  const days = new Map<string, MatchView[]>();
+  // Day → league (in league order) → matches by time.
+  const days = new Map<string, Map<string, MatchView[]>>();
   for (const m of matches) {
-    const k = dayKey(m.kickoffAt);
-    days.set(k, [...(days.get(k) ?? []), m]);
+    const d = days.get(dayKey(m.kickoffAt)) ?? new Map<string, MatchView[]>();
+    d.set(m.competition.id, [...(d.get(m.competition.id) ?? []), m]);
+    days.set(dayKey(m.kickoffAt), d);
   }
-  const href = (q: { liga?: string; dia?: string }) => {
+  const href = (q: { liga?: string; dia?: string; region?: string }) => {
     const sp = new URLSearchParams();
-    if (q.dia && q.dia !== "todo") sp.set("dia", q.dia);
+    if (q.dia) sp.set("dia", q.dia);
+    if (q.region) sp.set("region", q.region);
     if (q.liga) sp.set("liga", q.liga);
     const s = sp.toString();
     return s ? `/app?${s}` : "/app";
@@ -73,19 +87,36 @@ export default async function MatchesPage({ searchParams }: { searchParams: Prom
       <div className="space-y-3">
         <nav className="flex gap-1 rounded-xl border border-line p-1 text-sm sm:inline-flex" aria-label="Día">
           {DAYS.map((d) => (
-            <Link key={d.id} href={href({ dia: d.id, liga })} aria-current={day === d.id ? "true" : undefined}
-              className={`flex-1 rounded-lg px-4 py-1.5 text-center transition-colors ${day === d.id ? "bg-[var(--gold-faint)] text-hi" : "text-lo hover:text-hi"}`}>
+            <Link key={d.id} href={href({ dia: d.id })} aria-current={day === d.id ? "true" : undefined}
+              className={`flex-1 whitespace-nowrap rounded-lg px-4 py-1.5 text-center transition-colors ${day === d.id ? "bg-[var(--gold-faint)] text-hi" : "text-lo hover:text-hi"}`}>
               {d.label}
             </Link>
           ))}
         </nav>
-        {competitions.length > 1 && (
-          <nav className="scroll-x -mx-4 flex gap-2 px-4 text-sm sm:mx-0 sm:flex-wrap sm:px-0" aria-label="Filtrar por liga">
-            <Chip href={href({ dia: day })} active={!liga}>Todas</Chip>
-            {competitions.map((c) => (
-              <Chip key={c.id} href={href({ dia: day, liga: c.id })} active={liga === c.id}>{c.name}</Chip>
-            ))}
-          </nav>
+
+        {regions.length > 0 && (
+          <div className="card p-3 sm:p-4">
+            <nav className="scroll-x -mx-1 flex gap-2 px-1 text-sm sm:flex-wrap" aria-label="Región">
+              <Chip href={href({ dia: day })} active={!reg} count={dayMatches.length}>Todas</Chip>
+              {regions.map((g) => (
+                <Chip key={g.id} href={href({ dia: day, region: g.id })} active={reg === g.id} count={g.n}>{g.label}</Chip>
+              ))}
+            </nav>
+            {regionComps.length > 0 && (
+              <nav className="mt-3 flex flex-wrap gap-2 border-t border-line pt-3 text-sm" aria-label="Liga">
+                <Chip href={href({ dia: day, region: reg! })} active={!selLeague} small>Todas las ligas</Chip>
+                {regionComps.map((c) => {
+                  const ctry = leagueInfo(c.id, c.sport).country;
+                  return (
+                    <Chip key={c.id} href={href({ dia: day, liga: c.id })} active={selLeague?.id === c.id} small
+                      count={count((m) => m.competition.id === c.id)}>
+                      {c.name}{ctry && !c.name.includes(ctry) ? <span className="ml-1 text-lo">· {ctry}</span> : null}
+                    </Chip>
+                  );
+                })}
+              </nav>
+            )}
+          </div>
         )}
       </div>
 
@@ -96,18 +127,35 @@ export default async function MatchesPage({ searchParams }: { searchParams: Prom
           {day === "hoy" || day === "manana" ? `No hay partidos publicados para ${day === "hoy" ? "hoy" : "mañana"}. Prueba con 7 días.` : "No hay partidos publicados para esta ventana. El modelo publica nuevas fichas varias veces al día."}
         </div>
       ) : (
-        <div className="space-y-8">
-          {Array.from(days.entries()).map(([k, list]) => (
-            <section key={k} aria-labelledby={`d-${k}`}>
-              <h2 id={`d-${k}`} className="mb-3 flex items-baseline gap-2">
-                <span className="text-lg font-semibold">{dayLabel(list[0].kickoffAt, now)}</span>
-                <span className="num text-xs text-lo">{list.length} partido{list.length === 1 ? "" : "s"}</span>
-              </h2>
-              <ul className="grid gap-3 md:grid-cols-2">
-                {list.map((m) => <li key={m.id}><MatchCard m={m} /></li>)}
-              </ul>
-            </section>
-          ))}
+        <div className="space-y-10">
+          {Array.from(days.entries()).map(([k, leagues]) => {
+            const ordered = [...leagues.entries()].sort(([, a], [, b]) => compareLeagues(a[0].competition, b[0].competition, a[0].sport, b[0].sport));
+            const n = ordered.reduce((s, [, l]) => s + l.length, 0);
+            return (
+              <section key={k} aria-labelledby={`d-${k}`} className="space-y-5">
+                <h2 id={`d-${k}`} className="flex items-baseline gap-2 border-b border-line pb-2">
+                  <span className="text-xl font-semibold">{dayLabel(ordered[0][1][0].kickoffAt, now)}</span>
+                  <span className="num text-xs text-lo">{n} partido{n === 1 ? "" : "s"} · {ordered.length} liga{ordered.length === 1 ? "" : "s"}</span>
+                </h2>
+                {ordered.map(([cid, list]) => {
+                  const ctry = leagueInfo(cid, list[0].sport).country;
+                  return (
+                    <div key={cid}>
+                      <h3 className="mb-2 flex items-center gap-2 text-sm">
+                        <span aria-hidden className="h-3 w-0.5 rounded-full bg-[var(--gold)]" />
+                        <Link href={href({ dia: day, liga: cid })} className="font-medium text-hi hover:text-gold">{list[0].competition.name}</Link>
+                        {ctry && !list[0].competition.name.includes(ctry) && <span className="text-lo">{ctry}</span>}
+                        <span className="num text-[11px] text-lo">· {list.length}</span>
+                      </h3>
+                      <ul className="grid gap-3 md:grid-cols-2">
+                        {list.map((m) => <li key={m.id}><MatchCard m={m} /></li>)}
+                      </ul>
+                    </div>
+                  );
+                })}
+              </section>
+            );
+          })}
         </div>
       )}
     </div>
@@ -126,11 +174,14 @@ function Stat({ label, value, p, locked }: { label: string; value?: string; p?: 
   );
 }
 
-function Chip({ href, active, children }: { href: string; active: boolean; children: React.ReactNode }) {
+function Chip({ href, active, children, count, small = false }: {
+  href: string; active: boolean; children: React.ReactNode; count?: number; small?: boolean;
+}) {
   return (
     <Link href={href} aria-current={active ? "true" : undefined}
-      className={`whitespace-nowrap rounded-full border px-3 py-1 transition-colors ${active ? "border-[var(--border-glass)] bg-[var(--gold-faint)] text-hi" : "border-line text-lo hover:text-hi"}`}>
+      className={`whitespace-nowrap rounded-full border transition-colors ${small ? "px-2.5 py-0.5 text-[13px]" : "px-3 py-1"} ${active ? "border-[var(--border-glass)] bg-[var(--gold-faint)] text-hi" : "border-line text-lo hover:text-hi"}`}>
       {children}
+      {count !== undefined && <span className={`num ml-1.5 text-[11px] ${active ? "text-gold" : "text-lo"}`}>{count}</span>}
     </Link>
   );
 }
