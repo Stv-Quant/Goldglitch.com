@@ -57,24 +57,62 @@ const marketRow = z.object({
   group: z.string().max(30).optional(),
 });
 
+const count = z.number().int().min(0).max(100000);
+const statNums = z.record(z.string().max(20), z.number().min(0).max(1000));
+
+/** One of the player's last games against this opponent. */
+const vsGame = z.object({
+  date: z.string().max(10),
+  comp: z.string().max(20).optional(),
+  minutes: count.optional(),
+  starter: z.boolean().optional(),
+  goals: count.optional(),
+  assists: count.optional(),
+  shots: count.optional(),
+  sot: count.optional(),
+  fouls: count.optional(),
+  yellow: count.optional(),
+});
+
 const playerRow = z.object({
   name: z.string().max(80),
   side: z.enum(["home", "away"]),
   role: z.string().max(30).optional(),
+  /** Chance of starting / of playing at all. */
+  pStart: prob.optional(),
+  pPlay: prob.optional(),
   expectedMinutes: z.number().min(0).max(120).optional(),
   pScore: prob.optional(),
   pAssist: prob.optional(),
   xg90: z.number().min(0).optional(),
+  /** Expected count for this match: goals, assists, shots, sot, fouls, fouled, yellow, offsides, saves. */
+  exp: statNums.optional(),
+  /** SQPC's own probabilities for this match: goal2, shots1..3, sot1..2, fouls1..2, fouled1, card, offside1, saves2..4. */
+  probs: z.record(z.string().max(20), prob).optional(),
   /** Season totals as SQPC has them. */
   season: z.object({
-    apps: z.number().int().min(0).optional(),
-    goals: z.number().int().min(0).optional(),
-    assists: z.number().int().min(0).optional(),
-    shots: z.number().int().min(0).optional(),
-    sot: z.number().int().min(0).optional(),
-    yellow: z.number().int().min(0).optional(),
+    apps: count.optional(),
+    starts: count.optional(),
+    minutes: count.optional(),
+    goals: count.optional(),
+    assists: count.optional(),
+    shots: count.optional(),
+    sot: count.optional(),
+    fouls: count.optional(),
+    fouled: count.optional(),
+    yellow: count.optional(),
+    offsides: count.optional(),
+    saves: count.optional(),
+  }).optional(),
+  /** History against today's opponent. */
+  vsOpp: z.object({
+    games: count,
+    minutes: count.optional(),
+    totals: z.record(z.string().max(20), count).optional(),
+    recent: z.array(vsGame).max(10).optional(),
   }).optional(),
 });
+export type PlayerRow = z.infer<typeof playerRow>;
 
 /** A selection SQPC itself ranked, with its uncertainty band and (when known) the best price found. */
 const sqpcPick = z.object({
