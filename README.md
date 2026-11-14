@@ -73,7 +73,7 @@ Los picks pendientes no se muestran en público: son contenido Pro. La tabla se 
 - **MLB**, en temporada.
 - **E-sports (Valorant, Dota 2):** ganador de la serie, hándicap y total de mapas, marcador exacto y rating por mapas. Ids `es-<serie>`; los resultados salen de la base de SQPC.
 
-**E-sports necesita la migración `0009_esports.sql`** (`npm run db:migrate:remote`). Hasta aplicarla, `/api/ingest` omite las filas de e-sports y responde `skippedSports`, sin bloquear el resto. Además, el sync envía los e-sports en un lote aparte.
+**E-sports necesita la migración `0010_esports.sql`** (`npm run db:migrate:remote`). Hasta aplicarla, `/api/ingest` omite las filas de e-sports y responde `skippedSports`, sin bloquear el resto. Además, el sync envía los e-sports en un lote aparte.
 
 ## Legado
 

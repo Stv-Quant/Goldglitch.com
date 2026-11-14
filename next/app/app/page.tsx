@@ -25,9 +25,9 @@ export default async function MatchesPage({ searchParams }: { searchParams: Prom
 
   const today = dayKey(now);
   const tomorrow = dayKey(now + 86_400_000);
-  const isLive = (m: MatchView) => m.status !== "finished";
   // Default: today if there is still something to play, otherwise the next 7 days.
-  const day = DAYS.some((d) => d.id === dia) ? dia! : all.some((m) => isLive(m) && dayKey(m.kickoffAt) === today) ? "hoy" : "semana";
+  // Default: everything SQPC published (all sports and leagues); the day buttons narrow it down.
+  const day = DAYS.some((d) => d.id === dia) ? dia! : "todo";
   const inDay = (m: MatchView) =>
     day === "todo" ? true
     : day === "semana" ? m.kickoffAt < now + 7 * 86_400_000
@@ -48,7 +48,7 @@ export default async function MatchesPage({ searchParams }: { searchParams: Prom
   }
   const href = (q: { liga?: string; dia?: string }) => {
     const sp = new URLSearchParams();
-    if (q.dia) sp.set("dia", q.dia);
+    if (q.dia && q.dia !== "todo") sp.set("dia", q.dia);
     if (q.liga) sp.set("liga", q.liga);
     const s = sp.toString();
     return s ? `/app?${s}` : "/app";
