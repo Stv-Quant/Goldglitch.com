@@ -42,7 +42,6 @@ export const PLANS: Record<Tier, PlanDef> = {
       "Todas las líneas: goles, córners, tarjetas, remates y jugadores",
       "xG, marcadores más probables y portería a cero",
       "Mercados completos con su rango de incertidumbre",
-      "Modelo contra cuotas de las casas (EV)",
     ],
   },
   elite: {

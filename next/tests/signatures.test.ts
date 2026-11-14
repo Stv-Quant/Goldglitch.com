@@ -90,14 +90,16 @@ describe("Entitlements", () => {
     expect(s).not.toContain("bookmaker");
     expect(r.locked).toEqual({ pro: true, elite: true });
   });
-  it("pro gets every statistic, market edges included", () => {
+  it("pro gets every statistic; bookmaker odds never reach the page", () => {
     const r = redactPrediction(p, "pro");
     expect(r.scoreMatrix).toBeDefined();
-    expect(r.edges?.length).toBeGreaterThan(0);
+    expect(r.edges).toBeUndefined();
     expect(canViewSport("pro", "basketball")).toBe(true);
     expect(canViewSport("free", "basketball")).toBe(false);
   });
-  it("elite gets everything", () => {
-    expect(redactPrediction(p, "elite").edges?.length).toBeGreaterThan(0);
+  it("elite gets every statistic too, still without bookmaker odds", () => {
+    const r = redactPrediction(p, "elite");
+    expect(r.players).toBeDefined();
+    expect(r.edges).toBeUndefined();
   });
 });

@@ -153,7 +153,7 @@ export async function sendWelcome(user: { id: string; email: string }): Promise<
     title: "Bienvenido a Goldglitch",
     paragraphs: [
       "Ya tienes tu cuenta. Aquí no vendemos picks ni certezas: publicamos la probabilidad de cada resultado, con su rango de incertidumbre, y llevamos un historial abierto de aciertos y fallos.",
-      "Con el plan gratis ves las probabilidades 1X2 de fútbol. Pro abre todas las estadísticas: picks del modelo, líneas de goles, córners, tarjetas y jugadores, marcadores probables, todos los deportes y el modelo contra las cuotas de las casas.",
+      "Con el plan gratis ves las probabilidades 1X2 de fútbol. Pro abre todas las estadísticas: picks del modelo, líneas de goles, córners, tarjetas y jugadores, marcadores probables y todos los deportes.",
       "Un consejo para empezar: mira el rango, no solo el número. Un 55% con rango 45–65% no es lo mismo que un 55% con rango 52–58%.",
     ],
     cta: { label: "Ver los partidos de hoy", url: `${base}/app` },

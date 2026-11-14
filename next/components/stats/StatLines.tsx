@@ -33,7 +33,6 @@ export function defaultLine(l: StatLine): number {
 }
 
 const pct = (p: number) => `${Math.round(p * 100)}%`;
-const fair = (p: number) => (p > 0.005 ? (1 / p).toFixed(2) : "—");
 const fmtLine = (n: number) => n.toLocaleString("es-CO", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 
 function LineCard({ l }: { l: StatLine }) {
@@ -67,11 +66,11 @@ function LineCard({ l }: { l: StatLine }) {
       <div className="mt-3 grid grid-cols-2 gap-2 text-sm" aria-live="polite">
         <div className={`rounded-lg px-2.5 py-2 ${!favOver ? "bg-[var(--gold-faint)]" : ""}`}>
           <div className={`num text-lg font-semibold ${isHot(u) ? "p-glow" : ""}`} style={{ color: probColor(u) }}>{pct(u)}</div>
-          <div className="text-[11px] text-lo">Menos de {fmtLine(line)} · cuota {fair(u)}</div>
+          <div className="text-[11px] text-lo">Menos de {fmtLine(line)}</div>
         </div>
         <div className={`rounded-lg px-2.5 py-2 text-right ${favOver ? "bg-[var(--gold-faint)]" : ""}`}>
           <div className={`num text-lg font-semibold ${isHot(o) ? "p-glow" : ""}`} style={{ color: probColor(o) }}>{pct(o)}</div>
-          <div className="text-[11px] text-lo">Más de {fmtLine(line)} · cuota {fair(o)}</div>
+          <div className="text-[11px] text-lo">Más de {fmtLine(line)}</div>
         </div>
       </div>
     </div>
