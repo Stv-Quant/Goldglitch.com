@@ -153,6 +153,48 @@ const statLine = z.object({
 });
 export type StatLine = z.infer<typeof statLine>;
 
+/** One side of "what each team plays for": current table, end-of-season chances and how much this match moves them. */
+const stakeSide = z.object({
+  team: z.string().max(120),
+  pos: z.number().int().min(1).max(60),
+  pts: z.number().int().min(0).max(200),
+  gp: z.number().int().min(0).max(80),
+  gd: z.number().int().min(-200).max(200),
+  pTop: prob,
+  pZone: prob,
+  pReleg: prob,
+  /** Win instead of lose: change in P(title or top places) and in P(relegation). */
+  levTop: z.number().min(-1).max(1),
+  levZone: z.number().min(-1).max(1),
+  levDown: z.number().min(-1).max(1),
+  dead: z.boolean(),
+  need: z.string().max(120),
+});
+const moodSide = z.object({
+  /** Points per game over what the model expected, last 5 league matches. */
+  form: z.number().min(-3).max(3),
+  slump: z.boolean(),
+  last: z.string().max(10),
+});
+export const stakesSchema = z.object({
+  format: z.object({
+    teams: z.number().int().min(2).max(60),
+    games: z.number().int().min(1).max(80),
+    top: z.number().int().min(1).max(10),
+    zone: z.number().int().min(1).max(30),
+    releg: z.number().int().min(0).max(10),
+    topLabel: z.string().max(40),
+    zoneLabel: z.string().max(40),
+  }).optional(),
+  progress: prob.optional(),
+  home: stakeSide.optional(),
+  away: stakeSide.optional(),
+  mood: z.object({ home: moodSide.optional(), away: moodSide.optional() }).optional(),
+  /** Goal multipliers already applied to the model (1 = no effect). */
+  effect: z.object({ home: z.number().min(0.5).max(2), away: z.number().min(0.5).max(2), applied: z.boolean() }).optional(),
+});
+export type Stakes = z.infer<typeof stakesSchema>;
+
 export const predictionSchema = z.object({
   matchId: id,
   modelVersion: z.string().min(1).max(40),
@@ -174,6 +216,8 @@ export const predictionSchema = z.object({
   edges: z.array(edgeRow).max(40).default([]),
   lines: z.array(statLine).max(80).default([]),
   picks: z.array(sqpcPick).max(80).default([]),
+  /** Football: table position, what each side plays for and recent mood (SQPC models/stakes.py). */
+  stakes: stakesSchema.optional(),
 });
 
 export const metricsSchema = z.object({

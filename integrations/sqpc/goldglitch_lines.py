@@ -162,7 +162,7 @@ def basketball_lines(d: dict) -> list[dict]:
     for side in ("home", "away"):
         ps = [p for p in (d.get("players") or {}).get(side, []) if isinstance(p.get("expected"), dict) and (p.get("p_play") or 0) >= 0.5]
         ps.sort(key=lambda p: p.get("minutes") or 0, reverse=True)
-        for p in ps[:3]:
+        for p in ps[:8]:  # the rotation: 2 × 8 players × 4 stats + 3 team lines ≤ 80
             for stat in ("pts", "reb", "ast", "fg3m"):
                 mean = p["expected"].get(stat)
                 if not isinstance(mean, (int, float)):
