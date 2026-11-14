@@ -38,7 +38,7 @@ export default async function HistorialPage() {
         <p className="mt-2 text-mid max-w-3xl text-sm leading-relaxed">
           Cada pick que mostramos (toda selección con 75% o más según el modelo, en todos los deportes) queda guardado antes
           de que empiece el partido y se liquida con el resultado real. No se borra ni se edita nada después del inicio. Un pick de 85% debe
-          fallar más o menos 15 de cada 100 veces: lo que importa es que la tasa real se parezca a la prometida.
+          fallar más o menos 15 de cada 100 veces: lo que medimos es si la tasa real se parece a la que estimó el modelo.
         </p>
         <TrackRecord featured={featured} value={value} rows={recent} />
       </div>
