@@ -32,16 +32,16 @@ function Drift({ curve }: { curve: KindSummary["curve"] }) {
   return (
     <div className="card p-5">
       <div className="flex items-baseline justify-between gap-3">
-        <h3 className="text-sm text-mid">Aciertos reales − aciertos prometidos (acumulado)</h3>
+        <h3 className="text-sm text-mid">Aciertos reales − aciertos esperados por el modelo (acumulado)</h3>
         <span className={`num text-sm ${last >= 0 ? "text-up" : "text-down"}`}>{last >= 0 ? "+" : ""}{last.toFixed(1)}</span>
       </div>
       <svg viewBox={`0 0 ${W} ${H}`} className="mt-3 w-full block" role="img"
-        aria-label="Diferencia acumulada entre aciertos reales y aciertos que el modelo prometió">
+        aria-label="Diferencia acumulada entre aciertos reales y aciertos que esperaba el modelo">
         <line x1={pad} x2={W - pad} y1={H / 2} y2={H / 2} stroke="var(--text-lo)" strokeDasharray="4 4" />
         <path d={d} fill="none" stroke="var(--gold)" strokeWidth={1.6} />
       </svg>
       <p className="mt-2 text-[11px] text-lo">
-        Sube cuando acierta más de lo que prometió y baja cuando menos. Si el modelo es honesto, la línea oscila cerca de cero.
+        Sube cuando los aciertos superan lo que estimaba el modelo y baja cuando quedan por debajo. Si el modelo está bien calibrado, la línea oscila cerca de cero.
       </p>
     </div>
   );
@@ -57,7 +57,7 @@ function BucketTable({ title, rows, labelOf }: { title: string; rows: KindSummar
           <tr className="text-[11px] text-lo text-left">
             <th className="font-normal py-1"></th>
             <th className="font-normal py-1 text-right">Picks</th>
-            <th className="font-normal py-1 text-right">Prometido</th>
+            <th className="font-normal py-1 text-right">Estimado</th>
             <th className="font-normal py-1 text-right">Real</th>
           </tr>
         </thead>
@@ -92,8 +92,8 @@ export function TrackRecord({ featured, value, rows }: { featured: KindSummary; 
         <Card label="Picks acertados" value={featured.settled ? `${featured.won}/${featured.settled}` : "—"}
           hint={featured.void ? `${featured.void} nulos (aplazados o empujes) no cuentan` : "Picks de 75% o más ya liquidados"} tone="gold" />
         <Card label="Tasa de acierto" value={featured.hitRate !== null ? pct(featured.hitRate, 1) : "—"} hint="Lo que pasó" />
-        <Card label="Probabilidad prometida" value={featured.expected !== null ? pct(featured.expected, 1) : "—"}
-          hint={diff !== null ? `${diff >= 0 ? "+" : ""}${(diff * 100).toFixed(1)} pts frente a lo prometido` : "Lo que dijo el modelo"}
+        <Card label="Probabilidad estimada (promedio)" value={featured.expected !== null ? pct(featured.expected, 1) : "—"}
+          hint={diff !== null ? `${diff >= 0 ? "+" : ""}${(diff * 100).toFixed(1)} pts de acierto real frente a lo estimado` : "Lo que estimó el modelo"}
           tone={diff === null ? undefined : diff >= 0 ? "up" : "down"} />
         <Card label="Error de calibración" value={featured.brier !== null ? featured.brier.toFixed(3) : "—"} hint="Brier: más bajo es mejor (0 = perfecto)" />
       </div>
@@ -111,7 +111,7 @@ export function TrackRecord({ featured, value, rows }: { featured: KindSummary; 
           <h3 className="text-sm text-mid">Apuestas de valor validadas (1X2, a la cuota publicada, stake 1)</h3>
           <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
             <div><div className="text-[11px] text-lo">Liquidadas</div><div className="num text-lg">{value.won}/{value.settled}</div></div>
-            <div><div className="text-[11px] text-lo">Acierto vs prometido</div>
+            <div><div className="text-[11px] text-lo">Acierto real vs estimado</div>
               <div className="num text-lg">{value.hitRate !== null ? `${pct(value.hitRate, 1)} / ${pct(value.expected ?? 0, 1)}` : "—"}</div></div>
             <div><div className="text-[11px] text-lo">Ganancia</div>
               <div className={`num text-lg ${(value.profit ?? 0) >= 0 ? "text-up" : "text-down"}`}>
