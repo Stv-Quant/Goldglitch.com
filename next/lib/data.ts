@@ -45,13 +45,26 @@ const SELECT_TEMPLATE = `
     JOIN teams ta ON ta.id = m.away_team_id`;
 const BASE_SELECT = SELECT_TEMPLATE.replace("__PAYLOAD__", "p.payload");
 // The match list only needs the 1X2: skip the heavy parts (distributions, score matrix, players).
-// Markets only travel when SQPC sent no picks (they are the fallback source of picks).
-const LIST_SELECT = SELECT_TEMPLATE.replace(
-  "__PAYLOAD__",
-  `CASE WHEN json_array_length(p.payload, '$.picks') > 0
-        THEN json_remove(p.payload, '$.lines', '$.scoreMatrix', '$.players', '$.features', '$.edges', '$.markets', '$.stakes')
-        ELSE json_remove(p.payload, '$.lines', '$.scoreMatrix', '$.players', '$.features', '$.edges', '$.stakes') END`,
-);
+// The match list only needs the 1X2 and the picks at 75%+. SQLite (D1) builds that small object so the Worker does not
+// parse 40–60 KB per match: with hundreds of matches that parsing alone used to exceed the Worker's CPU limit.
+const LIST_PAYLOAD = `json_object(
+  'matchId', p.match_id,
+  'modelVersion', json_extract(p.payload, '$.modelVersion'),
+  'generatedAt', json_extract(p.payload, '$.generatedAt'),
+  'outcome', json_extract(p.payload, '$.outcome'),
+  'features', json('[]'), 'lines', json('[]'),
+  'sqpcPicks', COALESCE(json_array_length(p.payload, '$.picks'), 0),
+  'picks', json(COALESCE((SELECT json_group_array(json_object(
+      'group', json_extract(value, '$.group'), 'market', json_extract(value, '$.market'),
+      'selection', json_extract(value, '$.selection'), 'p', json_extract(value, '$.p'),
+      'lo', json_extract(value, '$.lo'), 'hi', json_extract(value, '$.hi'), 'price', json_extract(value, '$.price'),
+      'book', json_extract(value, '$.book'), 'grade', json_extract(value, '$.grade')))
+    FROM json_each(p.payload, '$.picks') WHERE json_extract(value, '$.p') >= 0.75 AND json_extract(value, '$.p') < 0.995), '[]')),
+  'markets', CASE WHEN COALESCE(json_array_length(p.payload, '$.picks'), 0) > 0 THEN json('[]')
+    ELSE json(COALESCE((SELECT json_group_array(json(value)) FROM json_each(p.payload, '$.markets')
+      WHERE json_extract(value, '$.p') >= 0.75 OR json_extract(value, '$.p') <= 0.25), '[]')) END
+)`;
+const LIST_SELECT = SELECT_TEMPLATE.replace("__PAYLOAD__", LIST_PAYLOAD);
 
 function short(name: string, s: string | null): string {
   return s ?? name.slice(0, 3).toUpperCase();
@@ -62,9 +75,10 @@ function toView(r: Row, tier: Tier): MatchView {
   let picks: Pick[] = [];
   if (r.payload) {
     try {
-      const raw = JSON.parse(r.payload) as Prediction;
+      const raw = JSON.parse(r.payload) as Prediction & { sqpcPicks?: number };
       prediction = redactPrediction(raw, tier);
-      picks = picksFor(raw, r.home_name, r.away_name);
+      // List rows carry only SQPC's picks at 75%+; if SQPC ranked picks but none reached 75%, there are none.
+      picks = raw.sqpcPicks && !raw.picks?.length ? [] : picksFor(raw, r.home_name, r.away_name);
     } catch {
       prediction = null;
     }
