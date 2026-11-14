@@ -5,7 +5,8 @@ import { EdgeTable } from "@/components/stats/EdgeTable";
 import { FeatureCompare } from "@/components/stats/FeatureCompare";
 import { GoalsPanel } from "@/components/stats/GoalsPanel";
 import { LockedPanel } from "@/components/stats/LockedPanel";
-import { MarketsPanel, PicksList, PlayersPanel } from "@/components/stats/MatchPanels";
+import { MarketsPanel, PicksList } from "@/components/stats/MatchPanels";
+import { PlayersExplorer } from "@/components/stats/PlayersExplorer";
 import { ProbLegend } from "@/components/stats/Prob";
 import { ProbabilityBar } from "@/components/stats/ProbabilityBar";
 import { StatLines } from "@/components/stats/StatLines";
@@ -91,12 +92,12 @@ export default async function MatchPage({ params }: { params: Promise<{ id: stri
       tabs.push({
         id: "jugadores",
         label: "Jugadores",
-        badge: pro ? undefined : "PRO",
+        badge: pro ? (p.players?.length ? String(p.players.length) : undefined) : "PRO",
         content: pro ? (
-          <PlayersPanel players={p.players!} homeShort={m.home.short} awayShort={m.away.short} />
+          <PlayersExplorer players={p.players!} home={{ name: m.home.name, short: m.home.short }} away={{ name: m.away.name, short: m.away.short }} />
         ) : (
           <LockedPanel tier="Pro" title="Desglose por jugador">
-            {"Probabilidad de gol y asistencia, minutos esperados, goles por partido, precisión de remate y tarjetas de cada jugador."}
+            {"Ficha completa de cada jugador: probabilidad de ser titular, minutos, gol, asistencia, remates y remates al arco, faltas, tarjetas, atajadas, su temporada por 90 minutos y su historial contra el rival."}
           </LockedPanel>
         ),
       });

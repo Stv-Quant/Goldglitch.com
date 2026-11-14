@@ -17,6 +17,7 @@ from __future__ import annotations
 import argparse
 import glob
 import json
+import math
 import os
 import re
 import sys
@@ -151,6 +152,71 @@ def sqpc_picks(d: dict) -> list[dict]:
 
 # ---------- per-sport converters ----------
 
+PLAYER_EXP = ("goals", "assists", "shots", "sot", "fouls", "fouled", "yellow", "offsides", "saves")
+PLAYER_PROBS = ("goal2", "shots1", "shots2", "shots3", "sot1", "sot2", "fouls1", "fouls2", "fouled1", "card", "offside1",
+                "saves2", "saves3", "saves4")
+SEASON_KEYS = ("apps", "starts", "minutes", "goals", "assists", "shots", "sot", "fouls", "fouled", "yellow", "offsides", "saves")
+VS_KEYS = ("minutes", "goals", "assists", "shots", "sot", "fouls", "yellow")
+
+
+def _num(x: Any) -> bool:
+    return isinstance(x, (int, float)) and not isinstance(x, bool) and math.isfinite(x)
+
+
+def football_players(d: dict, side: str, limit: int = 22) -> list[dict]:
+    """Everyone likely to play (≥30%), most minutes first, with every per-player number SQPC computed."""
+    rows = [p for p in (d.get("players") or {}).get(side, []) if (p.get("p_play") or 0) >= 0.3 and isinstance(p.get("p"), dict)]
+    rows.sort(key=lambda p: (p.get("exp_minutes") or 0, p["p"].get("goal") or 0), reverse=True)
+    out = []
+    for p in rows[:limit]:
+        pr, ex = p["p"], p.get("expected") or {}
+        r: dict[str, Any] = {"name": str(p.get("player", ""))[:80], "side": side}
+        if p.get("pos"):
+            r["role"] = str(p["pos"])[:30]
+        for src, dst in (("p_start", "pStart"), ("p_play", "pPlay")):
+            if _num(p.get(src)):
+                r[dst] = round(clamp(p[src]), 3)
+        if _num(p.get("exp_minutes")):
+            r["expectedMinutes"] = round(min(120.0, max(0.0, p["exp_minutes"])), 1)
+        if _num(pr.get("goal")):
+            r["pScore"] = round(clamp(pr["goal"]), 4)
+        if _num(pr.get("assist")):
+            r["pAssist"] = round(clamp(pr["assist"]), 4)
+        exp = {k: round(min(1000.0, max(0.0, ex[k])), 3) for k in PLAYER_EXP if _num(ex.get(k))}
+        if exp:
+            r["exp"] = exp
+        probs = {k: round(clamp(pr[k]), 4) for k in PLAYER_PROBS if _num(pr.get(k))}
+        if probs:
+            r["probs"] = probs
+        ss = p.get("season") or {}
+        season = {k: int(ss[k]) for k in SEASON_KEYS if _num(ss.get(k)) and ss[k] >= 0}
+        if season:
+            r["season"] = season
+        vs = p.get("vs_opp") or {}
+        if _num(vs.get("games")) and vs["games"] > 0:
+            tot = vs.get("totals") or {}
+            v: dict[str, Any] = {"games": int(vs["games"])}
+            if _num(vs.get("minutes")):
+                v["minutes"] = int(vs["minutes"])
+            t = {k: int(tot[k]) for k in VS_KEYS if _num(tot.get(k)) and tot[k] >= 0}
+            if t:
+                v["totals"] = t
+            recent = []
+            for g in sorted(vs.get("games_list") or [], key=lambda g: str(g.get("date", "")), reverse=True)[:5]:
+                row: dict[str, Any] = {"date": str(g.get("date", ""))[:10]}
+                if g.get("comp"):
+                    row["comp"] = str(g["comp"])[:20]
+                if _num(g.get("starter")):
+                    row["starter"] = bool(g["starter"])
+                row.update({k: int(g[k]) for k in VS_KEYS if _num(g.get(k)) and g[k] >= 0})
+                recent.append(row)
+            if recent:
+                v["recent"] = recent
+            r["vsOpp"] = v
+        out.append(r)
+    return out
+
+
 def football(d: dict, generated: int) -> tuple[dict, dict] | None:
     m = d["match"]
     mk = d.get("markets", {})
@@ -221,32 +287,27 @@ def football(d: dict, generated: int) -> tuple[dict, dict] | None:
         ("Córners", hf, af, "corners", "higher"),
         ("Posesión %", hf, af, "possession", "higher"),
         ("Tarjetas", hf, af, "cards", "lower"),
+        ("Precisión de pase %", hf, af, "pass_pct", "higher"),
+        ("Entradas", hf, af, "tackles", "higher"),
+        ("Faltas cometidas", hf, af, "fouls", "lower"),
+        ("Fueras de juego", hf, af, "offsides", None),
+        ("Atajadas", hf, af, "saves", "higher"),
+        ("Remates recibidos", ha, aa, "shots", "lower"),
+        ("Córners concedidos", ha, aa, "corners", "lower"),
     ):
         if isinstance(src_h.get(key), (int, float)) and isinstance(src_a.get(key), (int, float)):
-            features.append({"label": label, "home": round(src_h[key], 2), "away": round(src_a[key], 2), "better": better})
+            hv, av = src_h[key], src_a[key]
+            if key == "pass_pct" and hv <= 1 and av <= 1:  # SQPC stores it as a fraction
+                hv, av = hv * 100, av * 100
+            row = {"label": label, "home": round(hv, 2), "away": round(av, 2)}
+            if better:
+                row["better"] = better
+            features.append(row)
     if comp.get("home", {}).get("form") and comp.get("away", {}).get("form"):
         features.append({"label": "Forma (V/E/D)", "home": comp["home"]["form"].replace("W", "V").replace("D", "E").replace("L", "D"),
                          "away": comp["away"]["form"].replace("W", "V").replace("D", "E").replace("L", "D")})
 
-    players = []
-    for side in ("home", "away"):
-        rows = [p for p in (d.get("players") or {}).get(side, []) if (p.get("p_play") or 0) >= 0.3 and isinstance(p.get("p"), dict)]
-        rows.sort(key=lambda p: p["p"].get("goal") or 0, reverse=True)
-        for p in rows[:8]:
-            r = {"name": str(p.get("player", ""))[:80], "side": side}
-            if p.get("pos"):
-                r["role"] = str(p["pos"])[:30]
-            if isinstance(p.get("exp_minutes"), (int, float)):
-                r["expectedMinutes"] = round(min(120.0, max(0.0, p["exp_minutes"])), 1)
-            if isinstance(p["p"].get("goal"), (int, float)):
-                r["pScore"] = clamp(p["p"]["goal"])
-            if isinstance(p["p"].get("assist"), (int, float)):
-                r["pAssist"] = clamp(p["p"]["assist"])
-            ss = p.get("season") or {}
-            season = {k: int(ss[k]) for k in ("apps", "goals", "assists", "shots", "sot", "yellow") if isinstance(ss.get(k), (int, float)) and ss[k] >= 0}
-            if season:
-                r["season"] = season
-            players.append(r)
+    players = [r for side in ("home", "away") for r in football_players(d, side)]
 
     edges = []
     for pk in d.get("picks") or []:
@@ -520,6 +581,38 @@ def tracked_picks(reports: str, days: int, limit: int = 1500) -> tuple[list[dict
     return out, stats
 
 
+MAX_PART_BYTES = 1_500_000  # the site accepts up to 5 MB; smaller parts keep each request quick
+
+
+def split_batch(batch: dict, limit: int = MAX_PART_BYTES) -> list[dict]:
+    """Split a large batch into several, each carrying whole matches with their predictions.
+    Competitions and teams travel in every part (small); metrics and tracked picks only in the first."""
+    size = lambda x: len(json.dumps(x, separators=(",", ":"), ensure_ascii=False).encode("utf-8"))  # noqa: E731
+    if size(batch) <= limit:
+        return [batch]
+    preds: dict[str, list] = {}
+    for p in batch["predictions"]:
+        preds.setdefault(p["matchId"], []).append(p)
+    base = {k: v for k, v in batch.items() if k not in ("matches", "predictions", "metrics", "trackedPicks", "batchId")}
+    parts: list[dict] = []
+    cur = {**base, "matches": [], "predictions": [], "metrics": batch.get("metrics", []), "trackedPicks": batch.get("trackedPicks", [])}
+    cur_size = size(cur)
+    for m in batch["matches"]:
+        extra = [m] + preds.pop(m["id"], [])
+        add = size(extra)
+        if cur["matches"] and cur_size + add > limit:
+            parts.append(cur)
+            cur = {**base, "matches": [], "predictions": [], "metrics": [], "trackedPicks": []}
+            cur_size = size(cur)
+        cur["matches"].append(m)
+        cur["predictions"] += extra[1:]
+        cur_size += add
+    parts.append(cur)
+    for p in parts:
+        p["batchId"] = str(uuid.uuid4())
+    return parts
+
+
 def main() -> int:
     load_env(os.path.join(HERE, ".env"))
     ap = argparse.ArgumentParser(description="Publica en easygoldglitch.com lo que SQPC ya calculó")
@@ -567,12 +660,18 @@ def main() -> int:
     if not url or not secret:
         print("Falta .env con GG_INGEST_URL y GG_INGEST_SECRET (Admin → Datos → Conexión con SQPC).", file=sys.stderr)
         return 2
-    try:
-        res = publish(batch, url, secret)
-    except RuntimeError as e:
-        print(f"ERROR al publicar: {e}", file=sys.stderr)
-        return 1
-    print(json.dumps(res, ensure_ascii=False))
+    res: dict[str, Any] = {"ok": True}
+    parts = split_batch(batch)
+    for i, part in enumerate(parts, 1):
+        try:
+            r = publish(part, url, secret)
+        except RuntimeError as e:
+            print(f"ERROR al publicar (parte {i}/{len(parts)}): {e}", file=sys.stderr)
+            return 1
+        print(f"Parte {i}/{len(parts)}: {json.dumps(r, ensure_ascii=False)}")
+        if not r.get("ok"):
+            res = r
+            break
     if res.get("ok"):
         # Keep state small: drop matches finalized more than 14 days ago.
         cutoff = now - 14 * 86400_000
