@@ -76,15 +76,12 @@ function BucketTable({ title, rows, labelOf }: { title: string; rows: KindSummar
   );
 }
 
-export function TrackRecord({ featured, value, rows, upcoming = [] }: {
-  featured: KindSummary; value: KindSummary; rows: TrackedRow[]; upcoming?: TrackedRow[];
-}) {
+export function TrackRecord({ featured, value, rows }: { featured: KindSummary; value: KindSummary; rows: TrackedRow[] }) {
   const recent = rows.filter((r) => r.status !== "pending").slice(0, 40);
-  const pending = featured.pending + value.pending;
-  if (!featured.settled && !value.settled && !pending) {
+  if (!featured.settled && !value.settled) {
     return (
       <div className="card mt-8 p-8 text-mid">
-        El seguimiento empieza con la próxima publicación de SQPC: cada pick de 75% o más se guarda antes del partido y aquí aparece su resultado.
+        Todavía no hay picks liquidados. Cada pick de 75% o más se guarda antes del partido y aparece aquí, acertado o fallado, cuando termina.
       </div>
     );
   }
@@ -98,7 +95,7 @@ export function TrackRecord({ featured, value, rows, upcoming = [] }: {
         <Card label="Probabilidad prometida" value={featured.expected !== null ? pct(featured.expected, 1) : "—"}
           hint={diff !== null ? `${diff >= 0 ? "+" : ""}${(diff * 100).toFixed(1)} pts frente a lo prometido` : "Lo que dijo el modelo"}
           tone={diff === null ? undefined : diff >= 0 ? "up" : "down"} />
-        <Card label="Pendientes" value={String(pending)} hint="Guardados antes del partido; se liquidan al terminar" />
+        <Card label="Error de calibración" value={featured.brier !== null ? featured.brier.toFixed(3) : "—"} hint="Brier: más bajo es mejor (0 = perfecto)" />
       </div>
 
       <Drift curve={featured.curve} />
@@ -109,7 +106,7 @@ export function TrackRecord({ featured, value, rows, upcoming = [] }: {
         <BucketTable title="Por tipo de pick" rows={featured.byGroup.slice(0, 8)} />
       </div>
 
-      {(value.settled > 0 || value.pending > 0) && (
+      {value.settled > 0 && (
         <div className="card p-5">
           <h3 className="text-sm text-mid">Apuestas de valor validadas (1X2, a la cuota publicada, stake 1)</h3>
           <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
@@ -124,28 +121,6 @@ export function TrackRecord({ featured, value, rows, upcoming = [] }: {
                 {value.roi !== null ? `${value.roi >= 0 ? "+" : ""}${(value.roi * 100).toFixed(1)}%` : "—"}</div></div>
           </div>
           <p className="mt-3 text-[11px] text-lo">Con pocas apuestas el resultado es casi todo azar: cuenta después de varios cientos.</p>
-        </div>
-      )}
-
-      {upcoming.length > 0 && (
-        <div className="card p-5">
-          <h3 className="text-sm text-mid">Picks guardados, esperando resultado</h3>
-          <p className="mt-1 text-[11px] text-lo">Quedaron registrados antes del inicio; no se pueden editar.</p>
-          <ul className="mt-3 divide-y divide-[var(--border-soft)]">
-            {upcoming.slice(0, 15).map((r) => (
-              <li key={r.id} className="flex items-start gap-3 py-2.5">
-                <span className="num w-12 shrink-0 text-right text-sm font-semibold" style={{ color: r.p >= 0.85 ? "var(--p6)" : r.p >= 0.75 ? "var(--p5)" : "var(--p4)" }}>
-                  {Math.round(r.p * 100)}%
-                </span>
-                <div className="min-w-0 flex-1">
-                  <div className="text-sm text-hi">{r.label}</div>
-                  <div className="text-[11px] text-lo">
-                    {r.home} vs {r.away} · {r.competition} · {new Intl.DateTimeFormat("es-CO", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "America/Bogota" }).format(r.kickoffAt)}
-                  </div>
-                </div>
-              </li>
-            ))}
-          </ul>
         </div>
       )}
 
