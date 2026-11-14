@@ -4,6 +4,7 @@ import { ProbabilityBar } from "@/components/stats/ProbabilityBar";
 import { getTier } from "@/lib/auth";
 import { listMatches, type MatchView } from "@/lib/data";
 import { dayKey, dayLabel, timeLabel } from "@/lib/format";
+import { bogotaDay } from "@/lib/fixtures";
 import { LEAGUE_GROUPS, compareLeagues, leagueInfo } from "@/lib/leagues";
 import { PICK_FEATURED } from "@/lib/picks";
 import { probColor } from "@/lib/probScale";
@@ -18,17 +19,28 @@ const DAYS = [
   { id: "todo", label: "Todo" },
 ] as const;
 
-export default async function MatchesPage({ searchParams }: { searchParams: Promise<{ liga?: string; dia?: string; region?: string }> }) {
-  const { liga, dia, region } = await searchParams;
+export default async function MatchesPage({ searchParams }: { searchParams: Promise<{ liga?: string; dia?: string; region?: string; ver?: string }> }) {
+  const { liga, dia, region, ver } = await searchParams;
   const tier = await getTier();
   const now = Date.now();
-  const all = await listMatches(tier, now - 3 * 60 * 60 * 1000, now + WINDOW_MS);
-
   const today = dayKey(now);
   const tomorrow = dayKey(now + 86_400_000);
+  const t0 = bogotaDay(now), t1 = bogotaDay(now + 86_400_000);
+  // Only the chosen window is read from the database (the whole 3 weeks used to exceed the Worker's CPU limit).
+  const RANGE: Record<string, [number, number]> = {
+    hoy: [t0.start, t0.end],
+    manana: [t1.start, t1.end],
+    semana: [now - 3 * 3_600_000, now + 7 * 86_400_000],
+    todo: [now - 3 * 3_600_000, now + WINDOW_MS],
+  };
   const open = (m: MatchView) => m.status !== "finished";
+  let day = DAYS.some((d) => d.id === dia) ? dia! : "hoy";
+  let all = await listMatches(tier, ...RANGE[day]);
   // Default: today when something is still to be played; otherwise the next 7 days.
-  const day = DAYS.some((d) => d.id === dia) ? dia! : all.some((m) => open(m) && dayKey(m.kickoffAt) === today) ? "hoy" : "semana";
+  if (!dia && !all.some(open)) {
+    day = "semana";
+    all = await listMatches(tier, ...RANGE.semana);
+  }
   const inDay = (m: MatchView) =>
     day === "todo" ? true
     : day === "semana" ? m.kickoffAt < now + 7 * 86_400_000
@@ -52,15 +64,19 @@ export default async function MatchesPage({ searchParams }: { searchParams: Prom
   const lockedPicks = upcoming.reduce((n, m) => n + m.picksLocked, 0);
   const best = upcoming.flatMap((m) => m.picks).reduce((b, k) => Math.max(b, k.p), 0);
 
-  // Day → league (in league order) → matches by time.
+  // Day → league (in league order) → matches by time. At most SHOW cards unless asked for all (keeps the page light).
+  const SHOW = 40;
+  const showAll = ver === "todos";
+  const shown = showAll ? matches : matches.slice(0, SHOW);
   const days = new Map<string, Map<string, MatchView[]>>();
-  for (const m of matches) {
+  for (const m of shown) {
     const d = days.get(dayKey(m.kickoffAt)) ?? new Map<string, MatchView[]>();
     d.set(m.competition.id, [...(d.get(m.competition.id) ?? []), m]);
     days.set(dayKey(m.kickoffAt), d);
   }
-  const href = (q: { liga?: string; dia?: string; region?: string }) => {
+  const href = (q: { liga?: string; dia?: string; region?: string; ver?: string }) => {
     const sp = new URLSearchParams();
+    if (q.ver) sp.set("ver", q.ver);
     if (q.dia) sp.set("dia", q.dia);
     if (q.region) sp.set("region", q.region);
     if (q.liga) sp.set("liga", q.liga);
@@ -156,6 +172,12 @@ export default async function MatchesPage({ searchParams }: { searchParams: Prom
               </section>
             );
           })}
+          {!showAll && matches.length > SHOW && (
+            <Link href={href({ dia: day, region: selLeague ? undefined : reg ?? undefined, liga: selLeague?.id, ver: "todos" })}
+              className="block card p-4 text-center text-sm text-gold transition-colors hover:border-[var(--border-glass)]">
+              Mostrar los {matches.length} partidos ({matches.length - SHOW} más)
+            </Link>
+          )}
         </div>
       )}
     </div>
