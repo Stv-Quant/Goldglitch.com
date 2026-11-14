@@ -35,6 +35,7 @@ from goldglitch_publish import load_env, publish  # noqa: E402
 from goldglitch_lines import basketball_lines, football_lines, hockey_lines, pack  # noqa: E402
 
 STATE_FILE = os.path.join(HERE, "goldglitch_state.json")
+TRACKED_SENT = os.path.join(HERE, "goldglitch_tracked_sent.json")  # id → fingerprint of what the site already has
 LAST_BATCH = os.path.join(HERE, "goldglitch_last_batch.json")
 
 # League code → (sport, display name, ESPN slug for results). Football slugs come from each file.
@@ -670,7 +671,7 @@ def results(state: dict, comps: dict, teams: dict, now_ms: int, limit: int) -> l
     return out
 
 
-def tracked_picks(reports: str, days: int, limit: int = 1500) -> tuple[list[dict], dict]:
+def tracked_picks(reports: str, days: int, limit: int = 100_000) -> tuple[list[dict], dict]:
     """Register this run's picks (before kickoff), settle finished ones and export them for /historial."""
     import hashlib
     try:
@@ -747,18 +748,22 @@ def split_sport(batch: dict, sport: str) -> tuple[dict, dict | None]:
 MAX_PART_BYTES = 1_500_000  # the site accepts up to 5 MB; smaller parts keep each request quick
 
 
+TRACKED_PER_PART = 1000
+
+
 def split_batch(batch: dict, limit: int = MAX_PART_BYTES) -> list[dict]:
     """Split a large batch into several, each carrying whole matches with their predictions.
-    Competitions and teams travel in every part (small); metrics and tracked picks only in the first."""
+    Competitions and teams travel in every part (small); metrics in the first; tracked picks in slices of 1000."""
     size = lambda x: len(json.dumps(x, separators=(",", ":"), ensure_ascii=False).encode("utf-8"))  # noqa: E731
-    if size(batch) <= limit:
+    tps = batch.get("trackedPicks", [])
+    if size(batch) <= limit and len(tps) <= TRACKED_PER_PART:
         return [batch]
     preds: dict[str, list] = {}
     for p in batch["predictions"]:
         preds.setdefault(p["matchId"], []).append(p)
     base = {k: v for k, v in batch.items() if k not in ("matches", "predictions", "metrics", "trackedPicks", "batchId")}
     parts: list[dict] = []
-    cur = {**base, "matches": [], "predictions": [], "metrics": batch.get("metrics", []), "trackedPicks": batch.get("trackedPicks", [])}
+    cur = {**base, "matches": [], "predictions": [], "metrics": batch.get("metrics", []), "trackedPicks": []}
     cur_size = size(cur)
     for m in batch["matches"]:
         extra = [m] + preds.pop(m["id"], [])
@@ -771,9 +776,12 @@ def split_batch(batch: dict, limit: int = MAX_PART_BYTES) -> list[dict]:
         cur["predictions"] += extra[1:]
         cur_size += add
     parts.append(cur)
+    for i in range(0, len(tps), TRACKED_PER_PART):          # after the matches, so their kickoffs are known first
+        parts.append({**base, "competitions": [], "teams": [], "matches": [], "predictions": [], "metrics": [],
+                      "trackedPicks": tps[i:i + TRACKED_PER_PART]})
     for p in parts:
         p["batchId"] = str(uuid.uuid4())
-    return parts
+    return [p for p in parts if p["matches"] or p["predictions"] or p["metrics"] or p["trackedPicks"]]
 
 
 def main() -> int:
@@ -807,7 +815,15 @@ def main() -> int:
     batch["competitions"] = [c for c in comps.values() if c]
     batch["teams"] = [t for t in teams.values() if t]
     batch["metrics"] = metrics_from_analysis(a.reports)
-    batch["trackedPicks"], tstats = tracked_picks(a.reports, a.days)
+    all_tracked, tstats = tracked_picks(a.reports, a.days)
+    try:
+        with open(TRACKED_SENT, encoding="utf-8") as f:
+            sent = json.load(f)
+    except (OSError, ValueError):
+        sent = {}
+    fp = lambda t: f"{t['status']}|{t['p']:.6f}|{t['label']}|{t.get('result', '')}|{t.get('pickedAt')}"  # noqa: E731
+    batch["trackedPicks"] = [t for t in all_tracked if sent.get(t["id"]) != fp(t)]
+    tstats = {**(tstats or {}), "total": len(all_tracked), "nuevos_o_cambiados": len(batch["trackedPicks"])}
     batch["batchId"] = str(uuid.uuid4())
     batch["source"] = "sqpc"
 
@@ -848,9 +864,14 @@ def main() -> int:
                 r = publish(part, url, secret)
                 print(f"E-sports: {json.dumps(r, ensure_ascii=False)}")
             except RuntimeError as e:
-                print(f"  e-sports no publicados (¿falta desplegar la web o aplicar la migración 0009?): {e}")
+                print(f"  e-sports no publicados (¿falta desplegar la web o aplicar la migración 0010?): {e}")
                 break
     if res.get("ok"):
+        keep = {t["id"] for t in all_tracked}
+        sent = {k: v for k, v in sent.items() if k in keep}
+        sent.update({t["id"]: fp(t) for t in batch["trackedPicks"]})
+        with open(TRACKED_SENT, "w", encoding="utf-8") as f:
+            json.dump(sent, f)
         # Keep state small: drop matches finalized more than 14 days ago.
         cutoff = now - 14 * 86400_000
         state = {k: v for k, v in state.items() if not (v.get("final") and v["match"]["kickoffAt"] < cutoff)}

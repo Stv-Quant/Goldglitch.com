@@ -27,7 +27,7 @@ describe("tracked picks summary", () => {
     expect(v.roi).toBeCloseTo(0.2);
   });
   it("bands", () => {
-    expect([0.8, 0.86, 0.91, 0.97].map(bandOf)).toEqual(["80–85%", "85–90%", "90–95%", "95%+"]);
+    expect([0.76, 0.8, 0.86, 0.91, 0.97].map(bandOf)).toEqual(["75–80%", "80–85%", "85–90%", "90–95%", "95%+"]);
   });
   it("batch accepts tracked picks and rejects bad status", () => {
     const base = { batchId: "b1", source: "sqpc" };

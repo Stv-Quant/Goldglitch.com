@@ -3,7 +3,7 @@ import { CalibrationChart } from "@/components/stats/CalibrationChart";
 import { TrackRecord } from "@/components/stats/TrackRecord";
 import { latestMetrics } from "@/lib/data";
 import { getDB } from "@/lib/env";
-import { summarize, trackedPicks } from "@/lib/tracked";
+import { summarize, summarizeDb, trackedPicks } from "@/lib/tracked";
 import { dateLabel } from "@/lib/format";
 import { SPORT_LABEL } from "@/lib/sports";
 
@@ -16,11 +16,13 @@ export const dynamic = "force-dynamic";
 export default async function HistorialPage() {
   const metrics = await latestMetrics().catch(() => []);
   const m = metrics[0];
-  const rows = await getDB()
-    .then((db) => trackedPicks(db, 365))
-    .catch(() => []);
-  const featured = summarize(rows, "featured");
-  const value = summarize(rows, "value");
+  const db = await getDB();
+  const [featured, value, recent, upcoming] = await Promise.all([
+    summarizeDb(db, "featured").catch(() => summarize([], "featured")),
+    summarizeDb(db, "value").catch(() => summarize([], "value")),
+    trackedPicks(db, "settled", 60).catch(() => []),
+    trackedPicks(db, "pending", 60).catch(() => []),
+  ]);
 
   return (
     <section className="mx-auto max-w-6xl px-4 sm:px-6 py-16">
@@ -35,11 +37,11 @@ export default async function HistorialPage() {
         <p className="eyebrow">Seguimiento de picks</p>
         <h2 className="mt-2 text-2xl font-semibold tracking-tight">Cada pick que el sistema escoge, acertado o fallado</h2>
         <p className="mt-2 text-mid max-w-3xl text-sm leading-relaxed">
-          El pick destacado de cada partido (la selección más probable del modelo, 80% o más) queda guardado antes de que
-          empiece y se liquida con el resultado real. No se borra ni se edita nada después del inicio. Un pick de 85% debe
+          Cada pick que mostramos (toda selección con 75% o más según el modelo, en todos los deportes) queda guardado antes
+          de que empiece el partido y se liquida con el resultado real. No se borra ni se edita nada después del inicio. Un pick de 85% debe
           fallar más o menos 15 de cada 100 veces: lo que importa es que la tasa real se parezca a la prometida.
         </p>
-        <TrackRecord featured={featured} value={value} rows={rows} />
+        <TrackRecord featured={featured} value={value} rows={recent} upcoming={upcoming} />
       </div>
 
       <h2 className="mt-16 text-2xl font-semibold tracking-tight">Calibración del modelo (1X2)</h2>

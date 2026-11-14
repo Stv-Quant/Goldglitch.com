@@ -77,7 +77,57 @@ export type KindSummary = {
 };
 
 export function bandOf(p: number): string {
-  return p < 0.85 ? "80–85%" : p < 0.9 ? "85–90%" : p < 0.95 ? "90–95%" : "95%+";
+  return p < 0.8 ? "75–80%" : p < 0.85 ? "80–85%" : p < 0.9 ? "85–90%" : p < 0.95 ? "90–95%" : "95%+";
+}
+
+const BAND_SQL = `CASE WHEN p < 0.8 THEN '75–80%' WHEN p < 0.85 THEN '80–85%' WHEN p < 0.9 THEN '85–90%' WHEN p < 0.95 THEN '90–95%' ELSE '95%+' END`;
+
+/**
+ * Same numbers as summarize(), computed in SQL so the record stays fast with tens of thousands of picks.
+ * Pending and void rows never count toward the hit rate.
+ */
+export async function summarizeDb(db: D1Database, kind: TrackedRow["kind"], days = 365): Promise<KindSummary> {
+  await ensureTrackedTable(db);
+  const since = Date.now() - days * 86_400_000;
+  const done = `kind = ?1 AND kickoff_at >= ?2 AND status IN ('won','lost')`;
+  type B = { key: string; n: number; won: number; p: number };
+  const grouped = (expr: string) =>
+    db.prepare(`SELECT ${expr} AS key, count(*) AS n, sum(status = 'won') AS won, sum(p) AS p FROM tracked_picks WHERE ${done} GROUP BY 1`).bind(kind, since);
+  const [tot, sport, band, group, days_] = await db.batch([
+    db.prepare(
+      `SELECT sum(status IN ('won','lost')) AS settled, sum(status = 'won') AS won, sum(status = 'void') AS void,
+              sum(status = 'pending') AS pending,
+              sum(CASE WHEN status IN ('won','lost') THEN p END) AS p,
+              sum(CASE WHEN status IN ('won','lost') THEN (p - (status = 'won')) * (p - (status = 'won')) END) AS brier,
+              sum(CASE WHEN status IN ('won','lost') AND profit IS NOT NULL THEN profit END) AS profit,
+              sum(status IN ('won','lost') AND profit IS NOT NULL) AS priced
+         FROM tracked_picks WHERE kind = ?1 AND kickoff_at >= ?2`,
+    ).bind(kind, since),
+    grouped("sport"),
+    grouped(BAND_SQL),
+    grouped("COALESCE(group_name, 'Otros')"),
+    db.prepare(`SELECT kickoff_at / 86400000 AS key, count(*) AS n, sum(status = 'won') AS won, sum(p) AS p FROM tracked_picks WHERE ${done} GROUP BY 1 ORDER BY 1`).bind(kind, since),
+  ]);
+  const t = (tot.results[0] ?? {}) as Record<string, number | null>;
+  const settled = Number(t.settled ?? 0), won = Number(t.won ?? 0), priced = Number(t.priced ?? 0);
+  const toBuckets = (rows: unknown[]) =>
+    (rows as B[]).map((b) => ({ key: String(b.key), n: b.n, won: b.won, hitRate: b.won / b.n, expected: b.p / b.n })).sort((a, b) => b.n - a.n);
+  let c = 0;
+  const curve = (days_.results as B[]).map((d) => ((c += d.won - d.p), { t: Number(d.key) * 86_400_000, diff: c }));
+  return {
+    settled, won, lost: settled - won,
+    void: Number(t.void ?? 0), pending: Number(t.pending ?? 0),
+    hitRate: settled ? won / settled : null,
+    expected: settled ? Number(t.p) / settled : null,
+    brier: settled ? Number(t.brier) / settled : null,
+    profit: priced ? Number(t.profit) : null,
+    roi: priced ? Number(t.profit) / priced : null,
+    priced,
+    bySport: toBuckets(sport.results),
+    byBand: toBuckets(band.results).sort((a, b) => a.key.localeCompare(b.key)),
+    byGroup: toBuckets(group.results),
+    curve: curve.slice(-400),
+  };
 }
 
 function bucket(rows: TrackedRow[], key: (r: TrackedRow) => string): Bucket[] {
@@ -124,16 +174,19 @@ export function summarize(all: TrackedRow[], kind: TrackedRow["kind"]): KindSumm
   };
 }
 
-export async function trackedPicks(db: D1Database, days = 365): Promise<TrackedRow[]> {
+/** Latest picks for the lists: settled ones newest first, or pending ones soonest first. */
+export async function trackedPicks(db: D1Database, which: "settled" | "pending", limit = 60): Promise<TrackedRow[]> {
   await ensureTrackedTable(db);
-  const sinceMs = Date.now() - days * 86_400_000;
+  const where = which === "pending" ? "status = 'pending' AND kickoff_at >= ?1" : "status <> 'pending' AND kickoff_at >= ?1";
+  const order = which === "pending" ? "kickoff_at ASC, p DESC" : "kickoff_at DESC";
+  const since = which === "pending" ? Date.now() - 3 * 3_600_000 : Date.now() - 365 * 86_400_000;
   const { results } = await db
     .prepare(
       `SELECT id, kind, sport, COALESCE(competition_name, competition_id) AS competition, home, away, kickoff_at, group_name,
               label, p, price, ev, status, result, profit
-         FROM tracked_picks WHERE kickoff_at >= ? ORDER BY kickoff_at DESC LIMIT 5000`,
+         FROM tracked_picks WHERE ${where} ORDER BY ${order} LIMIT ?2`,
     )
-    .bind(sinceMs)
+    .bind(since, limit)
     .all<{
       id: string; kind: "featured" | "value"; sport: Sport; competition: string; home: string; away: string; kickoff_at: number;
       group_name: string | null; label: string; p: number; price: number | null; ev: number | null;
