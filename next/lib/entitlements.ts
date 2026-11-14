@@ -51,7 +51,6 @@ export function redactPrediction(p: Prediction, tier: Tier): RedactedPrediction 
     out.scoreMatrix = p.scoreMatrix;
     out.markets = p.markets;
     out.players = p.players;
-    out.edges = p.edges;
     out.stakes = p.stakes;
   }
   return out;

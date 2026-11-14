@@ -296,7 +296,6 @@ function FeaturedPicks({ matches, now }: { matches: MatchView[]; now: number }) 
                 <div className="mt-3 text-hi">{k.label}</div>
                 <div className="mt-1 flex items-baseline justify-between">
                   <Prob p={k.p} className="text-3xl font-semibold" />
-                  <span className="num text-[11px] text-lo">cuota justa {(1 / k.p).toFixed(2)}</span>
                 </div>
               </Link>
             </li>

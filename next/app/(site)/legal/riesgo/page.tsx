@@ -24,9 +24,7 @@ export default function RiesgoPage() {
       </Clause>
       <Clause n="03" title="Sin garantías de resultado ni de ganancia">
         <p>
-          Ningún contenido de {COMPANY.brand} garantiza resultados deportivos, ganancias ni la recuperación de pérdidas. El
-          «valor esperado» (EV) que mostramos es una discrepancia estadística entre el modelo y una cuota; no es una ganancia
-          asegurada y puede ser negativo en la práctica por error del modelo, cambios de información o márgenes del operador.
+          Ningún contenido de {COMPANY.brand} garantiza resultados deportivos, ganancias ni la recuperación de pérdidas.
         </p>
         <p>El rendimiento pasado del modelo no garantiza su rendimiento futuro.</p>
       </Clause>

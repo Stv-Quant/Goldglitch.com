@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Tabs, type Tab } from "@/components/app/Tabs";
-import { EdgeTable } from "@/components/stats/EdgeTable";
 import { FeatureCompare } from "@/components/stats/FeatureCompare";
 import { GoalsPanel } from "@/components/stats/GoalsPanel";
 import { LockedPanel } from "@/components/stats/LockedPanel";
@@ -29,7 +28,7 @@ export default async function MatchPage({ params }: { params: Promise<{ id: stri
       <div className="max-w-xl space-y-4">
         <Link href="/app" className="text-sm text-lo hover:text-hi">← Partidos</Link>
         <LockedPanel tier="Pro" title={`${SPORT_LABEL[m.sport]} es parte de Pro`}>
-          {`El modelo completo de ${SPORT_LABEL[m.sport].toLowerCase()} (probabilidades, picks, líneas y valor frente al mercado) está disponible desde el plan Pro.`}
+          {`El modelo completo de ${SPORT_LABEL[m.sport].toLowerCase()} (probabilidades, picks y líneas) está disponible desde el plan Pro.`}
         </LockedPanel>
       </div>
     );
@@ -131,13 +130,6 @@ export default async function MatchPage({ params }: { params: Promise<{ id: stri
       ),
     });
 
-    if (pro && (p.edges?.length ?? 0) > 0) {
-      tabs.push({
-        id: "cuotas",
-        label: "Cuotas",
-        content: <div className="card p-4 sm:p-6"><EdgeTable edges={p.edges!} /></div>,
-      });
-    }
   }
 
   return (
@@ -187,7 +179,7 @@ export default async function MatchPage({ params }: { params: Promise<{ id: stri
             <PicksList picks={m.picks} />
           ) : (
             <LockedPanel tier="Pro" title={`${m.picksLocked} pick${m.picksLocked === 1 ? "" : "s"} del modelo en este partido`}>
-              {"Las selecciones con 75% o más de probabilidad según el modelo, con su confianza y su cuota justa."}
+              {"Las selecciones con 75% o más de probabilidad según el modelo, con su nivel de confianza."}
             </LockedPanel>
           )}
         </section>

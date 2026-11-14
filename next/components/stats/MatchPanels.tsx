@@ -4,7 +4,7 @@ import { PICK_FEATURED, PICK_MIN } from "@/lib/picks";
 import { probColor } from "@/lib/probScale";
 import { Prob, ProbMeter } from "./Prob";
 
-/** One pick: what, how likely (scale colour), confidence and fair price. */
+/** One pick: what, how likely (scale colour) and confidence. */
 export function PickCard({ k }: { k: Pick }) {
   const featured = k.p >= PICK_FEATURED;
   return (
@@ -18,12 +18,10 @@ export function PickCard({ k }: { k: Pick }) {
       <div className="mt-1.5 text-sm leading-snug text-hi">{k.label}</div>
       <div className="mt-2 flex items-baseline justify-between gap-2">
         <Prob p={k.p} className="text-3xl font-semibold" />
-        <span className="num text-[11px] text-lo">cuota justa {(1 / k.p).toFixed(2)}</span>
       </div>
-      {(k.lo != null && k.hi != null) || k.price ? (
+      {k.lo != null && k.hi != null ? (
         <div className="mt-1 flex justify-between gap-2 num text-[11px] text-lo">
           <span>{k.lo != null && k.hi != null ? `rango ${Math.round(k.lo * 100)}–${Math.round(k.hi * 100)}%` : ""}</span>
-          <span>{k.price ? `${k.book ?? "casa"} ${k.price.toFixed(2)}` : ""}</span>
         </div>
       ) : null}
     </div>

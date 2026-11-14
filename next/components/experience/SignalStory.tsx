@@ -11,7 +11,7 @@ const PALETTE3D = RGB.flatMap(([r, g, b, a]) => [0.32, 0.72, 1].map((d) => `rgba
 
 const ACTS = ["Ruido", "Fútbol", "MLB", "NBA", "Tenis", "La percepción", "La forma", "La prueba", "Señal"];
 const NOISE = [
-  ["FIJA 100%", 8, 18], ["CUOTA SEGURA", 62, 12], ["GRUPO VIP", 74, 70], ["NO FALLA", 14, 78],
+  ["FIJA 100%", 8, 18], ["GANANCIA SEGURA", 62, 12], ["GRUPO VIP", 74, 70], ["NO FALLA", 14, 78],
   ["PARLEY DEL DÍA", 46, 86], ["+500% ESTE MES", 80, 38], ["CONFÍA EN MÍ", 30, 8], ["LA DE HOY ES FIJA", 56, 54],
   ["ASEGURADO", 4, 48], ["ÚLTIMOS CUPOS", 88, 88], ["MÉTODO INFALIBLE", 40, 30], ["100% VERIFICADO", 70, 24],
 ] as const;
@@ -363,7 +363,7 @@ export function SignalStory() {
               <Line>Nosotros <em>medimos</em> dudas.</Line>
             </h1>
             <p className="mt-7 text-lg text-mid max-w-md leading-relaxed">
-              Fútbol, béisbol y lo que venga: siempre las mismas fijas, cuotas seguras y grupos VIP. Ruido. Baja y mira
+              Fútbol, béisbol y lo que venga: siempre las mismas fijas, ganancias seguras y grupos VIP. Ruido. Baja y mira
               qué queda cuando lo quitas.
             </p>
             <SportChips />

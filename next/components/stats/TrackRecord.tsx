@@ -77,25 +77,20 @@ function BucketTable({ title, rows, labelOf }: { title: string; rows: KindSummar
 }
 
 export function TrackRecord({ featured, value, rows }: { featured: KindSummary; value: KindSummary; rows: TrackedRow[] }) {
-  const recent = rows.filter((r) => r.status !== "pending").slice(0, 40);
-  if (!featured.settled && !value.settled) {
+  const recent = rows.filter((r) => r.status !== "pending" && r.kind === "featured").slice(0, 40);
+  if (!featured.settled) {
     return (
       <div className="card mt-8 p-8 text-mid">
         Todavía no hay picks liquidados. Cada pick de 75% o más se guarda antes del partido y aparece aquí, acertado o fallado, cuando termina.
       </div>
     );
   }
-  const diff = featured.hitRate !== null && featured.expected !== null ? featured.hitRate - featured.expected : null;
   return (
     <div className="mt-8 space-y-6">
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 gap-4">
         <Card label="Picks acertados" value={featured.settled ? `${featured.won}/${featured.settled}` : "—"}
           hint={featured.void ? `${featured.void} nulos (aplazados o empujes) no cuentan` : "Picks de 75% o más ya liquidados"} tone="gold" />
         <Card label="Tasa de acierto" value={featured.hitRate !== null ? pct(featured.hitRate, 1) : "—"} hint="Lo que pasó" />
-        <Card label="Probabilidad estimada (promedio)" value={featured.expected !== null ? pct(featured.expected, 1) : "—"}
-          hint={diff !== null ? `${diff >= 0 ? "+" : ""}${(diff * 100).toFixed(1)} pts de acierto real frente a lo estimado` : "Lo que estimó el modelo"}
-          tone={diff === null ? undefined : diff >= 0 ? "up" : "down"} />
-        <Card label="Error de calibración" value={featured.brier !== null ? featured.brier.toFixed(3) : "—"} hint="Brier: más bajo es mejor (0 = perfecto)" />
       </div>
 
       <Drift curve={featured.curve} />
@@ -105,24 +100,6 @@ export function TrackRecord({ featured, value, rows }: { featured: KindSummary; 
         <BucketTable title="Por deporte" rows={featured.bySport} labelOf={(k) => SPORT_LABEL[k as keyof typeof SPORT_LABEL] ?? k} />
         <BucketTable title="Por tipo de pick" rows={featured.byGroup.slice(0, 8)} />
       </div>
-
-      {value.settled > 0 && (
-        <div className="card p-5">
-          <h3 className="text-sm text-mid">Apuestas de valor validadas (1X2, a la cuota publicada, stake 1)</h3>
-          <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
-            <div><div className="text-[11px] text-lo">Liquidadas</div><div className="num text-lg">{value.won}/{value.settled}</div></div>
-            <div><div className="text-[11px] text-lo">Acierto real vs estimado</div>
-              <div className="num text-lg">{value.hitRate !== null ? `${pct(value.hitRate, 1)} / ${pct(value.expected ?? 0, 1)}` : "—"}</div></div>
-            <div><div className="text-[11px] text-lo">Ganancia</div>
-              <div className={`num text-lg ${(value.profit ?? 0) >= 0 ? "text-up" : "text-down"}`}>
-                {value.profit !== null ? `${value.profit >= 0 ? "+" : ""}${value.profit.toFixed(2)} u` : "—"}</div></div>
-            <div><div className="text-[11px] text-lo">Rendimiento por apuesta</div>
-              <div className={`num text-lg ${(value.roi ?? 0) >= 0 ? "text-up" : "text-down"}`}>
-                {value.roi !== null ? `${value.roi >= 0 ? "+" : ""}${(value.roi * 100).toFixed(1)}%` : "—"}</div></div>
-          </div>
-          <p className="mt-3 text-[11px] text-lo">Con pocas apuestas el resultado es casi todo azar: cuenta después de varios cientos.</p>
-        </div>
-      )}
 
       {recent.length > 0 && (
         <div className="card p-5">
