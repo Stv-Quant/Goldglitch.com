@@ -7,6 +7,7 @@ import { Prob, ProbLegend } from "@/components/stats/Prob";
 import { ProbabilityBar } from "@/components/stats/ProbabilityBar";
 import { LEAGUE_GROUPS, compareLeagues, leagueInfo } from "@/lib/leagues";
 import { probColor } from "@/lib/probScale";
+import { SportBadge, SportIcon, SportWatermark } from "./SportBadge";
 
 /** One match as /api/app/matches sends it (built by D1, see lib/appList.ts). */
 type M = {
@@ -107,7 +108,7 @@ export function AppHome() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="eyebrow">Probabilidades del modelo</p>
-          <h1 className="mt-1 text-3xl font-semibold tracking-tight">Partidos</h1>
+          <h1 className="font-display mt-1 text-5xl leading-none tracking-tight"><span className="gold-leaf">Partidos</span></h1>
         </div>
         <ProbLegend />
       </div>
@@ -167,7 +168,7 @@ export function AppHome() {
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <div>
               <p className="eyebrow text-gold">Picks destacados</p>
-              <h2 id="h-featured" className="mt-1 text-xl font-semibold">80% o más según el modelo</h2>
+              <h2 id="h-featured" className="font-display mt-1 text-3xl leading-tight">80% o más <em className="text-gold">según el modelo</em></h2>
             </div>
             <p className="max-w-sm text-[11px] text-lo">Probabilidad, no certeza: un 80% falla 1 de cada 5 veces.</p>
           </div>
@@ -179,7 +180,7 @@ export function AppHome() {
                     className="relative block h-full overflow-hidden rounded-[12px] border border-line bg-[var(--bg-raise)] p-4 transition-colors hover:border-[var(--gold)]">
                     <span aria-hidden className="absolute inset-y-0 left-0 w-1" style={{ background: probColor(m.k!.p!) }} />
                     <div className="flex items-center justify-between gap-2 text-[11px] text-lo">
-                      <span className="truncate">{m.cn}</span>
+                      <span className="flex min-w-0 items-center gap-1.5"><SportIcon sport={m.sport} league={m.cn} className="h-3.5 w-3.5 shrink-0 text-gold" /><span className="truncate">{m.cn}</span></span>
                       <span className="num whitespace-nowrap">{dayLabel(m.ko, view.now)} · {time(m.ko)}</span>
                     </div>
                     <div className="mt-1 truncate text-sm text-mid">{m.h} vs {m.a}</div>
@@ -211,16 +212,17 @@ export function AppHome() {
             const n = ordered.reduce((s, [, l]) => s + l.length, 0);
             return (
               <section key={k} className="space-y-5">
-                <h2 className="flex items-baseline gap-2 border-b border-line pb-2">
-                  <span className="text-xl font-semibold">{dayLabel(ordered[0][1][0].ko, view.now)}</span>
+                <h2 className="flex items-baseline gap-3">
+                  <span className="font-display text-3xl text-hi">{dayLabel(ordered[0][1][0].ko, view.now)}</span>
                   <span className="num text-xs text-lo">{n} partido{n === 1 ? "" : "s"} · {ordered.length} liga{ordered.length === 1 ? "" : "s"}</span>
                 </h2>
+                <div className="gold-rule -mt-3" aria-hidden />
                 {ordered.map(([cid, list]) => {
                   const ctry = leagueInfo(cid, list[0].sport).country;
                   return (
                     <div key={cid}>
                       <h3 className="mb-2 flex items-center gap-2 text-sm">
-                        <span aria-hidden className="h-3 w-0.5 rounded-full bg-[var(--gold)]" />
+                        <span className="grid h-6 w-6 place-items-center rounded-full border border-[rgba(212,175,55,0.3)] text-gold"><SportIcon sport={list[0].sport} league={list[0].cn} className="h-3.5 w-3.5" /></span>
                         <Link href={go({ liga: cid })} scroll={false} className="font-medium text-hi hover:text-gold">{list[0].cn}</Link>
                         {ctry && !list[0].cn.includes(ctry) && <span className="text-lo">{ctry}</span>}
                         <span className="num text-[11px] text-lo">· {list.length}</span>
@@ -250,19 +252,23 @@ function Card({ m, pro }: { m: M; pro: boolean }) {
   const finished = m.st === "finished";
   const n = m.k?.n ?? 0;
   return (
-    <Link href={`/app/partido/${encodeURIComponent(m.id)}`} className="block card p-4 transition-colors hover:border-[var(--border-glass)] sm:p-5">
-      <div className="flex items-center justify-between gap-2 text-[11px] text-lo">
-        <span className="truncate">{m.cn}</span>
+    <Link href={`/app/partido/${encodeURIComponent(m.id)}`} className="relative block overflow-hidden card p-4 sm:p-5">
+      <SportWatermark sport={m.sport} league={m.cn} />
+      <div className="relative flex items-center justify-between gap-2 text-[11px] text-lo">
+        <span className="flex min-w-0 items-center gap-2">
+          <SportBadge sport={m.sport} league={m.cn} />
+          <span className="truncate">{m.cn}</span>
+        </span>
         <span className="num whitespace-nowrap">
           {m.st === "live" ? <span style={{ color: "var(--neon-up)" }}>● EN VIVO</span> : finished ? "Final" : time(m.ko)}
         </span>
       </div>
-      <div className="mt-3 grid grid-cols-[1fr_auto_1fr] items-center gap-3">
-        <span className="truncate font-medium">{m.h}</span>
-        <span className="num text-sm text-lo">{m.hs !== null && m.as !== null ? `${m.hs} – ${m.as}` : "vs"}</span>
-        <span className="truncate text-right font-medium">{m.a}</span>
+      <div className="relative mt-4 grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+        <span className="truncate text-[17px] font-semibold text-hi">{m.h}</span>
+        <span className="num text-xs uppercase tracking-[0.2em] text-gold-dim">{m.hs !== null && m.as !== null ? <span className="text-sm text-hi">{m.hs} – {m.as}</span> : "vs"}</span>
+        <span className="truncate text-right text-[17px] font-semibold text-hi">{m.a}</span>
       </div>
-      <div className="mt-4">
+      <div className="relative mt-4">
         {m.o ? (
           <ProbabilityBar size="sm" home={m.o.h} draw={m.o.d} away={m.o.a} labels={{ home: m.hn, away: m.an }} />
         ) : (
@@ -299,7 +305,7 @@ function Stat({ label, value, p, locked }: { label: string; value?: string; p?: 
     <div className="card px-3 py-3 sm:px-4">
       <div className="truncate text-[11px] text-lo">{label}</div>
       <div className="mt-0.5 flex items-baseline gap-1.5">
-        {p !== undefined ? <Prob p={p} className="text-2xl font-semibold" /> : <span className="num text-2xl font-semibold text-hi">{value}</span>}
+        {p !== undefined ? <Prob p={p} className="text-3xl font-semibold" /> : <span className="num gold-leaf text-3xl font-semibold">{value}</span>}
         {locked && <span className="text-[10px] uppercase tracking-[0.14em] text-gold">Pro</span>}
       </div>
     </div>

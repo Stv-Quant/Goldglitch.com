@@ -13,7 +13,8 @@ export function Prob({ p, className = "", digits = 0 }: { p: number; className?:
 export function ProbMeter({ p, className = "h-1.5" }: { p: number; className?: string }) {
   return (
     <div className={`relative overflow-hidden rounded-full bg-[var(--seg-3)] ${className}`} aria-hidden>
-      <div className="absolute inset-y-0 left-0 rounded-full" style={{ width: `${Math.max(2, p * 100)}%`, background: probColor(p) }} />
+      <div className={`p-fill absolute inset-y-0 left-0 rounded-full ${isHot(p) ? "p-fill-hot" : ""}`}
+        style={{ width: `${Math.max(2, p * 100)}%`, ["--pc" as string]: probColor(p) }} />
     </div>
   );
 }
@@ -24,14 +25,14 @@ export function ProbLegend({ className = "" }: { className?: string }) {
   return (
     <div className={`flex items-center gap-2 text-[10px] text-lo ${className}`} aria-label="Escala de probabilidad">
       <span className="uppercase tracking-[0.14em]">Escala</span>
-      <div className="flex overflow-hidden rounded-full">
+      <div className="flex gap-0.5">
         {steps.map((s) => (
-          <span key={s.label} title={`${s.name} · ${s.label}`} className="h-1.5 w-6 sm:w-8" style={{ background: s.color }} />
+          <span key={s.label} title={`${s.name} · ${s.label}`} className="flex flex-col items-center gap-1">
+            <span className="h-2 w-7 rounded-sm sm:w-9" style={{ background: s.color, boxShadow: `0 0 10px -3px ${s.color}` }} />
+            <span className="num hidden text-[9px] sm:block" style={{ color: s.color }}>{s.label}</span>
+          </span>
         ))}
       </div>
-      <span className="num hidden sm:inline">&lt;40%</span>
-      <span aria-hidden className="hidden sm:inline">→</span>
-      <span className="num hidden sm:inline" style={{ color: "var(--p6)" }}>85%+</span>
     </div>
   );
 }

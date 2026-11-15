@@ -1,5 +1,7 @@
 "use client";
 
+import { SportBadge, SportIcon } from "./SportBadge";
+
 import Link from "next/link";
 import { Tabs, type Tab } from "@/components/app/Tabs";
 import { FeatureCompare } from "@/components/stats/FeatureCompare";
@@ -133,19 +135,20 @@ export function MatchView({ m }: { m: MatchData | { locked: true; sport: Sport }
     <article className="space-y-6">
       <Link href="/app" className="text-sm text-lo hover:text-hi">← Partidos</Link>
 
-      <header className="glass p-5 sm:p-7">
-        <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-lo">
-          <span>{m.competition.name}{m.venue ? ` · ${m.venue}` : ""}</span>
+      <header className="glass relative overflow-hidden p-5 sm:p-7">
+        <span aria-hidden className="pointer-events-none absolute -right-8 -top-8 text-gold opacity-[0.06]"><SportIcon sport={m.sport} league={m.competition.name} className="h-56 w-56" /></span>
+        <div className="relative flex flex-wrap items-center justify-between gap-2 text-xs text-lo">
+          <span className="flex flex-wrap items-center gap-2"><SportBadge sport={m.sport} league={m.competition.name} /><span>{m.competition.name}{m.venue ? ` · ${m.venue}` : ""}</span></span>
           <span className="num">
             {m.status === "live" ? <span style={{ color: "var(--neon-up)" }}>● EN VIVO</span> : `${dayLabel(m.kickoffAt)} · ${timeLabel(m.kickoffAt)}`}
           </span>
         </div>
-        <div className="mt-5 grid grid-cols-[1fr_auto_1fr] items-center gap-4">
-          <h1 className="text-lg font-semibold leading-tight break-words sm:text-3xl">{m.home.name}</h1>
+        <div className="relative mt-6 grid grid-cols-[1fr_auto_1fr] items-center gap-4">
+          <h1 className="font-display text-2xl leading-tight break-words text-hi sm:text-5xl">{m.home.name}</h1>
           <span className="num text-lg text-lo">
             {m.homeScore !== null && m.awayScore !== null ? `${m.homeScore} – ${m.awayScore}` : "vs"}
           </span>
-          <p className="text-right text-lg font-semibold leading-tight break-words sm:text-3xl">{m.away.name}</p>
+          <p className="font-display text-right text-2xl leading-tight break-words text-hi sm:text-5xl">{m.away.name}</p>
         </div>
         {p ? (
           <div className="mt-6">
@@ -167,7 +170,7 @@ export function MatchView({ m }: { m: MatchData | { locked: true; sport: Sport }
       {p && upcoming && (m.picks.length > 0 || m.picksLocked > 0) && (
         <section aria-labelledby="h-picks">
           <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
-            <h2 id="h-picks" className="text-lg font-semibold">
+            <h2 id="h-picks" className="font-display text-3xl">
               Lo más probable <span className="num text-sm font-normal text-lo">· {Math.round(PICK_MIN * 100)}% o más</span>
             </h2>
             <p className="text-[11px] text-lo">Probabilidad, no certeza: un 80% falla 1 de cada 5 veces.</p>

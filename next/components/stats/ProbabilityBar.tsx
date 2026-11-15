@@ -29,9 +29,10 @@ export function ProbabilityBar({
   ];
   const total = outcomes.reduce((s, o) => s + o.p, 0) || 1;
   const ranked = [...outcomes].sort((a, b) => b.p - a.p).map((o) => o.key);
-  const fill = (o: Outcome) => (o.key === ranked[0] ? probColor(o.p) : `color-mix(in srgb, ${probColor(o.p)} 45%, var(--seg-3))`);
+  // Every outcome in its own scale colour; the favourite at full strength, the rest muted so it still leads.
+  const fill = (o: Outcome) => (o.key === ranked[0] ? probColor(o.p) : `color-mix(in srgb, ${probColor(o.p)} 55%, #0a0907)`);
 
-  const h = size === "sm" ? "h-1.5" : "h-2.5";
+  const h = size === "sm" ? "h-2" : "h-3";
 
   return (
     <div className="w-full">
@@ -41,7 +42,8 @@ export function ProbabilityBar({
         aria-label={outcomes.map((o) => `${o.label} ${pct(o.p)}`).join(", ")}
       >
         {outcomes.map((o) => (
-          <div key={o.key} style={{ width: `${(o.p / total) * 100}%`, background: fill(o) }} />
+          <div key={o.key} className={o.key === ranked[0] ? `p-fill ${isHot(o.p) ? "p-fill-hot" : ""}` : ""}
+            style={{ width: `${(o.p / total) * 100}%`, ...(o.key === ranked[0] ? { ["--pc" as string]: probColor(o.p) } : { background: fill(o) }) }} />
         ))}
       </div>
       <div className={`mt-2 grid ${draw !== null ? "grid-cols-3" : "grid-cols-2"}`}>
@@ -51,7 +53,7 @@ export function ProbabilityBar({
           return (
             <div key={o.key} className={align}>
               <div className={`num ${size === "sm" ? "text-base" : "text-2xl"} ${lead ? "font-semibold" : ""} ${lead && isHot(o.p) ? "p-glow" : ""}`}
-                style={{ color: lead ? probColor(o.p) : `color-mix(in srgb, ${probColor(o.p)} 70%, var(--text-lo))` }}>
+                style={{ color: lead ? probColor(o.p) : `color-mix(in srgb, ${probColor(o.p)} 78%, var(--text-mid))` }}>
                 {pct(o.p)}
               </div>
               {size === "sm" ? (
