@@ -3,9 +3,14 @@ import type { Pick } from "@/lib/picks";
 import { PICK_FEATURED, PICK_MIN } from "@/lib/picks";
 import { probColor } from "@/lib/probScale";
 import { Prob, ProbMeter } from "./Prob";
+import { AddToSlip } from "@/components/app/AddToSlip";
+import type { Leg } from "@/lib/slip";
+
+/** Match data a pick needs to become a combinada leg. */
+export type PickMatch = Omit<Leg, "label" | "group" | "p" | "lo" | "hi">;
 
 /** One pick: what, how likely (scale colour) and confidence. */
-export function PickCard({ k }: { k: Pick }) {
+export function PickCard({ k, match }: { k: Pick; match?: PickMatch }) {
   const featured = k.p >= PICK_FEATURED;
   return (
     <div className="relative h-full overflow-hidden rounded-[12px] border border-line bg-[var(--bg-raise)] p-4"
@@ -19,9 +24,10 @@ export function PickCard({ k }: { k: Pick }) {
       <div className="mt-2 flex items-baseline justify-between gap-2">
         <Prob p={k.p} className="text-3xl font-semibold" />
       </div>
-      {k.lo != null && k.hi != null ? (
-        <div className="mt-1 flex justify-between gap-2 num text-[11px] text-lo">
+      {(k.lo != null && k.hi != null) || match ? (
+        <div className="mt-2 flex items-center justify-between gap-2 num text-[11px] text-lo">
           <span>{k.lo != null && k.hi != null ? `rango ${Math.round(k.lo * 100)}–${Math.round(k.hi * 100)}%` : ""}</span>
+          {match && <AddToSlip leg={{ ...match, label: k.label, group: k.source, p: k.p, lo: k.lo, hi: k.hi }} />}
         </div>
       ) : null}
     </div>
@@ -29,7 +35,7 @@ export function PickCard({ k }: { k: Pick }) {
 }
 
 /** Top picks visible; the rest one tap away so the page stays short. */
-export function PicksList({ picks, visible = 6 }: { picks: Pick[]; visible?: number }) {
+export function PicksList({ picks, visible = 6, match }: { picks: Pick[]; visible?: number; match?: PickMatch }) {
   const head = picks.slice(0, visible);
   const rest = picks.slice(visible);
   const grid = "grid gap-3 sm:grid-cols-2 lg:grid-cols-3";
@@ -37,18 +43,18 @@ export function PicksList({ picks, visible = 6 }: { picks: Pick[]; visible?: num
     <div>
       {/* Phones: one swipeable row keeps the page short. */}
       <ul className="scroll-x -mx-4 flex snap-x gap-3 px-4 sm:hidden">
-        {picks.map((k) => <li key={k.key} className="w-[76%] shrink-0 snap-start"><PickCard k={k} /></li>)}
+        {picks.map((k) => <li key={k.key} className="w-[76%] shrink-0 snap-start"><PickCard k={k} match={match} /></li>)}
       </ul>
       {picks.length > 1 && <p className="mt-2 text-[11px] text-lo sm:hidden">Desliza para ver los {picks.length} picks →</p>}
       <div className="hidden sm:block">
-      <ul className={grid}>{head.map((k) => <li key={k.key}><PickCard k={k} /></li>)}</ul>
+      <ul className={grid}>{head.map((k) => <li key={k.key}><PickCard k={k} match={match} /></li>)}</ul>
       {rest.length > 0 && (
         <details className="group mt-3">
           <summary className="cursor-pointer list-none text-sm text-gold">
             <span className="group-open:hidden">Ver {rest.length} pick{rest.length === 1 ? "" : "s"} más</span>
             <span className="hidden group-open:inline">Ver menos</span>
           </summary>
-          <ul className={`${grid} mt-3`}>{rest.map((k) => <li key={k.key}><PickCard k={k} /></li>)}</ul>
+          <ul className={`${grid} mt-3`}>{rest.map((k) => <li key={k.key}><PickCard k={k} match={match} /></li>)}</ul>
         </details>
       )}
       </div>

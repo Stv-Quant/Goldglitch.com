@@ -13,9 +13,13 @@ import { getDB } from "./env";
  * Per match: id, sport, ko (kickoff ms), st (status), hs/as (score), c/cn (competition), h/hn/a/an (names, shorts),
  * o {h,d,a} (1X2), k {n: picks at 75%+, l/p: strongest pick — Pro only}.
  */
-const LABEL = `CASE WHEN COALESCE(json_extract(value, '$.market'), '') = ''
+// Same wording as pickLabel() / SQPC's label_of.
+export const LABEL = `CASE WHEN COALESCE(json_extract(value, '$.market'), '') = ''
                      OR instr(lower(json_extract(value, '$.selection')), lower(json_extract(value, '$.market'))) > 0
                     THEN json_extract(value, '$.selection')
+                    WHEN COALESCE(json_extract(value, '$.selection'), '') <> ''
+                     AND instr(lower(json_extract(value, '$.market')), lower(json_extract(value, '$.selection'))) > 0
+                    THEN json_extract(value, '$.market')
                     ELSE json_extract(value, '$.market') || ': ' || json_extract(value, '$.selection') END`;
 const NO_PICKS = `COALESCE(json_array_length(pr.payload, '$.picks'), 0) = 0`;
 // Same sources as picksFor(): SQPC's own picks; without them, the 1X2 and the published markets.

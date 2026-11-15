@@ -34,3 +34,30 @@ describe("picksFor with SQPC picks", () => {
     expect(k[0]).toMatchObject({ label: "Total de goles: Menos de 3.5", source: "Goles" });
   });
 });
+
+import { scoreSlip, slipStatus } from "@/lib/slip";
+import { pickLabel } from "@/lib/picks";
+
+describe("Combinadas", () => {
+  const leg = (matchId: string, p: number) => ({ matchId, sport: "football", competition: "X", home: "A", away: "B", kickoffAt: 1, label: `l${p}`, group: "Goles", p });
+  it("joint probability, hits distribution and grade", () => {
+    const s = scoreSlip([leg("m1", 0.9), leg("m2", 0.8)]);
+    expect(s.p).toBeCloseTo(0.72);
+    expect(s.hits.reduce((a, b) => a + b, 0)).toBeCloseTo(1);
+    expect(s.hits[2]).toBeCloseTo(0.72);
+    expect(s.weakest).toBe(1);
+    expect(s.sameMatch).toBe(false);
+    expect(scoreSlip([leg("m1", 0.9), leg("m1", 0.8)]).sameMatch).toBe(true);
+  });
+  it("slip result from legs", () => {
+    expect(slipStatus(["won", "lost", "pending"])).toBe("lost");
+    expect(slipStatus(["won", "pending"])).toBe("pending");
+    expect(slipStatus(["won", "void"])).toBe("won");
+    expect(slipStatus(["void", "void"])).toBe("void");
+  });
+  it("labels match SQPC's tracker", () => {
+    expect(pickLabel("Total de goles", "Más de 0.5")).toBe("Total de goles: Más de 0.5");
+    expect(pickLabel("Ambos marcan (60')", "Ambos marcan")).toBe("Ambos marcan (60')");
+    expect(pickLabel("", "Gana A")).toBe("Gana A");
+  });
+});

@@ -53,10 +53,9 @@ export function AppHome() {
 
   useEffect(() => {
     let alive = true;
-    setError(false);
     fetch(`/api/app/matches${dia ? `?dia=${dia}` : ""}`, { cache: "no-store" })
       .then((r) => (r.status === 401 ? (location.href = "/acceso", null) : r.ok ? r.json() : Promise.reject(r.status)))
-      .then((d: Data | null) => alive && d && setData(d))
+      .then((d: Data | null) => { if (alive && d) { setData(d); setError(false); } })
       .catch(() => alive && setError(true));
     return () => { alive = false; };
   }, [dia]);

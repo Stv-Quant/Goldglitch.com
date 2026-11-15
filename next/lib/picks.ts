@@ -17,6 +17,14 @@ export type Pick = {
 export const PICK_MIN = 0.75;     // highlighted in each match
 export const PICK_FEATURED = 0.8; // featured on the app home
 
+/** Same wording as SQPC's tracker (label_of), so a pick on the page and its tracked result share one label. */
+export function pickLabel(market: string | null | undefined, selection: string | null | undefined): string {
+  const sel = selection ?? "", mk = market ?? "";
+  if (!mk || sel.toLowerCase().includes(mk.toLowerCase())) return sel;
+  if (sel && mk.toLowerCase().includes(sel.toLowerCase())) return mk;
+  return `${mk}: ${sel}`;
+}
+
 const DC: Record<string, (h: string, a: string) => string> = {
   dc_1x: (h) => `${h} o empate`,
   dc_x2: (_h, a) => `Empate o ${a}`,
@@ -38,7 +46,7 @@ export function picksFor(p: Prediction, home: string, away: string, min = PICK_M
       .filter((k) => k.p >= min && k.p < 0.995)
       .map((k, i) => ({
         key: `sqpc_${i}`,
-        label: k.selection.toLowerCase().includes(k.market.toLowerCase()) || !k.market ? k.selection : `${k.market}: ${k.selection}`,
+        label: pickLabel(k.market, k.selection),
         p: k.p, source: k.group, lo: k.lo, hi: k.hi, price: k.price, book: k.book, grade: k.grade,
       }))
       .sort((a, b) => b.p - a.p)

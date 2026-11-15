@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Logo } from "@/components/brand/Logo";
 import { AppNav } from "@/components/app/AppNav";
+import { SlipBar } from "@/components/app/SlipBar";
 import { InstallButton } from "@/components/pwa/InstallButton";
 import { getViewer } from "@/lib/auth";
 import { PLANS } from "@/lib/plans";
@@ -37,6 +38,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         </div>
       </header>
       <main className="mx-auto max-w-6xl px-4 sm:px-6 py-6 sm:py-8">{children}</main>
+      {viewer.tier !== "free" && <SlipBar />}
       <div className="sm:hidden fixed bottom-0 inset-x-0 z-30 border-t border-line bg-[rgba(2,2,2,0.92)] backdrop-blur-md pb-[env(safe-area-inset-bottom)]">
         <AppNav mobile />
       </div>
