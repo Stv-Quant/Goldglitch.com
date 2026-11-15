@@ -1,0 +1,174 @@
+"""Piezas gráficas de Goldglitch para redes: imágenes (JPEG) y videos verticales (MP4) con la marca.
+
+Se dibujan como HTML con Chromium (Playwright) y los videos se arman con ffmpeg (imageio-ffmpeg trae el binario).
+Todos los números vienen de los datos de la web; aquí solo se maquetan.
+"""
+from __future__ import annotations
+
+import html
+import os
+import subprocess
+import tempfile
+from pathlib import Path
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+OUT = os.path.join(HERE, "redes_salida")
+
+# Escala de color de la app (gris → cobre → ámbar → oro → lima → neón).
+STEPS = [(0.85, "#2ef2a0"), (0.75, "#b4f25a"), (0.65, "#f2d25c"), (0.55, "#e8a93c"), (0.40, "#c98a4b"), (0.0, "#8c8576")]
+
+
+def color(p: float) -> str:
+    return next(c for t, c in STEPS if p >= t)
+
+
+def esc(s) -> str:
+    return html.escape(str(s or ""))
+
+
+BASE_CSS = """
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=JetBrains+Mono:wght@500;700&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+body{width:%(w)dpx;height:%(h)dpx;background:#050505;color:#ede6d6;font-family:Inter,system-ui,sans-serif;overflow:hidden;position:relative}
+.bg{position:absolute;inset:0;background:radial-gradient(900px 700px at 85%% -10%%,rgba(212,175,55,.22),transparent 60%%),radial-gradient(700px 600px at -10%% 110%%,rgba(46,242,160,.10),transparent 60%%)}
+.grid{position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.035) 1px,transparent 1px);background-size:54px 54px}
+.wrap{position:relative;height:100%%;display:flex;flex-direction:column;padding:%(pad)dpx}
+.brand{display:flex;align-items:center;gap:16px;font-weight:600;font-size:30px;letter-spacing:.01em}
+.logo{width:52px;height:52px;border-radius:50%%;border:3px solid #d4af37;display:grid;place-items:center}
+.logo i{display:block;width:6px;background:#d4af37;margin:0 2px;border-radius:2px}
+.eyebrow{font-family:'JetBrains Mono',monospace;letter-spacing:.28em;text-transform:uppercase;color:#d4af37;font-size:24px}
+.mono{font-family:'JetBrains Mono',monospace}
+.muted{color:#9a9384}
+.foot{margin-top:auto;display:flex;justify-content:space-between;align-items:flex-end;color:#7d776b;font-size:22px}
+.card{border:1.5px solid rgba(255,255,255,.09);border-radius:28px;background:rgba(18,17,14,.78);padding:40px}
+.bar{height:16px;border-radius:99px;background:#2a2823;overflow:hidden}
+.bar>span{display:block;height:100%%;border-radius:99px}
+"""
+
+LOGO = '<div class="logo"><div style="display:flex;align-items:flex-end;height:24px"><i style="height:10px"></i><i style="height:17px"></i><i style="height:24px"></i></div></div>'
+
+
+def page(body: str, w: int, h: int, pad: int = 80) -> str:
+    return (f"<!doctype html><html><head><meta charset='utf-8'><style>{BASE_CSS % {'w': w, 'h': h, 'pad': pad}}</style></head>"
+            f"<body><div class='bg'></div><div class='grid'></div><div class='wrap'>{body}</div></body></html>")
+
+
+def brand_row(right: str = "") -> str:
+    return f"<div style='display:flex;justify-content:space-between;align-items:center'><div class='brand'>{LOGO}Goldglitch <span class='muted' style='font-weight:400'>· Stats</span></div><div class='eyebrow' style='font-size:20px'>{esc(right)}</div></div>"
+
+
+FOOT = ("<div class='foot'><span>easygoldglitch.com</span>"
+        "<span style='text-align:right'>Probabilidad, no certeza · Solo +18</span></div>")
+
+
+# ------------------------------------------------------------------ slides
+def cover(title: str, subtitle: str, eyebrow: str, w: int, h: int) -> str:
+    return page(f"""{brand_row(eyebrow)}
+      <div style='margin:auto 0'>
+        <div class='eyebrow'>{esc(eyebrow)}</div>
+        <div style='font-size:{int(w * 0.088)}px;font-weight:800;line-height:1.02;margin-top:28px;letter-spacing:-.02em'>{esc(title)}</div>
+        <div class='muted' style='font-size:{int(w * 0.034)}px;margin-top:34px;line-height:1.35'>{esc(subtitle)}</div>
+      </div>{FOOT}""", w, h)
+
+
+def pick_slide(pk: dict, idx: int, total: int, when: str, w: int, h: int) -> str:
+    p = float(pk["p"])
+    c = color(p)
+    return page(f"""{brand_row(f"{idx}/{total}")}
+      <div style='margin:auto 0'>
+        <div class='eyebrow' style='color:#9a9384'>{esc(pk.get('league'))} · {esc(when)}</div>
+        <div style='font-size:{int(w * 0.052)}px;font-weight:600;margin-top:22px;line-height:1.15'>{esc(pk['home'])} <span class='muted'>vs</span> {esc(pk['away'])}</div>
+        <div class='card' style='margin-top:50px;border-color:{c}55'>
+          <div class='muted' style='font-size:26px;text-transform:uppercase;letter-spacing:.18em'>{esc(pk.get('group') or 'Pick del modelo')}</div>
+          <div style='font-size:{int(w * 0.044)}px;font-weight:600;margin-top:18px;line-height:1.2'>{esc(pk['label'])}</div>
+          <div class='mono' style='font-size:{int(w * 0.16)}px;font-weight:700;color:{c};margin-top:20px;line-height:1;text-shadow:0 0 40px {c}66'>{round(p * 100)}%</div>
+          <div class='bar' style='margin-top:26px'><span style='width:{p * 100:.1f}%;background:{c}'></span></div>
+        </div>
+      </div>{FOOT}""", w, h)
+
+
+def results_slide(rows: list[dict], won: int, n: int, title: str, w: int, h: int) -> str:
+    items = "".join(
+        f"<div style='display:flex;gap:22px;align-items:flex-start;padding:18px 0;border-top:1px solid rgba(255,255,255,.07)'>"
+        f"<div class='mono' style='font-size:34px;width:44px;color:{'#2ef2a0' if r['status'] == 'won' else '#ff4d6d'}'>{'✓' if r['status'] == 'won' else '✗'}</div>"
+        f"<div style='flex:1'><div style='font-size:27px;line-height:1.25'>{esc(r['label'])}</div>"
+        f"<div class='muted' style='font-size:21px;margin-top:6px'>{esc(r['home'])} vs {esc(r['away'])}</div></div>"
+        f"<div class='mono muted' style='font-size:26px'>{round(float(r['p']) * 100)}%</div></div>"
+        for r in rows)
+    rate = round(won / n * 100) if n else 0
+    return page(f"""{brand_row("Resultados")}
+      <div style='margin-top:60px'>
+        <div class='eyebrow'>{esc(title)}</div>
+        <div style='display:flex;align-items:baseline;gap:24px;margin-top:20px'>
+          <div class='mono' style='font-size:{int(w * 0.13)}px;font-weight:700;color:#d4af37'>{won}/{n}</div>
+          <div class='muted' style='font-size:34px'>acertados · {rate}%</div>
+        </div>
+      </div>
+      <div style='margin-top:30px'>{items}</div>{FOOT}""", w, h)
+
+
+def text_slide(title: str, body: str, eyebrow: str, w: int, h: int) -> str:
+    paras = "".join(f"<p style='margin-top:26px'>{esc(x)}</p>" for x in body.split("\n") if x.strip())
+    return page(f"""{brand_row(eyebrow)}
+      <div style='margin:auto 0'>
+        <div class='eyebrow'>{esc(eyebrow)}</div>
+        <div style='font-size:{int(w * 0.07)}px;font-weight:800;line-height:1.05;margin-top:24px;letter-spacing:-.02em'>{esc(title)}</div>
+        <div class='muted' style='font-size:{int(w * 0.033)}px;line-height:1.45;margin-top:12px'>{paras}</div>
+      </div>{FOOT}""", w, h)
+
+
+def cta_slide(w: int, h: int) -> str:
+    return page(f"""{brand_row()}
+      <div style='margin:auto 0'>
+        <div style='font-size:{int(w * 0.075)}px;font-weight:800;line-height:1.05'>Todas las estadísticas,<br><span style='color:#d4af37'>partido a partido.</span></div>
+        <div class='muted' style='font-size:{int(w * 0.034)}px;margin-top:30px;line-height:1.4'>Probabilidades del modelo, líneas de goles, córners, tarjetas y jugadores, y el historial público de aciertos.</div>
+        <div class='card mono' style='margin-top:46px;font-size:{int(w * 0.04)}px;color:#d4af37;display:inline-block'>easygoldglitch.com</div>
+      </div>{FOOT}""", w, h)
+
+
+# ------------------------------------------------------------------ rendering
+def render(html_pages: list[str], w: int, h: int, name: str) -> list[str]:
+    """HTML → JPEG files (quality 92). Returns their paths."""
+    from playwright.sync_api import sync_playwright
+    Path(OUT).mkdir(exist_ok=True)
+    paths = []
+    with sync_playwright() as pw:
+        b = pw.chromium.launch()
+        pg = b.new_page(viewport={"width": w, "height": h}, device_scale_factor=1)
+        for i, doc in enumerate(html_pages):
+            pg.set_content(doc, wait_until="networkidle")
+            pg.wait_for_timeout(250)
+            path = os.path.join(OUT, f"{name}_{i + 1}.jpg")
+            pg.screenshot(path=path, type="jpeg", quality=92)
+            paths.append(path)
+        b.close()
+    return paths
+
+
+def video(frames: list[str], name: str, seconds: float = 3.2) -> str:
+    """Vertical MP4 (H.264, 30 fps) from 1080×1920 frames with a soft zoom and crossfades. Silent."""
+    import imageio_ffmpeg
+    ff = imageio_ffmpeg.get_ffmpeg_exe()
+    Path(OUT).mkdir(exist_ok=True)
+    out = os.path.join(OUT, f"{name}.mp4")
+    fade = 0.45
+    n = int(seconds * 30)
+    inputs, parts = [], []
+    for i, f in enumerate(frames):
+        # One still per input; zoompan turns it into an n-frame clip with a slow push-in.
+        inputs += ["-i", f]
+        parts.append(f"[{i}:v]scale=1080:1920,zoompan=z='min(zoom+0.0006,1.05)':d={n}:s=1080x1920:fps=30,"
+                     f"format=yuv420p,setsar=1[v{i}]")
+    chain, last, t = [], "v0", seconds - fade
+    for i in range(1, len(frames)):
+        chain.append(f"[{last}][v{i}]xfade=transition=fade:duration={fade}:offset={t:.2f}[x{i}]")
+        last, t = f"x{i}", t + seconds - fade
+    graph = ";".join(parts + chain)
+    cmd = [ff, "-y", *inputs, "-filter_complex", graph, "-map", f"[{last}]", "-r", "30", "-c:v", "libx264",
+           "-preset", "veryfast", "-crf", "23", "-maxrate", "6M", "-bufsize", "12M", "-pix_fmt", "yuv420p", "-movflags", "+faststart", out]
+    subprocess.run(cmd, check=True, capture_output=True)
+    return out
+
+
+def tmpdir() -> str:
+    return tempfile.mkdtemp(prefix="gg_redes_")
