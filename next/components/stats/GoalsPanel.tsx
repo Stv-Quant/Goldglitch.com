@@ -1,6 +1,5 @@
 import { scoreStats } from "@/lib/derived";
 import { Prob, ProbMeter } from "./Prob";
-import { ScoreMatrix } from "./ScoreMatrix";
 import { probColor } from "@/lib/probScale";
 
 /** Pro: everything about goals the score matrix implies, most useful first. */
@@ -64,12 +63,6 @@ export function GoalsPanel({ xg, matrix, home, away }: {
         </div>
       )}
 
-      {matrix && (
-        <div className="card p-4 sm:p-5">
-          <h3 className="mb-3 text-sm text-mid">Mapa de marcadores</h3>
-          <ScoreMatrix matrix={matrix} homeLabel={home} awayLabel={away} />
-        </div>
-      )}
     </div>
   );
 }

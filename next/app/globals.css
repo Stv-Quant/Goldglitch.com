@@ -16,13 +16,14 @@
   --flare: #ff3b1f; /* noise / tipster red */
   --seg-2: #4a4843; /* secondary outcome segment */
   --seg-3: #2c2b28; /* tertiary outcome segment */
-  /* Probability scale (app only): cold → gold → neon. */
-  --p1: #8c8576;
-  --p2: #c98a4b;
-  --p3: #e8a93c;
-  --p4: #f2d25c;
-  --p5: #b4f25a;
-  --p6: #2ef2a0;
+  /* Probability scale (app only): ruby → ember → amber → gold → lime → emerald. Vivid on purpose: it is the
+     first thing the eye reads. */
+  --p1: #ff4d6d;
+  --p2: #ff7a2f;
+  --p3: #ffb020;
+  --p4: #ffe14d;
+  --p5: #a6ff3c;
+  --p6: #00f0a0;
   --text-hi: #ede6d6;
   --text-mid: #b8b0a0;
   --text-lo: #8c8576;
@@ -260,3 +261,39 @@ body {
 .p-glow { text-shadow: 0 0 18px color-mix(in srgb, currentColor 45%, transparent); }
 .scroll-x { overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
 .scroll-x::-webkit-scrollbar { display: none; }
+
+/* ---------- App skin (logged-in area only; the landing keeps its own look) ---------- */
+.app-skin .card {
+  border-radius: 16px;
+  border: 1px solid rgba(212, 175, 55, 0.13);
+  background:
+    linear-gradient(180deg, rgba(212, 175, 55, 0.06), transparent 42%),
+    linear-gradient(180deg, #15120c, #0d0b08);
+  box-shadow: inset 0 1px 0 rgba(255, 232, 160, 0.07), 0 18px 40px -26px rgba(0, 0, 0, 0.9);
+  transition: border-color var(--motion-base), box-shadow var(--motion-base), transform var(--motion-base);
+}
+.app-skin a.card:hover {
+  border-color: rgba(212, 175, 55, 0.42);
+  box-shadow: inset 0 1px 0 rgba(255, 232, 160, 0.1), 0 0 0 1px rgba(212, 175, 55, 0.12), 0 22px 46px -24px rgba(212, 175, 55, 0.28);
+  transform: translateY(-1px);
+}
+.app-skin .glass {
+  border-radius: 20px;
+  border: 1px solid rgba(212, 175, 55, 0.22);
+  background:
+    radial-gradient(900px 260px at 85% -20%, rgba(212, 175, 55, 0.16), transparent 60%),
+    linear-gradient(180deg, #17130c, #0c0a07);
+  box-shadow: inset 0 1px 0 rgba(255, 232, 160, 0.09), 0 30px 60px -30px rgba(0, 0, 0, 0.95);
+}
+/* Gold leaf for headline numbers and titles. */
+.gold-leaf {
+  background: linear-gradient(180deg, #fff3c4 0%, #f0cf63 38%, #d4af37 60%, #9c7a22 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.gold-rule { height: 1px; background: linear-gradient(90deg, rgba(212, 175, 55, 0.55), rgba(212, 175, 55, 0.08) 60%, transparent); }
+/* Probability bars: a light-to-colour sweep so they read as filled, not flat. */
+.p-fill { background: linear-gradient(90deg, color-mix(in srgb, var(--pc) 70%, #000) 0%, var(--pc) 70%, color-mix(in srgb, var(--pc) 75%, #fff) 100%); }
+.p-fill-hot { box-shadow: 0 0 14px -2px color-mix(in srgb, var(--pc) 70%, transparent); }
+@media (prefers-reduced-motion: reduce) { .app-skin a.card:hover { transform: none; } }

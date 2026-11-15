@@ -15,7 +15,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   if (viewer.mustChangePassword) redirect("/acceso/nueva-clave");
 
   return (
-    <div className="min-h-dvh pb-20 sm:pb-0">
+    <div className="app-skin min-h-dvh pb-20 sm:pb-0">
       <header className="sticky top-0 z-30 border-b border-line bg-[rgba(2,2,2,0.82)] backdrop-blur-md pt-[env(safe-area-inset-top)]">
         <div className="mx-auto max-w-6xl px-4 sm:px-6 h-14 flex items-center justify-between gap-4">
           <Logo href="/app" />

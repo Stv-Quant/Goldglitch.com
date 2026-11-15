@@ -14,8 +14,8 @@ from pathlib import Path
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(HERE, "redes_salida")
 
-# Escala de color de la app (gris → cobre → ámbar → oro → lima → neón).
-STEPS = [(0.85, "#2ef2a0"), (0.75, "#b4f25a"), (0.65, "#f2d25c"), (0.55, "#e8a93c"), (0.40, "#c98a4b"), (0.0, "#8c8576")]
+# Escala de color de la app (rubí → brasa → ámbar → oro → lima → esmeralda).
+STEPS = [(0.85, "#00f0a0"), (0.75, "#a6ff3c"), (0.65, "#ffe14d"), (0.55, "#ffb020"), (0.40, "#ff7a2f"), (0.0, "#ff4d6d")]
 
 
 def color(p: float) -> str:
