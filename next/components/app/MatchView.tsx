@@ -173,7 +173,9 @@ export function MatchView({ m }: { m: MatchData | { locked: true; sport: Sport }
             <p className="text-[11px] text-lo">Probabilidad, no certeza: un 80% falla 1 de cada 5 veces.</p>
           </div>
           {m.picks.length > 0 ? (
-            <PicksList picks={m.picks} />
+            <PicksList picks={m.picks} match={m.picks.some((k) => k.key.startsWith("sqpc_")) && m.status === "scheduled"
+              ? { matchId: m.id, sport: m.sport, competition: m.competition.name, home: m.home.name, away: m.away.name, kickoffAt: m.kickoffAt }
+              : undefined} />
           ) : (
             <LockedPanel tier="Pro" title={`${m.picksLocked} pick${m.picksLocked === 1 ? "" : "s"} del modelo en este partido`}>
               {"Las selecciones con 75% o más de probabilidad según el modelo, con su nivel de confianza."}

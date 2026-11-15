@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 
 const ITEMS = [
   { href: "/app", label: "Partidos", icon: "M4 6h16M4 12h16M4 18h10" },
+  { href: "/app/combinadas", label: "Combinadas", icon: "M7 4h10v16H7zM10 8h4M10 12h4M10 16h2" },
   { href: "/historial", label: "Historial", icon: "M4 20V10m6 10V4m6 16v-7m4 7H2" },
   { href: "/app/cuenta", label: "Cuenta", icon: "M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm-7 9a7 7 0 0 1 14 0" },
 ];
@@ -15,7 +16,7 @@ export function AppNav({ mobile = false }: { mobile?: boolean }) {
 
   if (mobile) {
     return (
-      <nav className="grid grid-cols-3" aria-label="Navegación de la app">
+      <nav className="grid grid-cols-4" aria-label="Navegación de la app">
         {ITEMS.map((i) => (
           <Link key={i.href} href={i.href} aria-current={active(i.href) ? "page" : undefined}
             className="flex flex-col items-center gap-1 py-2.5 text-[11px]"
