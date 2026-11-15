@@ -58,6 +58,8 @@ export async function POST(request: Request) {
   }
   const { batch: b, skipped } = filterBySport(parsed.data, accepted);
 
+  // Every upsert below only writes when something actually changed: SQPC re-sends the same matches, teams and
+  // predictions every hour, and on D1's free plan each rewritten row counts toward the 100k writes/day limit.
   const stmts: D1PreparedStatement[] = [];
 
   for (const c of b.competitions) {
@@ -65,7 +67,9 @@ export async function POST(request: Request) {
       db
         .prepare(
           `INSERT INTO competitions (id, sport, name, country, season) VALUES (?, ?, ?, ?, ?)
-           ON CONFLICT(id) DO UPDATE SET sport=excluded.sport, name=excluded.name, country=excluded.country, season=excluded.season`,
+           ON CONFLICT(id) DO UPDATE SET sport=excluded.sport, name=excluded.name, country=excluded.country, season=excluded.season
+           WHERE competitions.sport IS NOT excluded.sport OR competitions.name IS NOT excluded.name
+              OR competitions.country IS NOT excluded.country OR competitions.season IS NOT excluded.season`,
         )
         .bind(c.id, c.sport, c.name, c.country ?? null, c.season ?? null),
     );
@@ -75,7 +79,9 @@ export async function POST(request: Request) {
       db
         .prepare(
           `INSERT INTO teams (id, sport, name, short_name, country) VALUES (?, ?, ?, ?, ?)
-           ON CONFLICT(id) DO UPDATE SET sport=excluded.sport, name=excluded.name, short_name=excluded.short_name, country=excluded.country`,
+           ON CONFLICT(id) DO UPDATE SET sport=excluded.sport, name=excluded.name, short_name=excluded.short_name, country=excluded.country
+           WHERE teams.sport IS NOT excluded.sport OR teams.name IS NOT excluded.name
+              OR teams.short_name IS NOT excluded.short_name OR teams.country IS NOT excluded.country`,
         )
         .bind(t.id, t.sport, t.name, t.shortName ?? null, t.country ?? null),
     );
@@ -89,7 +95,12 @@ export async function POST(request: Request) {
            ON CONFLICT(id) DO UPDATE SET sport=excluded.sport, competition_id=excluded.competition_id,
              home_team_id=excluded.home_team_id, away_team_id=excluded.away_team_id, kickoff_at=excluded.kickoff_at,
              status=excluded.status, home_score=excluded.home_score, away_score=excluded.away_score,
-             venue=excluded.venue, updated_at=excluded.updated_at`,
+             venue=excluded.venue, updated_at=excluded.updated_at
+           WHERE matches.sport IS NOT excluded.sport OR matches.competition_id IS NOT excluded.competition_id
+              OR matches.home_team_id IS NOT excluded.home_team_id OR matches.away_team_id IS NOT excluded.away_team_id
+              OR matches.kickoff_at IS NOT excluded.kickoff_at OR matches.status IS NOT excluded.status
+              OR matches.home_score IS NOT excluded.home_score OR matches.away_score IS NOT excluded.away_score
+              OR matches.venue IS NOT excluded.venue`,
         )
         .bind(
           m.id, m.sport, m.competitionId, m.homeTeamId, m.awayTeamId, m.kickoffAt, m.status,
@@ -109,7 +120,8 @@ export async function POST(request: Request) {
             WHERE ?3 < (SELECT kickoff_at FROM matches WHERE id = ?1)
            ON CONFLICT(match_id, model_version) DO UPDATE SET generated_at=excluded.generated_at,
              p_home=excluded.p_home, p_draw=excluded.p_draw, p_away=excluded.p_away, payload=excluded.payload
-           WHERE excluded.generated_at >= predictions.generated_at
+           WHERE (excluded.generated_at > predictions.generated_at
+                  OR (excluded.generated_at = predictions.generated_at AND excluded.payload IS NOT predictions.payload))
              AND excluded.generated_at < (SELECT kickoff_at FROM matches WHERE id = excluded.match_id)`,
         )
         .bind(p.matchId, p.modelVersion, p.generatedAt, p.outcome.home, p.outcome.draw, p.outcome.away, JSON.stringify(p)),
@@ -124,7 +136,8 @@ export async function POST(request: Request) {
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
            ON CONFLICT(id) DO UPDATE SET n=excluded.n, brier=excluded.brier, log_loss=excluded.log_loss,
              baseline_brier=excluded.baseline_brier, calibration=excluded.calibration, generated_at=excluded.generated_at,
-             window_start=excluded.window_start, window_end=excluded.window_end`,
+             window_start=excluded.window_start, window_end=excluded.window_end
+           WHERE model_metrics.generated_at IS NOT excluded.generated_at OR model_metrics.n IS NOT excluded.n`,
         )
         .bind(
           k.id, k.sport, k.competitionId ?? null, k.modelVersion, k.windowStart, k.windowEnd, k.n,
@@ -175,8 +188,8 @@ export async function POST(request: Request) {
       metrics: b.metrics.length,
       trackedPicks: trackedStored,
     },
-    // Predictions rejected because they were generated at/after kickoff or are older than the stored version.
-    rejectedPredictions: b.predictions.length - predictionsStored,
+    // Not stored: identical to what the site already has, older than the stored version, or made at/after kickoff.
+    unchangedOrRejectedPredictions: b.predictions.length - predictionsStored,
     ...(Object.keys(skipped).length ? { skippedSports: skipped, hint: "falta aplicar la migración de ese deporte (npm run db:migrate:remote)" } : {}),
   });
 }
