@@ -23,7 +23,8 @@ export async function ensureTrackedTable(db: D1Database): Promise<void> {
  * - a pick is only accepted if it was made before kickoff;
  * - while pending, the selection may change only with a newer pre-kickoff version (the model updated before the match);
  * - a result is only accepted after kickoff;
- * - once settled (won / lost / void) the row never changes again.
+ * - once settled (won / lost / void) the row never changes again;
+ * - a re-sent pick that changes nothing is not rewritten (D1 free plan: 100k rows written per day).
  */
 export function trackedPickStatements(db: D1Database, rows: TrackedPick[], now: number): D1PreparedStatement[] {
   return rows.map((t) =>
@@ -50,7 +51,11 @@ export function trackedPickStatements(db: D1Database, rows: TrackedPick[], now: 
            settled_at = CASE WHEN tracked_picks.kickoff_at < excluded.updated_at THEN excluded.settled_at ELSE NULL END,
            profit     = CASE WHEN tracked_picks.kickoff_at < excluded.updated_at THEN excluded.profit ELSE NULL END,
            updated_at = excluded.updated_at
-         WHERE tracked_picks.status = 'pending'`,
+         WHERE tracked_picks.status = 'pending'
+           AND ((excluded.picked_at > tracked_picks.picked_at AND excluded.picked_at < tracked_picks.kickoff_at
+                 AND (excluded.label IS NOT tracked_picks.label OR excluded.p IS NOT tracked_picks.p
+                      OR excluded.group_name IS NOT tracked_picks.group_name))
+                OR (tracked_picks.kickoff_at < excluded.updated_at AND excluded.status <> 'pending'))`,
       )
       .bind(
         t.id, t.kind, t.sport, t.competitionId, t.competitionName ?? null, t.matchId, t.home, t.away, t.kickoffAt,

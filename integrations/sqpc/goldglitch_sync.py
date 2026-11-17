@@ -601,7 +601,8 @@ def metrics_from_analysis(reports: str) -> list[dict]:
 
 
 def espn_result(slug_: str, event: str) -> tuple[str, int, int] | None:
-    url = f"https://site.api.espn.com/apis/site/v2/sports/{slug_}/summary?event={event}"
+    path = slug_ if "/" in slug_ else f"soccer/{slug_}"   # football slugs come bare ("col.1"); US ones as "basketball/nba"
+    url = f"https://site.api.espn.com/apis/site/v2/sports/{path}/summary?event={event}"
     req = urllib.request.Request(url, headers={"user-agent": "sqpc-goldglitch-sync/1.0"})
     with urllib.request.urlopen(req, timeout=15) as r:
         d = json.load(r)
@@ -844,40 +845,51 @@ def main() -> int:
     if not url or not secret:
         print("Falta .env con GG_INGEST_URL y GG_INGEST_SECRET (Admin → Datos → Conexión con SQPC).", file=sys.stderr)
         return 2
-    res: dict[str, Any] = {"ok": True}
     main_batch, side = split_sport(batch, "esports")
     parts = split_batch(main_batch)
+    sent_ok: list[dict] = []     # tracked picks of the parts the site accepted (remembered even if another part fails)
+    failed = False
     for i, part in enumerate(parts, 1):
-        try:
-            r = publish(part, url, secret)
-        except RuntimeError as e:
-            print(f"ERROR al publicar (parte {i}/{len(parts)}): {e}", file=sys.stderr)
-            return 1
+        r = None
+        for attempt in (1, 2):   # one retry: a 1102 (CPU limit) or a network hiccup usually clears on the second try
+            try:
+                r = publish(part, url, secret)
+                break
+            except RuntimeError as e:
+                print(f"ERROR al publicar (parte {i}/{len(parts)}, intento {attempt}): {e}", file=sys.stderr)
+                time.sleep(5)
+        if r is None or not r.get("ok"):
+            if r is not None:
+                print(f"Parte {i}/{len(parts)}: {json.dumps(r, ensure_ascii=False)}")
+            if part["matches"] or part["predictions"] or part["metrics"]:
+                failed = True    # match data missing: keep the state so the same results are retried next hour
+            continue
         print(f"Parte {i}/{len(parts)}: {json.dumps(r, ensure_ascii=False)}")
-        if not r.get("ok"):
-            res = r
-            break
-    # E-sports travel apart: a site without e-sports yet (deploy or migration 0009 pending) must never block the rest.
-    if res.get("ok") and side:
+        sent_ok += part.get("trackedPicks", [])
+    # E-sports travel apart: a site without e-sports yet (deploy or migration 0010 pending) must never block the rest.
+    if not failed and side:
         for part in split_batch(side):
             try:
                 r = publish(part, url, secret)
                 print(f"E-sports: {json.dumps(r, ensure_ascii=False)}")
+                if r.get("ok"):
+                    sent_ok += part.get("trackedPicks", [])
             except RuntimeError as e:
                 print(f"  e-sports no publicados (¿falta desplegar la web o aplicar la migración 0010?): {e}")
                 break
-    if res.get("ok"):
-        keep = {t["id"] for t in all_tracked}
-        sent = {k: v for k, v in sent.items() if k in keep}
-        sent.update({t["id"]: fp(t) for t in batch["trackedPicks"]})
-        with open(TRACKED_SENT, "w", encoding="utf-8") as f:
-            json.dump(sent, f)
-        # Keep state small: drop matches finalized more than 14 days ago.
-        cutoff = now - 14 * 86400_000
-        state = {k: v for k, v in state.items() if not (v.get("final") and v["match"]["kickoffAt"] < cutoff)}
-        with open(STATE_FILE, "w", encoding="utf-8") as f:
-            json.dump(state, f, ensure_ascii=False)
-    return 0 if res.get("ok") else 1
+    keep = {t["id"] for t in all_tracked}
+    sent = {k: v for k, v in sent.items() if k in keep}
+    sent.update({t["id"]: fp(t) for t in sent_ok})
+    with open(TRACKED_SENT, "w", encoding="utf-8") as f:
+        json.dump(sent, f)
+    if failed:
+        return 1
+    # Keep state small: drop matches finalized more than 14 days ago.
+    cutoff = now - 14 * 86400_000
+    state = {k: v for k, v in state.items() if not (v.get("final") and v["match"]["kickoffAt"] < cutoff)}
+    with open(STATE_FILE, "w", encoding="utf-8") as f:
+        json.dump(state, f, ensure_ascii=False)
+    return 0
 
 
 if __name__ == "__main__":
