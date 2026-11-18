@@ -7,6 +7,10 @@ export type Fixture = {
   kickoffAt: number;
   state: "pre" | "in" | "post";
   outcomes: 2 | 3;
+  homeName?: string;
+  awayName?: string;
+  homeLogo?: string;
+  awayLogo?: string;
 };
 
 const ymdFmt = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Bogota" });

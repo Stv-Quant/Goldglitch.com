@@ -358,10 +358,10 @@ export function SignalStory() {
         <section data-act="0" className="relative min-h-[150dvh] flex items-start pt-[30dvh] sm:items-center sm:pt-0">
           <div className="px-5 sm:px-10 lg:px-16 max-w-[46rem]">
             <p className="num text-[11px] tracking-[0.22em] text-flare uppercase">00 — Ruido</p>
-            <h1 className="display mt-5 text-[3.1rem] sm:text-[5.6rem] lg:text-[7rem]">
+            <h2 className="display mt-5 text-[3.1rem] sm:text-[5.6rem] lg:text-[7rem]">
               <Line>Te venden <span className="line-through decoration-[var(--flare)] decoration-2">certezas</span>.</Line>
               <Line>Nosotros <em>medimos</em> dudas.</Line>
-            </h1>
+            </h2>
             <p className="mt-7 text-lg text-mid max-w-md leading-relaxed">
               Fútbol, béisbol y lo que venga: siempre las mismas fijas, ganancias seguras y grupos VIP. Ruido. Baja y mira
               qué queda cuando lo quitas.
