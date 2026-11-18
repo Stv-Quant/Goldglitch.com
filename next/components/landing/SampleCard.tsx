@@ -1,80 +1,18 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
-import { useToday, type Sample } from "@/components/experience/useFixtures";
+import type { Sample } from "@/components/experience/useFixtures";
 import { Crest } from "./Crest";
-import { CountUp, useMagnet, useTilt } from "./motion";
+import { CountUp, useTilt } from "./motion";
 
 const timeFmt = new Intl.DateTimeFormat("es-CO", { weekday: "short", hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "America/Bogota" });
-
-/**
- * Above the fold, in this order: what it is (H1), what you get (sub), what we are NOT (three strikes),
- * one action, and the product itself (a real 1X2 the model published for an upcoming match).
- */
-export function Hero() {
-  const today = useToday();
-  const cta = useMagnet<HTMLAnchorElement>(0.22);
-  const n = today?.fixtures.length ?? 0;
-
-  return (
-    <section className="hero-v3 relative isolate overflow-hidden pt-[calc(4rem+36px)]">
-      <div aria-hidden className="hero-aurora" />
-      <div aria-hidden className="grid-lines absolute inset-0 -z-10 opacity-60" />
-
-      <div className="mx-auto grid max-w-6xl items-center gap-12 px-5 pb-16 pt-10 sm:px-6 lg:min-h-[calc(100dvh-4rem-36px)] lg:grid-cols-[1.08fr_0.92fr] lg:gap-10 lg:pb-20">
-        <div>
-          <p className="hero-in inline-flex items-center gap-2 rounded-full border border-[var(--border-glass)] bg-[rgba(212,175,55,0.07)] px-3 py-1 num text-[11px] uppercase tracking-[0.16em] text-gold">
-            <span className="live-dot" aria-hidden />
-            {today === null ? "Cargando partidos de hoy…" : n ? <>{n} partidos en el radar hoy y mañana</> : "Estadística deportiva"}
-          </p>
-
-          <h1 className="hero-in display mt-6 text-[3rem] leading-[0.92] sm:text-[4.6rem] lg:text-[5.4rem]" style={{ animationDelay: "60ms" }}>
-            Las probabilidades de cada partido, <em>antes</em> del pitazo.
-          </h1>
-
-          <p className="hero-in mt-6 max-w-xl text-[17px] leading-relaxed text-mid sm:text-lg" style={{ animationDelay: "140ms" }}>
-            Un modelo estadístico analiza <span className="text-hi">fútbol, MLB, NBA y NHL</span> y te muestra qué tan probable es
-            cada resultado: <span className="text-hi">ganador, goles, córners, tarjetas y jugadores</span>. Todo queda en un historial
-            público, aciertos y fallos.
-          </p>
-
-          <ul className="hero-in mt-6 flex flex-wrap gap-2" style={{ animationDelay: "220ms" }} aria-label="Lo que no somos">
-            {["No vendemos fijas", "No somos casa de apuestas", "No borramos los fallos"].map((t) => (
-              <li key={t} className="not-chip">
-                <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" aria-hidden><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /></svg>
-                {t}
-              </li>
-            ))}
-          </ul>
-
-          <div className="hero-in mt-9 flex flex-wrap items-center gap-3" style={{ animationDelay: "300ms" }}>
-            <Link ref={cta} href="/acceso" className="btn-gold cta-shine px-6 py-3.5 text-[15px] transition-transform duration-200">
-              Ver los partidos de hoy gratis →
-            </Link>
-            <Link href="/historial" className="btn-ghost px-5 py-3.5 text-[15px]">¿Acierta? Míralo tú</Link>
-          </div>
-          <p className="hero-in mt-3 text-[13px] text-lo" style={{ animationDelay: "340ms" }}>
-            Cuenta gratis · sin tarjeta · entras con tu correo
-          </p>
-        </div>
-
-        <SampleStack sample={today?.sample ?? null} loading={today === null} />
-      </div>
-
-      <a href="#radar" className="hero-cue num" aria-label="Bajar a los partidos de hoy">
-        <span className="scroll-cue inline-block h-8 w-px bg-[var(--gold)]" /> Desliza
-      </a>
-    </section>
-  );
-}
 
 const EXAMPLE: Sample = {
   matchId: "ejemplo", league: "Ejemplo ilustrativo", home: "Local", away: "Visitante",
   kickoffAt: 0, p: { home: 0.49, draw: 0.27, away: 0.24 }, picks: 3,
 };
 
-function SampleStack({ sample, loading }: { sample: Sample | null; loading: boolean }) {
+export function SampleStack({ sample, loading }: { sample: Sample | null; loading: boolean }) {
   const tilt = useTilt<HTMLDivElement>(7);
   const s = sample ?? EXAMPLE;
   const real = !!sample;

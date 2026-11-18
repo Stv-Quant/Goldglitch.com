@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useToday } from "@/components/experience/useFixtures";
-import { CountUp, useInView, useTilt } from "./motion";
+import { CountUp, useInView } from "./motion";
 
 /* ---------------- Proof: the public record in four numbers ---------------- */
 
@@ -43,114 +43,6 @@ export function ProofNumbers() {
   );
 }
 
-/* ---------------- How it works: pinned, scroll-driven 4 steps ---------------- */
-
-const STEPS = [
-  { k: "Datos", t: "Descarga todo lo que pasó", d: "Resultados, tiros, xG, córners, tarjetas, alineaciones y forma de cada equipo y jugador. Miles de partidos, todos los días, sin que tengas que buscar nada.", icon: "M4 6h16M4 12h16M4 18h10" },
-  { k: "Modelo", t: "Simula el partido miles de veces", d: "Modelos estadísticos (Poisson, Dixon-Coles, Monte Carlo) juegan el partido una y otra vez. Sin corazonadas, sin camisetas.", icon: "M4 18l5-6 4 3 7-9" },
-  { k: "Probabilidad", t: "Te dice qué tan probable es cada cosa", d: "Ganador, goles, córners, tarjetas y jugadores en porcentaje, con su rango de incertidumbre. Tú decides con los números delante.", icon: "M12 3a9 9 0 1 0 9 9h-9V3Z" },
-  { k: "Auditoría", t: "Y se juzga en público", d: "Cada pronóstico se guarda antes del pitazo y se liquida con el resultado real. Si el modelo falla, lo ves en el historial.", icon: "M5 12l4 4 10-10" },
-];
-
-export function Pipeline() {
-  const ref = useRef<HTMLElement>(null);
-  const [step, setStep] = useState(0);
-  useEffect(() => {
-    const el = ref.current!;
-    let raf = 0;
-    const on = () => {
-      cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(() => {
-        const r = el.getBoundingClientRect();
-        const p = Math.min(1, Math.max(0, -r.top / Math.max(1, r.height - window.innerHeight)));
-        el.style.setProperty("--pp", p.toFixed(3));
-        setStep(Math.min(STEPS.length - 1, Math.floor(p * STEPS.length * 0.999)));
-      });
-    };
-    on();
-    window.addEventListener("scroll", on, { passive: true });
-    window.addEventListener("resize", on);
-    return () => { window.removeEventListener("scroll", on); window.removeEventListener("resize", on); cancelAnimationFrame(raf); };
-  }, []);
-
-  return (
-    <section ref={ref} className="relative" style={{ height: `${STEPS.length * 70 + 40}dvh`, ["--pp" as string]: 0 }} aria-labelledby="como-title">
-      <div className="sticky top-0 flex h-dvh items-center overflow-hidden">
-        <div className="mx-auto grid w-full max-w-6xl gap-10 px-5 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
-          <div>
-            <p className="num text-[11px] uppercase tracking-[0.22em] text-gold">Cómo funciona</p>
-            <h2 id="como-title" className="display mt-3 text-[2.4rem] sm:text-[3.6rem]">De miles de datos a <em>un porcentaje</em> honesto.</h2>
-            <ol className="mt-8 space-y-1">
-              {STEPS.map((s, i) => (
-                <li key={s.k} data-on={i === step || undefined} data-done={i < step || undefined} className="pipe-step">
-                  <span className="num pipe-n">{String(i + 1).padStart(2, "0")}</span>
-                  <span>{s.k}</span>
-                </li>
-              ))}
-            </ol>
-            <div className="mt-6 h-px w-full max-w-xs bg-[var(--border-soft)]">
-              <div className="h-full origin-left bg-[var(--gold)]" style={{ transform: "scaleX(var(--pp))" }} />
-            </div>
-          </div>
-
-          <div className="relative min-h-[340px]">
-            {STEPS.map((s, i) => (
-              <article key={s.k} className="pipe-card" data-on={i === step || undefined} data-past={i < step || undefined} aria-hidden={i !== step}>
-                <div className="pipe-icon">
-                  <svg viewBox="0 0 24 24" className="h-7 w-7" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d={s.icon} /></svg>
-                </div>
-                <p className="mt-6 num text-[11px] uppercase tracking-[0.2em] text-lo">Paso {i + 1} de {STEPS.length}</p>
-                <h3 className="display mt-2 text-[2rem] sm:text-[2.8rem]">{s.t}</h3>
-                <p className="mt-4 max-w-md text-[16px] leading-relaxed text-mid sm:text-[17px]">{s.d}</p>
-                <StepVisual i={i} on={i === step} />
-              </article>
-            ))}
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function StepVisual({ i, on }: { i: number; on: boolean }) {
-  if (i === 0) {
-    return (
-      <div className="mt-6 flex h-16 items-end gap-1" aria-hidden>
-        {Array.from({ length: 36 }, (_, k) => (
-          <span key={k} className="viz-bar" style={{ height: `${18 + ((k * 37) % 82)}%`, transitionDelay: `${k * 18}ms`, transform: on ? "scaleY(1)" : "scaleY(0.1)" }} />
-        ))}
-      </div>
-    );
-  }
-  if (i === 1) {
-    return (
-      <svg viewBox="0 0 300 70" className="mt-6 h-16 w-full max-w-md" aria-hidden>
-        {Array.from({ length: 14 }, (_, k) => (
-          <path key={k} d={`M0 ${50 - k} C 60 ${20 + k * 3}, 120 ${60 - k * 2}, 180 ${30 + k}, S 260 ${15 + k * 2}, 300 ${35 - k}`}
-            fill="none" stroke="var(--gold)" strokeOpacity={0.08 + (k % 4) * 0.06} strokeWidth="1" className="viz-path" data-on={on || undefined} style={{ transitionDelay: `${k * 40}ms` }} />
-        ))}
-      </svg>
-    );
-  }
-  if (i === 2) {
-    return (
-      <div className="mt-6 flex max-w-md gap-1" aria-hidden>
-        {[["49%", 49, "var(--p3)"], ["27%", 27, "var(--seg-2)"], ["24%", 24, "var(--seg-3)"]].map(([l, w, c], k) => (
-          <div key={k} className="viz-seg num" style={{ flexBasis: on ? `${w}%` : "33%", background: String(c), color: k ? "var(--text-hi)" : "#0a0907" }}>{l}</div>
-        ))}
-      </div>
-    );
-  }
-  return (
-    <div className="mt-6 flex flex-wrap gap-1.5" aria-hidden>
-      {Array.from({ length: 24 }, (_, k) => {
-        const won = (k * 7) % 10 < 8;
-        return <span key={k} className={`viz-tick ${won ? "is-won" : "is-lost"}`} style={{ transitionDelay: `${k * 35}ms`, opacity: on ? 1 : 0 }}>{won ? "✓" : "✕"}</span>;
-      })}
-    </div>
-  );
-}
-
 /* ---------------- Versus: the contrast ---------------- */
 
 const VS: [string, string][] = [
@@ -184,75 +76,6 @@ export function Versus() {
         ))}
       </div>
     </section>
-  );
-}
-
-/* ---------------- What's inside: bento of real UI ---------------- */
-
-export function Bento() {
-  return (
-    <section id="bento" className="mx-auto max-w-6xl px-5 py-20 sm:px-6 sm:py-28">
-      <p className="num text-[11px] uppercase tracking-[0.22em] text-gold">Qué recibes</p>
-      <h2 className="display mt-3 max-w-3xl text-[2.4rem] sm:text-[3.6rem]">Todo el partido, <em>en números</em>.</h2>
-      <div className="mt-12 grid gap-4 md:grid-cols-6">
-        <Tile className="md:col-span-3" plan="Free" title="Ganador del partido" text="Local, empate o visitante en porcentaje, para cada partido de fútbol.">
-          <div className="mt-5 space-y-2">
-            {[["Local", 52, "var(--p3)"], ["Empate", 26, "var(--seg-2)"], ["Visita", 22, "var(--seg-2)"]].map(([l, v, c]) => (
-              <div key={String(l)} className="flex items-center gap-3 text-[13px]">
-                <span className="w-14 text-mid">{l}</span>
-                <span className="h-2 flex-1 overflow-hidden rounded-full bg-[rgba(237,230,214,0.06)]"><span className="tile-bar block h-full rounded-full" style={{ ["--w" as string]: `${v}%`, background: String(c) }} /></span>
-                <span className="num w-10 text-right text-hi">{v}%</span>
-              </div>
-            ))}
-          </div>
-        </Tile>
-        <Tile className="md:col-span-3" plan="Pro" title="Marcador exacto" text="La matriz completa de marcadores. La densidad es la probabilidad.">
-          <div className="mt-5 grid w-fit grid-cols-5 gap-1" aria-hidden>
-            {Array.from({ length: 25 }, (_, k) => {
-              const h = Math.floor(k / 5), a = k % 5;
-              const p = Math.exp(-((h - 1) ** 2 + (a - 0.8) ** 2) / 2.2);
-              return <span key={k} className="num grid h-7 w-9 place-items-center rounded text-[10px]" style={{ background: `rgba(212,175,55,${(p * 0.75).toFixed(2)})`, color: p > 0.5 ? "#0a0907" : "var(--text-lo)" }}>{h}-{a}</span>;
-            })}
-          </div>
-        </Tile>
-        <Tile className="md:col-span-2" plan="Pro" title="Goles, córners y tarjetas" text="Cada línea con su probabilidad de más o menos.">
-          <ul className="mt-5 space-y-2 text-[13px]">
-            {[["+2.5 goles", 58], ["+9.5 córners", 47], ["+4.5 tarjetas", 64]].map(([l, v]) => (
-              <li key={String(l)} className="flex justify-between border-b border-line pb-2 last:border-0"><span className="text-mid">{l}</span><span className="num text-gold">{v}%</span></li>
-            ))}
-          </ul>
-        </Tile>
-        <Tile className="md:col-span-2" plan="Pro" title="Jugadores" text="Remates, goles, faltas y tarjetas por jugador, con su historial contra el rival.">
-          <ul className="mt-5 space-y-2 text-[13px]">
-            {[["Delantero · remate a puerta", 71], ["Extremo · 1+ remates", 83], ["Medio · tarjeta", 22]].map(([l, v]) => (
-              <li key={String(l)} className="flex justify-between gap-2"><span className="truncate text-mid">{l}</span><span className="num text-gold">{v}%</span></li>
-            ))}
-          </ul>
-        </Tile>
-        <Tile className="md:col-span-2" plan="Free" title="Historial auditable" text="Cada pick queda guardado antes del partido.">
-          <svg viewBox="0 0 200 60" className="mt-5 h-14 w-full" aria-hidden>
-            <line x1="0" y1="30" x2="200" y2="30" stroke="var(--border-soft)" strokeDasharray="3 4" />
-            <path className="tile-line" d="M0 30 L20 27 L40 33 L60 29 L80 31 L100 26 L120 30 L140 28 L160 32 L180 29 L200 30" fill="none" stroke="var(--gold)" strokeWidth="1.6" />
-          </svg>
-          <p className="text-[12px] text-lo">Cerca de 0 = el modelo acierta lo que dice.</p>
-        </Tile>
-      </div>
-      <p className="mt-4 text-[12px] text-lo">Las cifras de esta sección son ilustrativas: los números reales están dentro de la app.</p>
-    </section>
-  );
-}
-
-function Tile({ className = "", plan, title, text, children }: { className?: string; plan: "Free" | "Pro"; title: string; text: string; children: React.ReactNode }) {
-  const ref = useTilt<HTMLElement>(3);
-  return (
-    <article ref={ref} className={`bento-tile ${className}`}>
-      <div className="flex items-center justify-between">
-        <h3 className="text-[17px] font-medium text-hi">{title}</h3>
-        <span className={`num rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] ${plan === "Pro" ? "border-[var(--border-glass)] text-gold" : "border-line text-mid"}`}>{plan}</span>
-      </div>
-      <p className="mt-2 text-[14px] leading-relaxed text-mid">{text}</p>
-      {children}
-    </article>
   );
 }
 
