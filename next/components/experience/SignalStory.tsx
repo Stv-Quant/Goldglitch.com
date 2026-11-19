@@ -4,6 +4,10 @@ import Link from "next/link";
 import { useEffect, useRef } from "react";
 import { buildFormations, CAMERAS, ENTROPY, stage, WOBBLE, type Formation } from "./formations";
 import { makeSim, type LiveSim } from "./sims";
+import { useToday } from "./useFixtures";
+import { isTodayBogota, type Fixture } from "./fixture";
+import { Crest } from "@/components/landing/Crest";
+import { SampleStack } from "@/components/landing/SampleCard";
 
 // 4 colors (dim, gold, flare, bone) × 3 depth bands (far, mid, near): fog without per-mark alpha changes.
 const RGB = [[140, 133, 118, 0.6], [212, 175, 55, 1], [255, 59, 31, 1], [237, 230, 214, 1]] as const;
@@ -355,33 +359,47 @@ export function SignalStory() {
 
       {/* Narrative: pulled up over the stage so the sticky box never overflows the story */}
       <div className="-mt-[100dvh]">
-        <section data-act="0" className="relative min-h-[150dvh] flex items-start pt-[30dvh] sm:items-center sm:pt-0">
-          <div className="px-5 sm:px-10 lg:px-16 max-w-[46rem]">
-            <p className="num text-[11px] tracking-[0.22em] text-flare uppercase">00 — Ruido</p>
-            <h1 className="display mt-5 text-[3.1rem] sm:text-[5.6rem] lg:text-[7rem]">
-              <Line>Te venden <span className="line-through decoration-[var(--flare)] decoration-2">certezas</span>.</Line>
-              <Line>Nosotros <em>medimos</em> dudas.</Line>
-            </h1>
-            <p className="mt-7 text-lg text-mid max-w-md leading-relaxed">
-              Fútbol, béisbol y lo que venga: siempre las mismas fijas, ganancias seguras y grupos VIP. Ruido. Baja y mira
-              qué queda cuando lo quitas.
-            </p>
-            <SportChips />
-            <div className="mt-10 num text-[11px] tracking-[0.2em] uppercase text-lo flex items-center gap-3">
-              <span className="inline-block h-8 w-px bg-[var(--text-lo)] scroll-cue" /> Desliza
+        <section data-act="0" className="relative min-h-[150dvh] overflow-x-clip pt-[calc(4rem+36px+6dvh)] sm:pt-[calc(4rem+36px+10dvh)]">
+          <div className="grid items-start gap-12 px-5 sm:px-10 lg:grid-cols-[minmax(0,46rem)_minmax(0,27rem)] lg:justify-between lg:pl-16 lg:pr-36">
+            <div className="rounded-2xl p-5 -m-5 bg-[rgba(10,9,7,0.62)] backdrop-blur-[3px] sm:bg-transparent sm:backdrop-blur-none sm:p-0 sm:m-0">
+              <p className="num text-[11px] tracking-[0.22em] text-flare uppercase">00 — Ruido</p>
+              <h1 className="display mt-5 text-[3.1rem] sm:text-[5.6rem] lg:text-[6.4rem]">
+                <Line>Te venden <span className="line-through decoration-[var(--flare)] decoration-2">certezas</span>.</Line>
+                <Line>Nosotros <em>medimos</em> dudas.</Line>
+              </h1>
+              <p className="mt-7 max-w-xl text-lg leading-relaxed text-mid sm:text-xl">
+                <span className="text-hi">Goldglitch calcula la probabilidad de cada partido</span> de fútbol, MLB, NBA y NHL: ganador,
+                goles, córners, tarjetas y jugadores. Cada pronóstico se publica antes del pitazo y se audita después.
+              </p>
+              <ul className="mt-6 flex flex-wrap gap-2" aria-label="Lo que no somos">
+                {["No vendemos fijas", "No somos casa de apuestas", "No borramos los fallos"].map((t) => (
+                  <li key={t} className="not-chip">
+                    <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" aria-hidden><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /></svg>
+                    {t}
+                  </li>
+                ))}
+              </ul>
+              <div className="mt-9 flex flex-wrap items-center gap-3">
+                <Link href="/acceso" className="btn-gold cta-shine px-6 py-3.5 text-[15px]">Ver los partidos de hoy gratis →</Link>
+                <Link href="/historial" className="btn-ghost px-5 py-3.5 text-[15px] bg-[rgba(10,9,7,0.5)]">¿Acierta? Míralo tú</Link>
+              </div>
+              <div className="mt-10 num text-[11px] tracking-[0.2em] uppercase text-lo flex items-center gap-3">
+                <span className="inline-block h-8 w-px bg-[var(--text-lo)] scroll-cue" /> Desliza: mira qué queda cuando quitas el ruido
+              </div>
             </div>
+            <TodaySample />
           </div>
         </section>
 
-        <Act n="01" title="Fútbol" word="FÚTBOL" status="Activo" lines={["22 jugadores.", "90 minutos.", <>Ninguna corazonada sobrevive a <em>la muestra</em>.</>]}>
+        <Act n="01" title="Fútbol" word="FÚTBOL" status="Activo" tag="FÚT" lines={["22 jugadores.", "90 minutos.", <>Ninguna corazonada sobrevive a <em>la muestra</em>.</>]}>
           Tiros, posesiones, presiones y errores: el modelo cuenta todos los eventos, no solo los del resumen.
         </Act>
 
-        <Act n="02" title="MLB" word="BÉISBOL" status="Activo" short lines={["162 juegos.", <>Cada lanzamiento, <em>un dato</em>.</>]}>
+        <Act n="02" title="MLB" word="BÉISBOL" status="Activo" tag="MLB" short lines={["162 juegos.", <>Cada lanzamiento, <em>un dato</em>.</>]}>
           Abridores, bullpen, parque y clima convertidos en carreras esperadas. Mismo método, otro deporte.
         </Act>
 
-        <Act n="03" title="NBA" word="BASKET" status="Pronto" short lines={["100 posesiones.", <>La ventaja vive en <em>el ritmo</em>.</>]}>
+        <Act n="03" title="NBA" word="BASKET" status="Pronto" tag="NBA" short lines={["100 posesiones.", <>La ventaja vive en <em>el ritmo</em>.</>]}>
           Eficiencia por posesión, rotaciones y descanso. El modelo de baloncesto está en entrenamiento.
         </Act>
 
@@ -427,6 +445,48 @@ export function SignalStory() {
   );
 }
 
+/** The real product, floating over the noise. */
+function TodaySample() {
+  const today = useToday();
+  return (
+    <div className="lg:sticky lg:top-[calc(4rem+36px+6dvh)]">
+      <SampleStack sample={today?.sample ?? null} loading={today === null} />
+    </div>
+  );
+}
+
+const timeFmt = new Intl.DateTimeFormat("es-CO", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "America/Bogota" });
+
+/** Today's real matches of the sport this act talks about, crests included: the story lands on actual games. */
+function SportFixtures({ tag }: { tag: string }) {
+  const list = (useToday()?.fixtures ?? []).filter((f: Fixture) => f.sport === tag).slice(0, 4);
+  if (!list.length) return null;
+  return (
+    <div className="mt-7">
+      <p className="num text-[10px] tracking-[0.2em] uppercase text-lo">Partidos de hoy y mañana</p>
+      <ul className="mt-3 grid gap-2 sm:grid-cols-2">
+        {list.map((f) => (
+          <li key={f.id}>
+            <Link href="/acceso" className="act-fixture">
+              <span className="flex -space-x-2">
+                <Crest src={f.homeLogo} name={f.homeName ?? f.home} size={30} />
+                <Crest src={f.awayLogo} name={f.awayName ?? f.away} size={30} />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-[13px] text-hi">{f.homeName ?? f.home} <span className="text-lo">vs</span> {f.awayName ?? f.away}</span>
+                <span className="num block text-[10.5px] text-lo">
+                  {f.state === "in" ? <span className="text-up">● En vivo</span> : `${isTodayBogota(f.kickoffAt) ? "Hoy" : "Mañana"} ${timeFmt.format(f.kickoffAt)}`} · {f.league}
+                </span>
+              </span>
+              <span className="num text-[11px] text-gold banner-q">??%</span>
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 /** Masked line: slides up from behind its own baseline when the section enters. */
 function Line({ children }: { children: React.ReactNode }) {
   return (
@@ -437,10 +497,10 @@ function Line({ children }: { children: React.ReactNode }) {
 }
 
 function Act({
-  n, title, lines, children, word, status, short, aside,
+  n, title, lines, children, word, status, short, aside, tag,
 }: {
   n: string; title: string; lines: React.ReactNode[]; children: React.ReactNode;
-  word?: string; status?: "Activo" | "Pronto"; short?: boolean; aside?: React.ReactNode;
+  word?: string; status?: "Activo" | "Pronto"; short?: boolean; aside?: React.ReactNode; tag?: string;
 }) {
   return (
     <section data-act={Number(n)}
@@ -465,24 +525,10 @@ function Act({
             {lines.map((l, i) => (<Line key={i}>{l}</Line>))}
           </h2>
           <div className="mt-6 text-base sm:text-lg text-mid leading-relaxed max-w-md">{children}</div>
+          {tag && <SportFixtures tag={tag} />}
         </div>
       </div>
     </section>
-  );
-}
-
-function SportChips() {
-  const sports: [string, boolean][] = [["Fútbol", true], ["MLB", true], ["NBA", false], ["Tenis", false]];
-  return (
-    <ul className="mt-6 flex flex-wrap gap-2 num text-[11px] tracking-[0.14em] uppercase" aria-label="Deportes">
-      {sports.map(([s, live]) => (
-        <li key={s} className={`rounded-full border px-3 py-1 ${live ? "border-[var(--border-glass)] text-hi" : "border-line text-lo"}`}>
-          {live && <span className="text-gold mr-1.5" aria-hidden>●</span>}
-          {s}
-          {!live && <span className="sr-only"> (próximamente)</span>}
-        </li>
-      ))}
-    </ul>
   );
 }
 

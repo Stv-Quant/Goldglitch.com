@@ -11,7 +11,19 @@ export type TodayFixture = {
   kickoffAt: number;
   state: "pre" | "in" | "post";
   outcomes: 2 | 3;
+  /** Full team names and crest URLs (public ESPN CDN, resized). Optional: never required to render. */
+  homeName?: string;
+  awayName?: string;
+  homeLogo?: string;
+  awayLogo?: string;
 };
+
+/** ESPN serves 500px PNGs; its combiner returns a 96px crop (~3 KB) so a strip of 40 matches stays light. */
+export function crestUrl(raw: string | undefined): string | undefined {
+  if (!raw) return undefined;
+  const m = /^https:\/\/a\.espncdn\.com(\/i\/teamlogos\/[\w/.-]+\.png)$/.exec(raw);
+  return m ? `https://a.espncdn.com/combiner/i?img=${m[1]}&w=96&h=96&scale=crop&cquality=70` : undefined;
+}
 
 // Public ESPN scoreboards: the schedule only (teams + kickoff). Probabilities never come from here.
 const FEEDS: { path: string; sport: string; league: string }[] = [
@@ -46,7 +58,7 @@ type EspnEvent = {
   id: string;
   date: string;
   status?: { type?: { state?: string } };
-  competitions?: { competitors?: { homeAway?: string; team?: { abbreviation?: string; shortDisplayName?: string } }[] }[];
+  competitions?: { competitors?: { homeAway?: string; team?: { abbreviation?: string; shortDisplayName?: string; displayName?: string; logo?: string } }[] }[];
 };
 
 async function fromEspn(ymd: string, start: number, end: number): Promise<TodayFixture[]> {
@@ -75,6 +87,10 @@ async function fromEspn(ymd: string, start: number, end: number): Promise<TodayF
             kickoffAt,
             state: st === "in" || st === "post" ? st : "pre",
             outcomes: f.sport === "FÚT" ? 3 : 2,
+            homeName: h.shortDisplayName ?? h.displayName,
+            awayName: a.shortDisplayName ?? a.displayName,
+            homeLogo: crestUrl(h.logo),
+            awayLogo: crestUrl(a.logo),
           }];
         });
       } catch {
@@ -130,6 +146,12 @@ export async function getTodayFixtures(now = Date.now()): Promise<TodayFixture[]
   // SQPC ids are "espn-<event>"; the public feed's are "<path>:<event>". Same event → keep SQPC's.
   const ownEvents = new Set(own.map((f) => f.id.match(/espn-(\d+)$/)?.[1]).filter(Boolean));
   const seen = new Set(own.map((f) => `${f.home}-${f.away}`));
+  // Our fixtures carry no crests: borrow them from the same event in the public feed.
+  const pubByEvent = new Map(pub.map((f) => [f.id.split(":").pop(), f]));
+  for (const f of own) {
+    const twin = pubByEvent.get(f.id.match(/espn-(\d+)$/)?.[1]);
+    if (twin) Object.assign(f, { homeName: twin.homeName, awayName: twin.awayName, homeLogo: twin.homeLogo, awayLogo: twin.awayLogo });
+  }
   const all = [...own, ...pub.filter((f) => !ownEvents.has(f.id.split(":").pop()) && !seen.has(`${f.home}-${f.away}`))];
   const rank = { in: 0, pre: 1, post: 2 } as const;
   return all
