@@ -359,13 +359,16 @@ export function SignalStory() {
           <div className="px-5 sm:px-10 lg:px-16 max-w-[46rem]">
             <p className="num text-[11px] tracking-[0.22em] text-flare uppercase">00 — Ruido</p>
             <h1 className="display mt-5 text-[3.1rem] sm:text-[5.6rem] lg:text-[7rem]">
-              <Line>Te venden <span className="line-through decoration-[var(--flare)] decoration-2">certezas</span>.</Line>
-              <Line>Nosotros <em>medimos</em> dudas.</Line>
+              <Line>Te venden <span className="line-through decoration-[var(--flare)] decoration-2">fijas</span>.</Line>
+              <Line>Nosotros, <em>números</em>.</Line>
             </h1>
             <p className="mt-7 text-lg text-mid max-w-md leading-relaxed">
-              Fútbol, béisbol y lo que venga: siempre las mismas fijas, ganancias seguras y grupos VIP. Ruido. Baja y mira
-              qué queda cuando lo quitas.
+              Goldglitch calcula qué tan probable es cada resultado de un partido. Sin grupos VIP, sin humo. Y publicamos
+              cada acierto y cada fallo.
             </p>
+            <Link href="/acceso" className="mt-6 inline-flex items-center gap-2 num text-xs tracking-[0.18em] uppercase text-gold hover:underline underline-offset-4">
+              Ver los partidos de hoy gratis →
+            </Link>
             <SportChips />
             <div className="mt-10 num text-[11px] tracking-[0.2em] uppercase text-lo flex items-center gap-3">
               <span className="inline-block h-8 w-px bg-[var(--text-lo)] scroll-cue" /> Desliza
@@ -373,38 +376,37 @@ export function SignalStory() {
           </div>
         </section>
 
-        <Act n="01" title="Fútbol" word="FÚTBOL" status="Activo" lines={["22 jugadores.", "90 minutos.", <>Ninguna corazonada sobrevive a <em>la muestra</em>.</>]}>
-          Tiros, posesiones, presiones y errores: el modelo cuenta todos los eventos, no solo los del resumen.
+        <Act n="01" title="Fútbol" word="FÚTBOL" status="Activo" lines={["22 jugadores.", "90 minutos.", <>Miles de <em>datos</em>.</>]}>
+          Tiros, posesión, córners y tarjetas. El modelo lo cuenta todo, no solo los goles.
         </Act>
 
-        <Act n="02" title="MLB" word="BÉISBOL" status="Activo" short lines={["162 juegos.", <>Cada lanzamiento, <em>un dato</em>.</>]}>
-          Abridores, bullpen, parque y clima convertidos en carreras esperadas. Mismo método, otro deporte.
+        <Act n="02" title="MLB" word="BÉISBOL" status="Activo" short lines={["162 juegos.", <>Cada lanzamiento <em>cuenta</em>.</>]}>
+          Lanzador, bullpen, estadio y clima. Mismo método, otro deporte.
         </Act>
 
-        <Act n="03" title="NBA" word="BASKET" status="Pronto" short lines={["100 posesiones.", <>La ventaja vive en <em>el ritmo</em>.</>]}>
-          Eficiencia por posesión, rotaciones y descanso. El modelo de baloncesto está en entrenamiento.
+        <Act n="03" title="NBA" word="BASKET" status="Pronto" short lines={["100 posesiones.", <>La ventaja está en <em>el ritmo</em>.</>]}>
+          Eficiencia, rotaciones y descanso. Lo estamos entrenando.
         </Act>
 
         <Act n="04" title="Tenis" word="TENIS" status="Pronto" short lines={["Punto a punto,", <>el saque <em>se mide</em>.</>]}>
-          Probabilidad de quiebre en cada juego, superficie y fatiga acumulada. Llega después del baloncesto.
+          Saque, superficie y cansancio. Llega después del baloncesto.
         </Act>
 
-        <Act n="05" title="La percepción" lines={[<>49% no significa <em>«gana»</em>.</>]}
+        <Act n="05" title="La percepción" lines={[<>49% no es <em>«gana»</em>.</>]}
           aside={<p className="num text-gold leading-none text-[5.5rem] sm:text-[8rem] tracking-tight" aria-hidden><span ref={countRef}>00</span><span className="text-lo text-[0.35em] align-top ml-2">/100</span></p>}>
-          Si este partido se jugara 100 veces, el local ganaría unas 49. Las otras 51 también existen, y cualquiera puede
-          ser la de esta noche.
+          Si este partido se jugara 100 veces, el local ganaría 49. Las otras 51 también pueden pasar hoy.
           <Legend />
         </Act>
 
-        <Act n="06" title="La forma" lines={[<>El marcador más probable <em>casi nunca</em> pasa.</>]}>
-          Aquí 1–0 es el más probable y aun así ocurre solo 13 de cada 100 veces. La densidad del polvo es la probabilidad.
+        <Act n="06" title="La forma" lines={[<>El marcador más probable <em>casi nunca</em> sale.</>]}>
+          Aquí 1–0 es el más probable y aun así sale solo 13 de cada 100 veces. Por eso nadie puede venderte una fija.
         </Act>
 
         <Act n="07" title="La prueba" lines={[<>Decimos 60. <em>Pasa 60.</em></>]}>
-          Medimos cada pronóstico contra lo que ocurrió y lo publicamos. Si el modelo se desvía de la diagonal, lo vas a
-          ver antes que nadie.
+          Guardamos cada pronóstico antes del partido y lo comparamos con el resultado. Todo queda público: si fallamos,
+          lo ves.
           <Link href="/historial" className="mt-6 inline-flex items-center gap-2 num text-xs tracking-[0.18em] uppercase text-gold hover:underline underline-offset-4">
-            Auditar el modelo →
+            Ver el historial →
           </Link>
         </Act>
 
@@ -412,14 +414,15 @@ export function SignalStory() {
           <div className="px-5 sm:px-10 lg:px-16 max-w-[46rem]">
             <p className="num text-[11px] tracking-[0.22em] text-gold uppercase">08 — Señal</p>
             <h2 className="display mt-5 text-[3rem] sm:text-[5rem] lg:text-[6.2rem]">
-              <Line>No somos tipsters.</Line>
-              <Line>Somos la <em>objetividad</em></Line>
-              <Line>de los datos.</Line>
+              <Line>No vendemos fijas.</Line>
+              <Line>Te damos <em>los números</em></Line>
+              <Line>para que decidas tú.</Line>
             </h2>
             <div className="mt-10 flex flex-wrap gap-3">
               <Link href="/acceso" className="btn-gold px-6 py-3.5 text-[15px]">Entrar gratis</Link>
               <Link href="/planes" className="btn-ghost px-6 py-3.5 text-[15px] bg-[rgba(10,9,7,0.5)]">Ver planes</Link>
             </div>
+            <p className="mt-4 text-sm text-lo">Gratis, sin tarjeta. Solo necesitas tu correo.</p>
           </div>
         </section>
       </div>

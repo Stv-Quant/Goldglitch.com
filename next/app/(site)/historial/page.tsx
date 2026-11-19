@@ -8,8 +8,9 @@ import { dateLabel } from "@/lib/format";
 import { SPORT_LABEL } from "@/lib/sports";
 
 export const metadata: Metadata = {
-  title: "Historial del modelo",
-  description: "Cada pick del sistema, acertado o fallado, y la calibración del modelo sobre partidos ya jugados. Auditable y público.",
+  title: "Historial de aciertos y fallos",
+  description: "Cada pronóstico de Goldglitch, acertado o fallado, guardado antes del partido. Mira si cuando decimos 60% pasa el 60% de las veces.",
+  alternates: { canonical: "/historial" },
 };
 export const dynamic = "force-dynamic";
 
