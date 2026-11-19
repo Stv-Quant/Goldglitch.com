@@ -4,10 +4,10 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { Prob, ProbLegend } from "@/components/stats/Prob";
-import { ProbabilityBar } from "@/components/stats/ProbabilityBar";
 import { LEAGUE_GROUPS, compareLeagues, leagueInfo } from "@/lib/leagues";
 import { probColor } from "@/lib/probScale";
-import { SportBadge, SportIcon, SportWatermark } from "./SportBadge";
+import { Crest, useCrests } from "./Crest";
+import { SportIcon } from "./SportBadge";
 
 /** One match as /api/app/matches sends it (built by D1, see lib/appList.ts). */
 type M = {
@@ -102,9 +102,10 @@ export function AppHome() {
 
   const day = data?.day ?? (dia || "hoy");
   const pro = data ? data.tier !== "free" : true;
+  const crest = useCrests(view ? view.comps.map((c) => c.id) : []);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-7">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="eyebrow">Probabilidades del modelo</p>
@@ -113,13 +114,14 @@ export function AppHome() {
         <ProbLegend />
       </div>
 
-      <div className="grid grid-cols-3 gap-2 sm:gap-3">
-        <Stat label="Partidos" value={view ? String(view.upcoming.length) : "·"} />
-        <Stat label="Picks 75%+" value={view ? String(view.picks) : "·"} locked={!pro && !!view?.picks} />
-        <Stat label="Mejor pick" p={pro && view?.best ? view.best : undefined} value={view ? "—" : "·"} locked={!pro && !!view?.picks} />
-      </div>
+      {/* Summary: one quiet strip instead of three boxes */}
+      <dl className="grid grid-cols-3 divide-x divide-[var(--border-soft)] rounded-xl border border-line">
+        <Stat label="partidos" value={view ? String(view.upcoming.length) : "·"} />
+        <Stat label="picks de 75%+" value={view ? String(view.picks) : "·"} locked={!pro && !!view?.picks} />
+        <Stat label="mejor pick" p={pro && view?.best ? view.best : undefined} value={view ? "—" : "·"} locked={!pro && !!view?.picks} />
+      </dl>
 
-      <div className="space-y-3">
+      <div className="space-y-4">
         <nav className="flex gap-1 rounded-xl border border-line p-1 text-sm sm:inline-flex" aria-label="Día">
           {DAYS.map((d) => (
             <Link key={d.id} href={go({ dia: d.id })} scroll={false} aria-current={day === d.id ? "true" : undefined}
@@ -130,24 +132,19 @@ export function AppHome() {
         </nav>
 
         {view && view.regions.length > 0 && (
-          <div className="card p-3 sm:p-4">
-            <nav className="scroll-x -mx-1 flex gap-2 px-1 text-sm sm:flex-wrap" aria-label="Región">
-              <Chip href={go({})} active={!view.reg} count={view.all.length}>Todas</Chip>
+          <div>
+            <nav className="scroll-x -mx-1 flex gap-5 border-b border-line px-1 text-sm" aria-label="Región">
+              <Tab href={go({})} active={!view.reg} count={view.all.length}>Todas</Tab>
               {view.regions.map((g) => (
-                <Chip key={g.id} href={go({ region: g.id })} active={view.reg === g.id} count={g.n}>{g.label}</Chip>
+                <Tab key={g.id} href={go({ region: g.id })} active={view.reg === g.id} count={g.n}>{g.label}</Tab>
               ))}
             </nav>
-            {view.regionComps.length > 0 && (
-              <nav className="mt-3 flex flex-wrap gap-2 border-t border-line pt-3 text-sm" aria-label="Liga">
-                <Chip href={go({ region: view.reg })} active={!view.selLeague} small>Todas las ligas</Chip>
-                {view.regionComps.map((c) => {
-                  const ctry = leagueInfo(c.id, c.sport).country;
-                  return (
-                    <Chip key={c.id} href={go({ liga: c.id })} active={view.selLeague?.id === c.id} small count={view.count(c.id)}>
-                      {c.name}{ctry && !c.name.includes(ctry) ? <span className="ml-1 text-lo">· {ctry}</span> : null}
-                    </Chip>
-                  );
-                })}
+            {view.regionComps.length > 1 && (
+              <nav className="scroll-x -mx-1 mt-3 flex gap-2 px-1 text-sm" aria-label="Liga">
+                <Chip href={go({ region: view.reg })} active={!view.selLeague}>Todas las ligas</Chip>
+                {view.regionComps.map((c) => (
+                  <Chip key={c.id} href={go({ liga: c.id })} active={view.selLeague?.id === c.id} count={view.count(c.id)}>{c.name}</Chip>
+                ))}
               </nav>
             )}
           </div>
@@ -163,35 +160,41 @@ export function AppHome() {
       {!view && !error && <Skeleton />}
 
       {view && (pro ? view.featured.length > 0 : view.picks > 0) && (
-        <section aria-labelledby="h-featured" className="rounded-[16px] border border-[var(--border-glass)] p-4 sm:p-6"
-          style={{ background: "linear-gradient(135deg, rgba(212,175,55,0.10), rgba(46,242,160,0.03) 60%, transparent)" }}>
+        <section aria-labelledby="h-featured">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <div>
-              <p className="eyebrow text-gold">Picks destacados</p>
-              <h2 id="h-featured" className="font-display mt-1 text-3xl leading-tight">80% o más <em className="text-gold">según el modelo</em></h2>
-            </div>
-            <p className="max-w-sm text-[11px] text-lo">Probabilidad, no certeza: un 80% falla 1 de cada 5 veces.</p>
+            <h2 id="h-featured" className="flex items-baseline gap-3">
+              <span className="font-display text-3xl text-hi">Picks destacados</span>
+              <span className="num text-xs text-lo">80% o más según el modelo</span>
+            </h2>
+            <p className="text-[11px] text-lo">Probabilidad, no certeza: un 80% falla 1 de cada 5 veces.</p>
           </div>
           {pro ? (
             <ul className="scroll-x -mx-4 mt-4 flex snap-x gap-3 px-4 sm:mx-0 sm:grid sm:grid-cols-2 sm:px-0 lg:grid-cols-3">
               {view.featured.map((m) => (
-                <li key={m.id} className="w-[78%] shrink-0 snap-start sm:w-auto">
+                <li key={m.id} className="w-[80%] shrink-0 snap-start sm:w-auto">
                   <Link href={`/app/partido/${encodeURIComponent(m.id)}`}
-                    className="relative block h-full overflow-hidden rounded-[12px] border border-line bg-[var(--bg-raise)] p-4 transition-colors hover:border-[var(--gold)]">
-                    <span aria-hidden className="absolute inset-y-0 left-0 w-1" style={{ background: probColor(m.k!.p!) }} />
+                    className="group block h-full rounded-xl border border-line bg-[var(--bg-raise)] p-4 transition-colors hover:border-[var(--border-glass)]">
                     <div className="flex items-center justify-between gap-2 text-[11px] text-lo">
-                      <span className="flex min-w-0 items-center gap-1.5"><SportIcon sport={m.sport} league={m.cn} className="h-3.5 w-3.5 shrink-0 text-gold" /><span className="truncate">{m.cn}</span></span>
+                      <span className="truncate">{m.cn}</span>
                       <span className="num whitespace-nowrap">{dayLabel(m.ko, view.now)} · {time(m.ko)}</span>
                     </div>
-                    <div className="mt-1 truncate text-sm text-mid">{m.h} vs {m.a}</div>
-                    <div className="mt-3 text-hi">{m.k!.l}</div>
-                    <Prob p={m.k!.p!} className="mt-1 block text-3xl font-semibold" />
+                    <div className="mt-3 flex items-center gap-2">
+                      <span className="flex -space-x-1.5">
+                        <Crest src={crest(m.c, m.h)} name={m.h} size={26} className="ring-2 ring-[var(--bg-raise)]" />
+                        <Crest src={crest(m.c, m.a)} name={m.a} size={26} className="ring-2 ring-[var(--bg-raise)]" />
+                      </span>
+                      <span className="min-w-0 truncate text-sm text-mid">{m.h} <span className="text-lo">vs</span> {m.a}</span>
+                    </div>
+                    <div className="mt-4 flex items-end justify-between gap-3">
+                      <span className="text-[15px] leading-snug text-hi">{m.k!.l}</span>
+                      <Prob p={m.k!.p!} className="text-3xl font-semibold leading-none" />
+                    </div>
                   </Link>
                 </li>
               ))}
             </ul>
           ) : (
-            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-[12px] border border-line p-4">
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line p-4">
               <p className="text-sm text-mid">Hay <span className="num text-gold">{view.picks}</span> selecciones con 75% o más en estos partidos. Los picks son parte de Pro.</p>
               <Link href="/planes" className="btn-gold px-4 py-2 text-sm">Ver planes</Link>
             </div>
@@ -211,24 +214,26 @@ export function AppHome() {
             const ordered = [...leagues.entries()].sort(([, x], [, y]) => compareLeagues({ id: x[0].c, name: x[0].cn }, { id: y[0].c, name: y[0].cn }, x[0].sport, y[0].sport));
             const n = ordered.reduce((s, [, l]) => s + l.length, 0);
             return (
-              <section key={k} className="space-y-5">
+              <section key={k} className="space-y-4">
                 <h2 className="flex items-baseline gap-3">
                   <span className="font-display text-3xl text-hi">{dayLabel(ordered[0][1][0].ko, view.now)}</span>
                   <span className="num text-xs text-lo">{n} partido{n === 1 ? "" : "s"} · {ordered.length} liga{ordered.length === 1 ? "" : "s"}</span>
                 </h2>
-                <div className="gold-rule -mt-3" aria-hidden />
                 {ordered.map(([cid, list]) => {
                   const ctry = leagueInfo(cid, list[0].sport).country;
+                  const three = list.some((m) => m.o?.d != null);
                   return (
-                    <div key={cid}>
-                      <h3 className="mb-2 flex items-center gap-2 text-sm">
-                        <span className="grid h-6 w-6 place-items-center rounded-full border border-[rgba(212,175,55,0.3)] text-gold"><SportIcon sport={list[0].sport} league={list[0].cn} className="h-3.5 w-3.5" /></span>
-                        <Link href={go({ liga: cid })} scroll={false} className="font-medium text-hi hover:text-gold">{list[0].cn}</Link>
-                        {ctry && !list[0].cn.includes(ctry) && <span className="text-lo">{ctry}</span>}
-                        <span className="num text-[11px] text-lo">· {list.length}</span>
+                    <div key={cid} className="overflow-hidden rounded-xl border border-line bg-[rgba(17,15,11,0.6)]">
+                      <h3 className="flex items-center gap-2.5 border-b border-line bg-[rgba(237,230,214,0.025)] px-4 py-2.5 text-sm">
+                        <SportIcon sport={list[0].sport} league={list[0].cn} className="h-4 w-4 shrink-0 text-gold" />
+                        <Link href={go({ liga: cid })} scroll={false} className="truncate font-medium text-hi hover:text-gold">{list[0].cn}</Link>
+                        {ctry && !list[0].cn.includes(ctry) && <span className="truncate text-lo">{ctry}</span>}
+                        <span className="ml-auto hidden gap-0 sm:flex" aria-hidden>
+                          {(three ? ["1", "X", "2"] : ["1", "2"]).map((x) => <span key={x} className="num w-14 text-center text-[11px] text-lo">{x}</span>)}
+                        </span>
                       </h3>
-                      <ul className="grid gap-3 md:grid-cols-2">
-                        {list.map((m) => <li key={m.id}><Card m={m} pro={pro} /></li>)}
+                      <ul className="divide-y divide-[var(--border-soft)]">
+                        {list.map((m) => <li key={m.id}><Row m={m} pro={pro} three={three} crest={crest} /></li>)}
                       </ul>
                     </div>
                   );
@@ -238,7 +243,7 @@ export function AppHome() {
           })}
           {ver !== "todos" && view.matches.length > SHOW && (
             <button type="button" onClick={() => router.replace(go({ region: view.selLeague ? null : view.reg, liga: view.selLeague?.id, ver: "todos" }), { scroll: false })}
-              className="block w-full card p-4 text-center text-sm text-gold transition-colors hover:border-[var(--border-glass)]">
+              className="block w-full rounded-xl border border-line p-4 text-center text-sm text-gold transition-colors hover:border-[var(--border-glass)]">
               Mostrar los {view.matches.length} partidos ({view.matches.length - SHOW} más)
             </button>
           )}
@@ -248,76 +253,90 @@ export function AppHome() {
   );
 }
 
-function Card({ m, pro }: { m: M; pro: boolean }) {
+/** One match as a scoreboard row: status | crests + teams | 1·X·2. */
+function Row({ m, pro, three, crest }: { m: M; pro: boolean; three: boolean; crest: (c: string, t: string) => string | undefined }) {
   const finished = m.st === "finished";
+  const live = m.st === "live";
   const n = m.k?.n ?? 0;
-  return (
-    <Link href={`/app/partido/${encodeURIComponent(m.id)}`} className="relative block overflow-hidden card p-4 sm:p-5">
-      <SportWatermark sport={m.sport} league={m.cn} />
-      <div className="relative flex items-center justify-between gap-2 text-[11px] text-lo">
-        <span className="flex min-w-0 items-center gap-2">
-          <SportBadge sport={m.sport} league={m.cn} />
-          <span className="truncate">{m.cn}</span>
-        </span>
-        <span className="num whitespace-nowrap">
-          {m.st === "live" ? <span style={{ color: "var(--neon-up)" }}>● EN VIVO</span> : finished ? "Final" : time(m.ko)}
-        </span>
-      </div>
-      <div className="relative mt-4 grid grid-cols-[1fr_auto_1fr] items-center gap-3">
-        <span className="truncate text-[17px] font-semibold text-hi">{m.h}</span>
-        <span className="num text-xs uppercase tracking-[0.2em] text-gold-dim">{m.hs !== null && m.as !== null ? <span className="text-sm text-hi">{m.hs} – {m.as}</span> : "vs"}</span>
-        <span className="truncate text-right text-[17px] font-semibold text-hi">{m.a}</span>
-      </div>
-      <div className="relative mt-4">
-        {m.o ? (
-          <ProbabilityBar size="sm" home={m.o.h} draw={m.o.d} away={m.o.a} labels={{ home: m.hn, away: m.an }} />
-        ) : (
-          <p className="text-xs text-lo">Modelo pendiente para este partido.</p>
-        )}
-      </div>
-      {!finished && n > 0 && (
-        <div className="mt-3 flex items-center justify-between gap-3 border-t border-line pt-3 text-xs">
-          {pro && m.k?.l && m.k.p ? (
-            <>
-              <span className="min-w-0 truncate text-mid">
-                <span aria-hidden className="mr-1.5 inline-block h-2 w-2 rounded-full align-middle" style={{ background: probColor(m.k.p) }} />
-                {m.k.l}
-              </span>
-              <span className="whitespace-nowrap">
-                <Prob p={m.k.p} className="font-semibold" />
-                {n > 1 && <span className="ml-1.5 text-lo">+{n - 1}</span>}
-              </span>
-            </>
-          ) : (
-            <>
-              <span className="text-mid">{n} pick{n === 1 ? "" : "s"} de 75% o más</span>
-              <span className="text-[10px] uppercase tracking-[0.14em] text-gold">Pro</span>
-            </>
-          )}
+  const scored = m.hs !== null && m.as !== null;
+  const cells = m.o ? (three ? [m.o.h, m.o.d ?? 0, m.o.a] : [m.o.h, m.o.a]) : null;
+  const top = cells ? Math.max(...cells) : 0;
+  const winH = finished && scored && m.hs! > m.as!, winA = finished && scored && m.as! > m.hs!;
+  const cellsNode = cells ? (
+        <div className="flex" aria-label={`Probabilidades: local ${Math.round(m.o!.h * 100)}%${three ? `, empate ${Math.round((m.o!.d ?? 0) * 100)}%` : ""}, visitante ${Math.round(m.o!.a * 100)}%`}>
+          {cells.map((p, i) => (
+            <span key={i} className={`num grid w-9 place-items-center rounded-md py-1.5 text-[13px] sm:w-14 ${p === top ? "font-semibold text-hi" : "text-lo"}`}
+              style={p === top ? { background: `color-mix(in srgb, ${probColor(p)} 16%, transparent)`, color: probColor(p) } : undefined}>
+              {Math.round(p * 100)}
+            </span>
+          ))}
         </div>
-      )}
+      ) : (
+        <span className="text-[11px] text-lo">—</span>
+      );
+  return (
+    <Link href={`/app/partido/${encodeURIComponent(m.id)}`} className="group grid grid-cols-[2.5rem_1fr_auto] items-center gap-x-2.5 gap-y-1.5 px-3 py-3 transition-colors hover:bg-[rgba(212,175,55,0.04)] sm:grid-cols-[3rem_1fr_auto] sm:gap-x-3 sm:px-4">
+      <div className="num text-center text-[12px] leading-tight">
+        {live ? <span className="font-semibold" style={{ color: "var(--neon-up)" }}>EN<br />VIVO</span>
+          : finished ? <span className="text-lo">Final</span>
+          : <span className="text-hi">{time(m.ko)}</span>}
+      </div>
+
+      <div className="min-w-0 space-y-1.5">
+        {[[m.h, m.hs, winH], [m.a, m.as, winA]].map(([name, score, win], i) => (
+          <div key={i} className="flex items-center gap-2.5">
+            <Crest src={crest(m.c, name as string)} name={name as string} size={22} />
+            <span className={`min-w-0 flex-1 truncate text-[15px] ${finished && !win ? "text-mid" : "text-hi"} ${win ? "font-semibold" : ""}`}>{name as string}</span>
+            {scored && <span className={`num w-5 text-right text-[15px] ${win || live ? "text-hi" : "text-mid"}`}>{score as number}</span>}
+          </div>
+        ))}
+      </div>
+      {cellsNode}
+      {!finished && n > 0 && (
+          <div className="col-span-2 col-start-2 flex min-w-0 items-center gap-1.5 text-[12px]">
+            {pro && m.k?.l && m.k.p ? (
+              <>
+                <span aria-hidden className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: probColor(m.k.p) }} />
+                <span className="min-w-0 truncate text-mid">{m.k.l}</span>
+                <Prob p={m.k.p} className="font-semibold" />
+                {n > 1 && <span className="text-lo">+{n - 1}</span>}
+              </>
+            ) : (
+              <span className="text-lo">{n} pick{n === 1 ? "" : "s"} de 75%+ · <span className="text-gold">Pro</span></span>
+            )}
+          </div>
+        )}
     </Link>
   );
 }
 
 function Stat({ label, value, p, locked }: { label: string; value?: string; p?: number; locked?: boolean }) {
   return (
-    <div className="card px-3 py-3 sm:px-4">
-      <div className="truncate text-[11px] text-lo">{label}</div>
-      <div className="mt-0.5 flex items-baseline gap-1.5">
-        {p !== undefined ? <Prob p={p} className="text-3xl font-semibold" /> : <span className="num gold-leaf text-3xl font-semibold">{value}</span>}
-        {locked && <span className="text-[10px] uppercase tracking-[0.14em] text-gold">Pro</span>}
-      </div>
+    <div className="flex flex-col gap-0.5 px-3 py-3 sm:flex-row sm:items-baseline sm:gap-2 sm:px-5">
+      <dd className="order-1">
+        {p !== undefined ? <Prob p={p} className="text-2xl font-semibold" /> : <span className="num text-2xl font-semibold text-hi">{value}</span>}
+      </dd>
+      <dt className="order-2 truncate text-[12px] text-lo">
+        {label}{locked && <span className="ml-1.5 text-[10px] uppercase tracking-[0.14em] text-gold">Pro</span>}
+      </dt>
     </div>
   );
 }
 
-function Chip({ href, active, children, count, small = false }: {
-  href: string; active: boolean; children: React.ReactNode; count?: number; small?: boolean;
-}) {
+function Tab({ href, active, children, count }: { href: string; active: boolean; children: React.ReactNode; count?: number }) {
   return (
     <Link href={href} scroll={false} aria-current={active ? "true" : undefined}
-      className={`whitespace-nowrap rounded-full border transition-colors ${small ? "px-2.5 py-0.5 text-[13px]" : "px-3 py-1"} ${active ? "border-[var(--border-glass)] bg-[var(--gold-faint)] text-hi" : "border-line text-lo hover:text-hi"}`}>
+      className={`-mb-px whitespace-nowrap border-b-2 pb-2.5 transition-colors ${active ? "border-[var(--gold)] text-hi" : "border-transparent text-lo hover:text-hi"}`}>
+      {children}
+      {count !== undefined && <span className={`num ml-1.5 text-[11px] ${active ? "text-gold" : "text-lo"}`}>{count}</span>}
+    </Link>
+  );
+}
+
+function Chip({ href, active, children, count }: { href: string; active: boolean; children: React.ReactNode; count?: number }) {
+  return (
+    <Link href={href} scroll={false} aria-current={active ? "true" : undefined}
+      className={`whitespace-nowrap rounded-full border px-3 py-1 text-[13px] transition-colors ${active ? "border-[var(--border-glass)] bg-[var(--gold-faint)] text-hi" : "border-line text-lo hover:text-hi"}`}>
       {children}
       {count !== undefined && <span className={`num ml-1.5 text-[11px] ${active ? "text-gold" : "text-lo"}`}>{count}</span>}
     </Link>
