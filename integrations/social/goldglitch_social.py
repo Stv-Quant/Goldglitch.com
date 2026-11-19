@@ -50,6 +50,7 @@ import goldglitch_social_render as R  # noqa: E402
 from goldglitch_social_platforms import Meta, PlatformError, TikTok  # noqa: E402
 import goldglitch_social_browser as B  # noqa: E402
 import goldglitch_growth as G  # noqa: E402
+import goldglitch_social_render2 as V  # noqa: E402
 
 TZ = timezone(timedelta(hours=-5))  # Colombia
 STATE = os.path.join(HERE, "redes_estado.json")
@@ -131,53 +132,82 @@ def when(ms: int, now: datetime) -> str:
 
 # ------------------------------------------------------------------ pieces
 def build(post: dict, facts: dict, ag: Agents, now: datetime, tag: str) -> dict:
-    """Texts + images + video for one planned post. Returns {feed:[jpg], story:jpg|None, video:mp4, texts}."""
+    """Texts + images + video for one planned post. Returns {feed:[jpg], story:None, video:mp4, reel:bool, texts}.
+
+    Picks come only from top first-division leagues of LATAM and Europe (and their continental cups)."""
     t = post["type"]
-    if t == "resultados":
-        rows = sorted(facts["results"], key=lambda r: (r["status"] != "won", -r["p"]))
-        won = sum(r["status"] == "won" for r in rows)
-        data = {"won": won, "n": len(rows), "historial": facts["record"]}
-    elif t == "picks_dia":
-        focus = (post.get("liga") or "").strip().lower()
-        pool = [r for r in facts["upcoming"] if focus and (focus in str(r.get("league", "")).lower() or focus == str(r.get("sport", "")).lower())]
-        rows = (pool or facts["upcoming"])[:5]   # a league with no picks falls back to the best of all
+    focus = (post.get("liga") or "").strip()
+    picks = V.top_picks(facts.get("upcoming") or [], 5, focus) or V.top_picks(facts.get("upcoming") or [], 5)
+    res = sorted([r for r in facts.get("results") or [] if V.top_league(r.get("league"))],
+                 key=lambda r: (r["status"] != "won", -r["p"])) or sorted(facts.get("results") or [], key=lambda r: (r["status"] != "won", -r["p"]))
+    for r in res:
+        lg = V.top_league(r.get("league"))
+        if lg:
+            r["_tag"] = lg[1]
+    reel_of = "resultados" if (t == "reel" and (post.get("topic") or "").lower().startswith("result")) else ("picks_dia" if t == "reel" else t)
+    if reel_of == "resultados":
+        rows = res
+        data = {"won": sum(r["status"] == "won" for r in rows), "n": len(rows), "historial": facts["record"],
+                "partidos": [f"{r['home']} vs {r['away']}" for r in rows[:6]]}
+    elif reel_of == "picks_dia":
+        rows = picks
         data = {"picks": [{k: r[k] for k in ("league", "home", "away", "label", "p")} | {"cuando": when(r["kickoffAt"], now)} for r in rows],
                 "historial": facts["record"]}
     else:
         rows, data = [], {"historial": facts["record"]}
+    if t in ("picks_dia", "resultados") or (t == "reel" and reel_of != "texto"):
+        if not rows:
+            raise SkipPiece("no hay partidos de ligas top para esta pieza")
     tx = ag.write(post, data)
+    # Hashtags: the writer's + leagues and teams of the real picks (no duplicates, Instagram allows 30).
+    seen, tags = set(), []
+    for h in V.hashtags_for(rows) + list(tx.get("hashtags") or []):
+        k = h.lower()
+        if h and k not in seen:
+            seen.add(k)
+            tags.append(h)
+    tx["hashtags"] = tags[:28]
     # Tagged link so the web can tell which post brought each visit, account and payment.
     tx["fb"] = re.sub(r"https://easygoldglitch\.com(/[\w/-]*)?", lambda m: f"https://easygoldglitch.com{m.group(1) or '/'}?ref=fb_{tag}"[:120],
                       tx["fb"], count=1)
     if "easygoldglitch.com" not in tx["fb"]:
         tx["fb"] += f"\n\nhttps://easygoldglitch.com/?ref=fb_{tag}"
 
+    wfn = lambda r: when(r["kickoffAt"], now) if r.get("kickoffAt") else ""
+    if t == "reel":
+        video = V.reel_video(V.reel_script(reel_of, rows, tx, wfn), f"{tag}_reel")
+        return {"feed": [], "story": None, "video": video, "reel": True, "texts": tx}
+
     def slides(w: int, h: int) -> list[str]:
         if t == "resultados":
-            pages = [R.cover(tx["cover_title"], tx["cover_subtitle"], "Resultados del modelo", w, h)]
+            pages = [V.cover(tx["cover_title"], tx["cover_subtitle"], list(dict.fromkeys(r["league"] for r in rows)), w, h)]
             per = 6 if h > 1400 else 5
             for i in range(0, min(len(rows), per * 3), per):
-                pages.append(R.results_slide(rows[i:i + per], data["won"], data["n"], "Picks de 75% o más ya jugados", w, h))
-            return pages + [R.cta_slide(w, h)]
+                pages.append(V.results(rows[i:i + per], data["won"], data["n"], w, h))
+            return pages + [V.cta(w, h)]
         if t == "picks_dia":
-            pages = [R.cover(tx["cover_title"], tx["cover_subtitle"], "Probabilidades del modelo", w, h)]
-            pages += [R.pick_slide(r, i + 1, len(rows), when(r["kickoffAt"], now), w, h) for i, r in enumerate(rows)]
-            return pages + [R.cta_slide(w, h)]
-        return [R.text_slide(tx.get("edu_title") or tx["cover_title"], tx.get("edu_body") or tx["cover_subtitle"], "Aprende a leer datos", w, h)] + (
-            [R.cta_slide(w, h)] if h > 1400 else [])
+            pages = [V.cover(tx["cover_title"], tx["cover_subtitle"], list(dict.fromkeys(r["league"] for r in rows)), w, h)]
+            pages += [V.pick(r, i + 1, len(rows), wfn(r), w, h) for i, r in enumerate(rows)]
+            return pages + [V.cta(w, h)]
+        eyebrow = {"pregunta": "Tu turno", "mito_dato": "Mito vs dato"}.get(t, "Aprende a leer datos")
+        return [V.text_card(tx.get("edu_title") or tx["cover_title"], tx.get("edu_body") or tx["cover_subtitle"], eyebrow, w, h)] + (
+            [V.cta(w, h)] if h > 1400 else [])
 
     feed = R.render(slides(1080, 1350), 1080, 1350, f"{tag}_feed")
-    vert = R.render(slides(1080, 1920), 1080, 1920, f"{tag}_vert")
-    vid = R.video(vert, f"{tag}_video", seconds=3.4 if t != "educativo" else 5.0)
-    story = None
-    if t == "picks_dia" and rows:
-        story = R.render([R.pick_slide(rows[0], 1, 1, when(rows[0]["kickoffAt"], now), 1080, 1920)], 1080, 1920, f"{tag}_story")[0]
-    return {"feed": feed, "story": story, "video": vid, "texts": tx}
+    # TikTok gets the same piece as a fast reel
+    video = V.reel_video(V.reel_script(reel_of if reel_of in ("picks_dia", "resultados") else "texto", rows, tx, wfn), f"{tag}_reel")
+    return {"feed": feed, "story": None, "video": video, "reel": False, "texts": tx}
+
+
+class SkipPiece(RuntimeError):
+    pass
 
 
 def caption(tx: dict, key: str) -> str:
-    tags = " ".join(f"#{h}" for h in tx.get("hashtags", []))
-    return f"{tx[key]}\n\n{tags}".strip() if key != "fb" else tx["fb"]
+    """Instagram: up to 28 hashtags; TikTok: 8; Facebook: 6."""
+    tags = list(tx.get("hashtags", []))
+    n = {"ig": 28, "tiktok": 8, "fb": 6}.get(key, 10)
+    return f"{tx[key]}\n\n{' '.join('#' + h for h in tags[:n])}".strip()
 
 
 def publish(post: dict, piece: dict, meta: Meta | None, tt: TikTok | None, dry: bool) -> None:
@@ -187,12 +217,16 @@ def publish(post: dict, piece: dict, meta: Meta | None, tt: TikTok | None, dry: 
     jobs = []
     local = getattr(meta, "local", False)          # browser mode takes files; the API needs public URLs
     src = (lambda p: p) if local else upload
-    if meta and meta.ig:
+    if meta and meta.ig and piece.get("reel"):
+        jobs.append(("instagram", lambda: meta.ig_reel(src(piece["video"]), caption(tx, "ig"))))
+    elif meta and meta.ig:
         jobs.append(("instagram", lambda: meta.ig_carousel([src(p) for p in piece["feed"]], caption(tx, "ig"))
                      if len(piece["feed"]) > 1 else meta.ig_image(src(piece["feed"][0]), caption(tx, "ig"))))
         if piece["story"] and not local:
             jobs.append(("instagram_historia", lambda: meta.ig_story(upload(piece["story"]))))
-    if meta and getattr(meta, "fb", True):
+    if meta and getattr(meta, "fb", True) and piece.get("reel"):
+        jobs.append(("facebook", lambda: meta.fb_video(piece["video"], caption(tx, "fb"), tx.get("cover_title", ""))))
+    elif meta and getattr(meta, "fb", True):
         jobs.append(("facebook", lambda: meta.fb_photos(piece["feed"], caption(tx, "fb"))))
     if tt:
         jobs.append(("tiktok", lambda: tt.video(piece["video"], caption(tx, "tiktok"))))
@@ -324,7 +358,12 @@ def tick(dry: bool) -> None:
                 post["status"] = "skipped"
                 log("  sin datos para esta pieza: se omite")
                 continue
-            piece = build(post, facts, ag, now, f"{today}_{i}_{post['type']}")
+            try:
+                piece = build(post, facts, ag, now, f"{today}_{i}_{post['type']}")
+            except SkipPiece as e:
+                post["status"] = "skipped"
+                log(f"  se omite: {e}")
+                continue
             publish(post, piece, meta, tt, dry)
             nets = {"instagram"} if meta and meta.ig else set()
             nets |= {"facebook"} if meta and getattr(meta, "fb", True) else set()

@@ -69,7 +69,9 @@ Cómo trabajas en la reunión:
 1. Mira las métricas y el historial (ver_metricas, ver_historial).
 2. Consulta a los miembros que aporten (consultar). Si falta una especialidad, CONTRATA un agente nuevo con un rol y
    misión precisos (contratar) y consúltalo; despide a quien no aporte. Máximo {MAX_MEMBERS} miembros.
-3. Decide el plan de HOY con definir_plan: 4 a 7 publicaciones (volumen alto: el objetivo es crecer rápido), horas 07:00–23:00 separadas al menos 90 min,
+3. Decide el plan de HOY con definir_plan: 4 a 7 publicaciones (volumen alto: el objetivo es crecer rápido), al menos 2 de
+   ellas "reel" (video vertical de ritmo rápido, el formato que más alcance orgánico da; topic "resultados" para un reel
+   de resultados, si no son picks), solo equipos de ligas top, horas 07:00–23:00 separadas al menos 90 min,
    cada una con gancho, ángulo, tema y llamado a la acción. Basa las decisiones en datos cuando los haya; cuando no,
    plantea experimentos medibles (por ejemplo, dos ganchos distintos en días distintos).
 4. Guarda 1 a 3 aprendizajes concretos y verificables (guardar_aprendizaje).
@@ -229,7 +231,7 @@ class Committee:
             if t not in POST_TYPES or not re.fullmatch(r"\d{2}:\d{2}", hhmm) or not ("07:00" <= hhmm <= "23:00"):
                 problems.append(f"{t} {hhmm}: tipo u hora inválidos")
                 continue
-            if (t == "resultados" and not f.get("results")) or (t == "picks_dia" and not f.get("upcoming")):
+            if (t == "resultados" and not f.get("results")) or (t in ("picks_dia", "reel") and not (f.get("upcoming") or f.get("results"))):
                 problems.append(f"{t}: hoy no hay datos para ese formato")
                 continue
             text = " ".join(str(p.get(k, "")) for k in ("angle", "topic", "hook", "cta"))
@@ -289,7 +291,8 @@ PASO 2: decide. Formato:
 {{"plan":[{{"type":"...","time":"HH:MM","angle":"...","topic":"...","hook":"...","cta":"...","liga":"(opcional)"}}],
 "aprendizajes":["..."], "acta":"qué viste, qué decidiste, qué experimento corre y cómo se mide"}}
 4 a 7 publicaciones (volumen alto), horas 07:00–23:00 separadas al menos 90 min; "picks_dia" solo si hay picks
-próximos (puede repetirse con distinta "liga": Liga BetPlay, Premier League, NBA…) y "resultados" solo si hay picks jugados.""")
+próximos (puede repetirse con distinta "liga": Liga BetPlay, Premier League, LaLiga…), al menos 2 "reel" (topic "resultados"
+para un reel de resultados) y "resultados" solo si hay picks jugados.""")
             res = self.set_plan(dec.get("plan") or [])
             self.log(f"  plan: {res}")
             for t in (dec.get("aprendizajes") or [])[:3]:
