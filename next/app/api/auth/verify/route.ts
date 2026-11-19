@@ -10,7 +10,7 @@ export async function POST(request: Request) {
   const token = String(form?.get("token") ?? "");
 
   const user = token.length >= 20 ? await consumeLoginToken(token) : null;
-  if (!user) return NextResponse.redirect(new URL("/acceso?error=link", origin), { status: 303 });
+  if (!user) return NextResponse.redirect(new URL("/acceso?entrar&error=link", origin), { status: 303 });
 
   await createSession(user.id, request.headers.get("user-agent"));
   if (user.isNew && user.inviteCode) await redeemInvite(user.inviteCode, user.id).catch(() => false);

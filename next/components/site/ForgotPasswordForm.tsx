@@ -26,7 +26,7 @@ export function ForgotPasswordForm() {
     return (
       <div className="card p-5 text-sm text-mid" role="status">
         Si <span className="text-hi">{email}</span> tiene una cuenta, en un minuto te llega el enlace. Revisa también la carpeta de spam.
-        <div className="mt-4"><Link href="/acceso" className="text-gold hover:underline underline-offset-4">← Volver a entrar</Link></div>
+        <div className="mt-4"><Link href="/acceso?entrar" className="text-gold hover:underline underline-offset-4">← Volver a entrar</Link></div>
       </div>
     );
   }
@@ -40,7 +40,7 @@ export function ForgotPasswordForm() {
       <button type="submit" disabled={state === "sending"} className="btn-gold w-full py-3 disabled:opacity-60">
         {state === "sending" ? "Enviando…" : "Enviarme el enlace"}
       </button>
-      <p className="text-center text-sm"><Link href="/acceso" className="text-lo hover:text-hi">Volver a entrar</Link></p>
+      <p className="text-center text-sm"><Link href="/acceso?entrar" className="text-lo hover:text-hi">Volver a entrar</Link></p>
     </form>
   );
 }

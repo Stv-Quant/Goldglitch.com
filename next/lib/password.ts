@@ -43,12 +43,13 @@ export async function verifyPassword(password: string, stored: string | null | u
   return diff === 0;
 }
 
-/** Returns an error message (Spanish) or null when the password is acceptable. */
-export function passwordProblem(pw: string, email?: string): string | null {
-  if (pw.length < 12) return "Usa al menos 12 caracteres.";
+/** Returns an error message (Spanish) or null when the password is acceptable. Same rule at signup and on change. */
+export function passwordProblem(pw: string, email?: string, username?: string): string | null {
+  if (pw.length < 8) return "Usa al menos 8 caracteres.";
   if (pw.length > 200) return "Máximo 200 caracteres.";
-  const classes = [/[a-z]/, /[A-Z]/, /[0-9]/, /[^A-Za-z0-9]/].filter((r) => r.test(pw)).length;
-  if (classes < 3) return "Combina al menos 3 de: minúsculas, mayúsculas, números y símbolos.";
-  if (email && pw.toLowerCase().includes(email.split("@")[0].toLowerCase())) return "No uses tu correo dentro de la contraseña.";
+  if (!/[A-Za-zÀ-ÿ]/.test(pw) || !/[0-9]/.test(pw)) return "Combina letras y números.";
+  const low = pw.toLowerCase();
+  if (email && email.split("@")[0].length >= 3 && low.includes(email.split("@")[0].toLowerCase())) return "No uses tu correo dentro de la contraseña.";
+  if (username && username.length >= 3 && low.includes(username.toLowerCase())) return "No uses tu usuario dentro de la contraseña.";
   return null;
 }

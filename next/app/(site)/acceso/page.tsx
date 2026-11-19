@@ -15,9 +15,9 @@ const INVITE_MSG = {
   invalid: "No encontramos esa invitación. Puedes crear tu cuenta gratis igualmente.",
 } as const;
 
-export default async function AccesoPage({ searchParams }: { searchParams: Promise<{ error?: string; invitacion?: string }> }) {
+export default async function AccesoPage({ searchParams }: { searchParams: Promise<{ error?: string; invitacion?: string; entrar?: string }> }) {
   if (await getViewer().catch(() => null)) redirect("/app");
-  const { error, invitacion } = await searchParams;
+  const { error, invitacion, entrar } = await searchParams;
   const code = normalizeCode((await cookies()).get(INVITE_COOKIE)?.value);
   const invite = code ? await getInviteByCode(code).catch(() => null) : null;
   const active = invite && inviteState(invite) === "active" ? invite : null;
@@ -26,8 +26,7 @@ export default async function AccesoPage({ searchParams }: { searchParams: Promi
   return (
     <section className="mx-auto max-w-md px-4 py-20">
       <p className="eyebrow">Acceso</p>
-      <h1 className="mt-3 text-3xl font-semibold tracking-tight">Entra sin contraseña</h1>
-      <p className="mt-2 text-mid">Te enviamos un enlace al correo. Si no tienes cuenta, se crea al entrar — gratis.</p>
+      <LoginForm defaultMode={entrar !== undefined && !active ? "login" : "signup"}>
       {error === "link" && (
         <p role="alert" className="mt-6 card p-3 text-sm" style={{ borderColor: "rgba(255,77,109,.35)" }}>
           Ese enlace venció o ya se usó. Pide uno nuevo.
@@ -37,7 +36,7 @@ export default async function AccesoPage({ searchParams }: { searchParams: Promi
         <div role="status" className="mt-6 card p-4 text-sm" style={{ borderColor: "var(--border-glass)" }}>
           <p className="text-gold">Tienes una invitación.</p>
           <p className="mt-1 text-mid">
-            Crea tu cuenta con <b className="text-hi">Enlace al correo</b>{gift ? <> y recibes <b className="text-hi">{gift}</b></> : null}.
+            Crea tu cuenta{gift ? <> y recibes <b className="text-hi">{gift}</b></> : null}.
             Válida hasta el {new Intl.DateTimeFormat("es-CO", { dateStyle: "long", timeZone: "America/Bogota" }).format(active.expires_at)}.
           </p>
         </div>
@@ -45,9 +44,7 @@ export default async function AccesoPage({ searchParams }: { searchParams: Promi
       {!active && invitacion && invitacion in INVITE_MSG && (
         <p role="alert" className="mt-6 card p-3 text-sm text-mid">{INVITE_MSG[invitacion as keyof typeof INVITE_MSG]}</p>
       )}
-      <div className="mt-8">
-        <LoginForm defaultMode={active ? "link" : "password"} />
-      </div>
+      </LoginForm>
     </section>
   );
 }

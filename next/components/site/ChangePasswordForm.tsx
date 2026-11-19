@@ -59,7 +59,7 @@ export function ChangePasswordForm({ resetToken }: { resetToken?: string } = {})
           </div>
           {next && <span className="num text-[11px] text-lo">{st.label}</span>}
         </div>
-        <p id="pw-help" className="text-xs text-lo">Mínimo 12 caracteres, combinando al menos 3 de: minúsculas, mayúsculas, números y símbolos.</p>
+        <p id="pw-help" className="text-xs text-lo">Mínimo 8 caracteres, con letras y números.</p>
       </div>
       <div className="space-y-1.5">
         <label htmlFor="conf" className="text-sm text-mid">Repite la nueva contraseña</label>

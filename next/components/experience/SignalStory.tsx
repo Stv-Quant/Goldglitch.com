@@ -419,7 +419,7 @@ export function SignalStory() {
               <Line>para que decidas tú.</Line>
             </h2>
             <div className="mt-10 flex flex-wrap gap-3">
-              <Link href="/acceso" className="btn-gold px-6 py-3.5 text-[15px]">Entrar gratis</Link>
+              <Link href="/acceso" className="btn-gold px-6 py-3.5 text-[15px]">Crear cuenta gratis</Link>
               <Link href="/planes" className="btn-ghost px-6 py-3.5 text-[15px] bg-[rgba(10,9,7,0.5)]">Ver planes</Link>
             </div>
             <p className="mt-4 text-sm text-lo">Gratis, sin tarjeta. Solo necesitas tu correo.</p>

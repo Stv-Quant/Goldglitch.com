@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const viewer = await getViewer();
-  if (!viewer) redirect("/acceso");
+  if (!viewer) redirect("/acceso?entrar");
   if (viewer.mustChangePassword) redirect("/acceso/nueva-clave");
   if (!viewer.isAdmin) redirect("/app");
 
