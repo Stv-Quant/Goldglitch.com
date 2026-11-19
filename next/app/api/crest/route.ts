@@ -19,13 +19,13 @@ export async function GET(request: Request) {
   if (name.length < 2) return Response.json({});
 
   const cache = (globalThis as unknown as { caches?: { default?: Cache } }).caches?.default;
-  const key = new Request(new URL(`/api/crest?n=${encodeURIComponent(teamKey(name))}&s=${sport}&v=3`, request.url).toString());
+  const key = new Request(new URL(`/api/crest?n=${encodeURIComponent(teamKey(name))}&s=${sport}&v=4`, request.url).toString());
   if (cache) {
     const hit = await cache.match(key);
     if (hit) return hit;
   }
 
-  let out: { logo?: string; color?: string } = {};
+  let out: { logo?: string; color?: string; e?: string } = {};
   try {
     const r = await fetch(`https://www.thesportsdb.com/api/v1/json/123/searchteams.php?t=${encodeURIComponent(name)}`, {
       headers: { "user-agent": "Mozilla/5.0 (compatible; Goldglitch/1.0; +https://easygoldglitch.com)", accept: "application/json" },
@@ -37,7 +37,7 @@ export async function GET(request: Request) {
     const hit = ok.find((t) => [t.strTeam, t.strTeamAlternate, t.strTeamShort].some((n) => n && n.split(",").some((x) => teamKey(x) === want)))
       ?? ok.find((t) => { const k = teamKey(t.strTeam ?? ""); return k.length >= 4 && (k.includes(want) || want.includes(k)); });
     if (hit?.strBadge) out = { logo: `${hit.strBadge}/small`, color: brandColor(hit.strColour1?.replace("#", ""), hit.strColour2?.replace("#", "")) };
-  } catch (e) { console.log("crest fallback failed", name, String(e)); }
+  } catch (e) { out.e = String(e).slice(0, 120); }
 
   // A miss may be a transient upstream error: keep it only an hour.
   const ttl = out.logo ? TTL_S : 3600;
