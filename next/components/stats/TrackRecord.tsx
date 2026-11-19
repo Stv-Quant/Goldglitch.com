@@ -20,33 +20,6 @@ function Card({ label, value, hint, tone }: { label: string; value: string; hint
   );
 }
 
-/** Cumulative (hits − expected hits): flat around zero = the model hits as often as it says. */
-function Drift({ curve }: { curve: KindSummary["curve"] }) {
-  if (curve.length < 5) return null;
-  const W = 640, H = 120, pad = 6;
-  const lim = Math.max(3, ...curve.map((c) => Math.abs(c.diff)));
-  const x = (i: number) => pad + (i / (curve.length - 1)) * (W - 2 * pad);
-  const y = (v: number) => H / 2 - (v / lim) * (H / 2 - pad);
-  const d = curve.map((c, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(c.diff).toFixed(1)}`).join(" ");
-  const last = curve[curve.length - 1].diff;
-  return (
-    <div className="card p-5">
-      <div className="flex items-baseline justify-between gap-3">
-        <h3 className="text-sm text-mid">Aciertos reales − aciertos esperados por el modelo (acumulado)</h3>
-        <span className={`num text-sm ${last >= 0 ? "text-up" : "text-down"}`}>{last >= 0 ? "+" : ""}{last.toFixed(1)}</span>
-      </div>
-      <svg viewBox={`0 0 ${W} ${H}`} className="mt-3 w-full block" role="img"
-        aria-label="Diferencia acumulada entre aciertos reales y aciertos que esperaba el modelo">
-        <line x1={pad} x2={W - pad} y1={H / 2} y2={H / 2} stroke="var(--text-lo)" strokeDasharray="4 4" />
-        <path d={d} fill="none" stroke="var(--gold)" strokeWidth={1.6} />
-      </svg>
-      <p className="mt-2 text-[11px] text-lo">
-        Sube cuando los aciertos superan lo que estimaba el modelo y baja cuando quedan por debajo. Si el modelo está bien calibrado, la línea oscila cerca de cero.
-      </p>
-    </div>
-  );
-}
-
 function BucketTable({ title, rows, labelOf }: { title: string; rows: KindSummary["byBand"]; labelOf?: (k: string) => string }) {
   if (!rows.length) return null;
   return (
@@ -57,7 +30,6 @@ function BucketTable({ title, rows, labelOf }: { title: string; rows: KindSummar
           <tr className="text-[11px] text-lo text-left">
             <th className="font-normal py-1"></th>
             <th className="font-normal py-1 text-right">Picks</th>
-            <th className="font-normal py-1 text-right">Estimado</th>
             <th className="font-normal py-1 text-right">Real</th>
           </tr>
         </thead>
@@ -66,8 +38,7 @@ function BucketTable({ title, rows, labelOf }: { title: string; rows: KindSummar
             <tr key={b.key} className="border-t border-line">
               <td className="py-1.5">{labelOf ? labelOf(b.key) : b.key}</td>
               <td className="py-1.5 text-right num">{b.won}/{b.n}</td>
-              <td className="py-1.5 text-right num text-mid">{pct(b.expected, 1)}</td>
-              <td className={`py-1.5 text-right num ${b.hitRate >= b.expected ? "text-up" : "text-down"}`}>{pct(b.hitRate, 1)}</td>
+              <td className="py-1.5 text-right num text-hi">{pct(b.hitRate, 1)}</td>
             </tr>
           ))}
         </tbody>
@@ -92,8 +63,6 @@ export function TrackRecord({ featured, value, rows }: { featured: KindSummary; 
           hint={featured.void ? `${featured.void} nulos (aplazados o empujes) no cuentan` : "Picks de 75% o más ya liquidados"} tone="gold" />
         <Card label="Tasa de acierto" value={featured.hitRate !== null ? pct(featured.hitRate, 1) : "—"} hint="Lo que pasó" />
       </div>
-
-      <Drift curve={featured.curve} />
 
       <div className="grid gap-6 lg:grid-cols-3">
         <BucketTable title="Por rango de probabilidad" rows={featured.byBand} />
