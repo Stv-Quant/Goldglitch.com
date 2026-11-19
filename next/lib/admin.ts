@@ -177,7 +177,7 @@ export async function getUserDetail(id: string) {
 export type PaymentRow = {
   id: string; user_id: string; plan: string; period: string; amount_in_cents: number; currency: string;
   provider: string; provider_tx_id: string | null; status: string; applied_at: number | null; created_at: number; updated_at: number;
-  email?: string;
+  email?: string; note?: string | null; code?: string | null;
 };
 
 export async function listPayments(status: string, q: string) {
