@@ -15,7 +15,8 @@ Dos formas de llegar a las redes:
     - Modo API: con los tokens de abajo (Graph API de Meta y Content Posting API de TikTok).
 
 Configuración (líneas en el .env de esta carpeta, junto a GG_INGEST_URL y GG_INGEST_SECRET):
-    ANTHROPIC_API_KEY=...       clave de la API de Anthropic (agentes Haiku 5.5)
+    ANTHROPIC_API_KEY=...       clave de la API de Anthropic (agentes Haiku 5.5: textos y agentes que miran la pantalla)
+    REDES_AGENTE_PANTALLA=0     usa pasos automáticos en vez del agente que mira la pantalla
     REDES_MODO=navegador        fuerza el modo navegador aunque haya tokens (o =api para lo contrario)
     META_PAGE_ID=...            id de la página de Facebook
     META_PAGE_TOKEN=...         token de larga duración de la página
@@ -225,6 +226,18 @@ def clients(rehearsal: bool = False) -> tuple[Meta | B.BrowserMeta | None, TikTo
         cfg = B.load_config()
         sess = cfg.get("sessions") or {}
         BROWSER = B.Browser(rehearsal=rehearsal)
+        key = os.environ.get("ANTHROPIC_API_KEY")
+        if key and os.environ.get("REDES_AGENTE_PANTALLA", "1") != "0":
+            # Haiku agents that look at the screen and act (computer use). Without a key: the scripted steps below.
+            import goldglitch_social_computer as C
+            ag = C.ScreenAgent(BROWSER, key, log)
+            if sess.get("instagram", True) or sess.get("facebook", True):
+                meta = C.AgentMeta(ag, cfg.get("facebook_page") if sess.get("facebook", True) else None,
+                                   sess.get("instagram", True), rehearsal)
+            if sess.get("tiktok", True):
+                tt = C.AgentTikTok(ag, rehearsal)
+            return meta, tt
+        log("Sin ANTHROPIC_API_KEY: se usan los pasos automáticos sin agente de pantalla.")
         if sess.get("instagram", True) or sess.get("facebook", True):
             meta = B.BrowserMeta(BROWSER, cfg.get("facebook_page") if sess.get("facebook", True) else None,
                                  instagram=sess.get("instagram", True))
