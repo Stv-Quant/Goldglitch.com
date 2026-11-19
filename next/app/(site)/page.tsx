@@ -1,6 +1,7 @@
 import { FounderLetter } from "@/components/experience/FounderLetter";
 import { RevealObserver } from "@/components/experience/RevealObserver";
 import { SignalStory } from "@/components/experience/SignalStory";
+import { FilmScrub } from "@/components/landing/FilmScrub";
 import { MatchRadar } from "@/components/landing/MatchRadar";
 import { FinalCta, MobileCta, ProofNumbers, ScrollProgress, Versus } from "@/components/landing/Sections";
 import { PlanCards } from "@/components/site/PlanCards";
@@ -14,6 +15,7 @@ export default function Home() {
     <div className="grain -mt-[calc(4rem+36px)]">
       <ScrollProgress />
       <SignalStory />
+      <FilmScrub />
       <MatchRadar />
       <ProofNumbers />
       <Versus />
