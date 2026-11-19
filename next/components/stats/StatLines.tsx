@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import type { StatLine } from "@/lib/contracts";
 import { isHot, probColor } from "@/lib/probScale";
+import { Bell } from "./Bell";
 
 /** P(X > line) from a pmf that starts at `start`. */
 function over(l: StatLine, line: number): number {
@@ -77,32 +78,11 @@ function LineCard({ l }: { l: StatLine }) {
   );
 }
 
-/** The full distribution as bars; the ones above the line take the "Más" colour, the rest the "Menos" colour. */
+/** The full distribution as a bell; the area past the line takes the "Más" colour, the rest the "Menos" colour. */
 function Histogram({ l, line, over: o }: { l: StatLine; line: number; over: number }) {
-  // Trim the long tail so the bars stay readable.
-  let lo = 0, hi = l.pmf.length - 1, acc = 0;
-  while (lo < hi && acc + l.pmf[lo] < 0.003) acc += l.pmf[lo++];
-  acc = 0;
-  while (hi > lo && acc + l.pmf[hi] < 0.003) acc += l.pmf[hi--];
-  const bars = l.pmf.slice(lo, hi + 1);
-  const max = Math.max(...bars) || 1;
-  const cOver = probColor(o), cUnder = probColor(1 - o);
   return (
-    <div className="mt-3" aria-hidden>
-      <div className="flex h-12 items-end gap-[2px]">
-        {bars.map((v, i) => {
-          const x = l.start + lo + i;
-          const isOver = x > line;
-          return (
-            <div key={x} className="flex-1 rounded-t-[2px] transition-colors duration-200"
-              style={{ height: `${Math.max(4, (v / max) * 100)}%`, background: isOver ? cOver : cUnder, opacity: isOver === o >= 0.5 ? 1 : 0.35 }} />
-          );
-        })}
-      </div>
-      <div className="mt-1 flex justify-between num text-[10px] text-lo">
-        <span>{l.start + lo}</span>
-        <span>{l.start + hi}{hi < l.pmf.length - 1 ? "+" : ""}</span>
-      </div>
+    <div className="mt-3">
+      <Bell pmf={l.pmf} start={l.start} line={line} under={probColor(1 - o)} over={probColor(o)} dimUnder={o >= 0.5} dimOver={o < 0.5} height={52} />
     </div>
   );
 }

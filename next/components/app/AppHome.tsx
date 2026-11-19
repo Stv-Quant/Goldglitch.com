@@ -180,8 +180,8 @@ export function AppHome() {
                     </div>
                     <div className="mt-3 flex items-center gap-2">
                       <span className="flex -space-x-1.5">
-                        <Crest src={crest(m.c, m.h)} name={m.h} size={26} className="ring-2 ring-[var(--bg-raise)]" />
-                        <Crest src={crest(m.c, m.a)} name={m.a} size={26} className="ring-2 ring-[var(--bg-raise)]" />
+                        <Crest src={crest(m.c, m.h)} sport={m.sport} name={m.h} size={26} className="ring-2 ring-[var(--bg-raise)]" />
+                        <Crest src={crest(m.c, m.a)} sport={m.sport} name={m.a} size={26} className="ring-2 ring-[var(--bg-raise)]" />
                       </span>
                       <span className="min-w-0 truncate text-sm text-mid">{m.h} <span className="text-lo">vs</span> {m.a}</span>
                     </div>
@@ -254,7 +254,7 @@ export function AppHome() {
 }
 
 /** One match as a scoreboard row: status | crests + teams | 1·X·2. */
-function Row({ m, pro, three, crest }: { m: M; pro: boolean; three: boolean; crest: (c: string, t: string) => string | undefined }) {
+function Row({ m, pro, three, crest }: { m: M; pro: boolean; three: boolean; crest: (c: string, t: string) => string | null | undefined }) {
   const finished = m.st === "finished";
   const live = m.st === "live";
   const n = m.k?.n ?? 0;
@@ -285,7 +285,7 @@ function Row({ m, pro, three, crest }: { m: M; pro: boolean; three: boolean; cre
       <div className="min-w-0 space-y-1.5">
         {[[m.h, m.hs, winH], [m.a, m.as, winA]].map(([name, score, win], i) => (
           <div key={i} className="flex items-center gap-2.5">
-            <Crest src={crest(m.c, name as string)} name={name as string} size={22} />
+            <Crest src={crest(m.c, name as string)} sport={m.sport} name={name as string} size={22} />
             <span className={`min-w-0 flex-1 truncate text-[15px] ${finished && !win ? "text-mid" : "text-hi"} ${win ? "font-semibold" : ""}`}>{name as string}</span>
             {scored && <span className={`num w-5 text-right text-[15px] ${win || live ? "text-hi" : "text-mid"}`}>{score as number}</span>}
           </div>
