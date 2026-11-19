@@ -121,6 +121,22 @@ class Browser:
             pg.screenshot(path=shot, full_page=False)
         except Exception:
             shot = "(sin captura)"
+        try:   # what the page offers (buttons, links, labels, file inputs) so the step can be fixed from here
+            items = pg.evaluate("""() => {
+              const vis = e => { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0; };
+              const out = [];
+              document.querySelectorAll('a,button,[role=button],[role=link],[role=menuitem],[aria-label],input[type=file]').forEach(e => {
+                if (e.tagName !== 'INPUT' && !vis(e)) return;
+                const t = (e.getAttribute('aria-label') || e.innerText || '').trim().replace(/\\s+/g, ' ').slice(0, 80);
+                const extra = e.tagName === 'INPUT' ? ` accept=${e.accept} multiple=${e.multiple} inDialog=${!!e.closest('[role=dialog]')}` : '';
+                if (t || extra) out.push(`${e.tagName.toLowerCase()}[${e.getAttribute('role') || ''}] ${t} ${e.getAttribute('href') || ''}${extra}`);
+              });
+              return [...new Set(out)].slice(0, 400);
+            }""")
+            with open(shot[:-4] + ".txt", "w", encoding="utf-8") as f:
+                f.write(pg.url + "\n" + "\n".join(items))
+        except Exception:
+            pass
         return PlatformError(f"{net}: falló el paso «{step}» ({type(e).__name__ + ': ' + str(e)[:160] if e else 'no encontrado'}). Captura: {shot}")
 
     @staticmethod
@@ -188,35 +204,47 @@ class BrowserMeta:
             br.pause(2, 3.5)
             br.dismiss(pg)
             step = "botón Crear"
-            file_in = pg.locator('input[type="file"][accept*="image"], input[type="file"][accept*="video"]')
+            file_in = pg.locator('div[role="dialog"] input[type="file"]')   # only the "new post" dialog, never a page input
+            label = re.compile(r"^(Crear|Create|Nueva publicación|New post)$", re.I)
 
-            def has_input(t: float) -> bool:
-                end = time.time() + t
-                while time.time() < end:
-                    if file_in.count():
-                        return True
-                    time.sleep(0.5)
-                return False
-
-            # The sidebar changes often (text, icon-only, inside "Más"): try the button, then the direct address.
-            label = re.compile(r"^(Crear|Create|Nueva publicación|New post|Publicar|Post)$", re.I)
-            create = br.first_visible(pg.get_by_role("link", name=label), pg.get_by_label(label),
-                                      pg.locator('a[href*="/create/"]'), timeout=8)
-            if create:
-                create.click()
+            def open_create() -> bool:
+                c = br.first_visible(pg.get_by_role("link", name=label), pg.get_by_role("button", name=label),
+                                     pg.get_by_label(label), timeout=4)
+                if not c:
+                    return False
+                c.click()
                 br.pause()
-                sub = br.first_visible(pg.get_by_role("link", name=rx("Publicación", "Post")),
+                sub = br.first_visible(pg.get_by_role("link", name=re.compile(r"^(Publicación|Post)$", re.I)),
+                                       pg.get_by_role("button", name=re.compile(r"^(Publicación|Post)$", re.I)),
                                        pg.get_by_text(re.compile(r"^(Publicación|Post)$")), timeout=3)
                 if sub:
                     sub.click()
                     br.pause()
-            if not has_input(6):
-                pg.goto(IG + "create/select/", wait_until="domcontentloaded")
-                br.pause(2, 3)
-            if not has_input(10):
+                return br.first_visible(pg.locator('div[role="dialog"]'), timeout=8) is not None
+
+            opened = open_create()
+            if not opened:                       # icon-only sidebar: "Crear" may live in the ☰ menu
+                more = br.first_visible(pg.get_by_role("link", name=rx("Más", "More")), pg.get_by_role("button", name=rx("Más", "More")),
+                                        pg.get_by_label(re.compile(r"^(Más|More|Configuración|Settings)$", re.I)), timeout=3)
+                if more:
+                    more.click()
+                    br.pause()
+                    opened = open_create()
+            if not opened:
                 raise br.fail(pg, "instagram", step)
             step = "subir archivos"
-            file_in.first.set_input_files(paths)
+            if file_in.count():
+                multi = file_in.first.evaluate("e => e.multiple")
+                file_in.first.set_input_files(paths if multi or len(paths) == 1 else paths[:1])
+            else:
+                pick = br.first_visible(pg.get_by_role("button", name=rx("Seleccionar del ordenador", "Seleccionar de la computadora",
+                                                                         "Select from computer", "Seleccionar")), timeout=8)
+                if not pick:
+                    raise br.fail(pg, "instagram", step)
+                with pg.expect_file_chooser() as fc:
+                    pick.click()
+                ch = fc.value
+                ch.set_files(paths if ch.is_multiple() or len(paths) == 1 else paths[:1])
             br.pause(2.5, 4)
             ok = br.first_visible(pg.get_by_role("button", name=rx("Aceptar", "OK")), timeout=3)   # "videos now share as reels"
             if ok:
@@ -305,17 +333,34 @@ class BrowserMeta:
             br.pause(1.5, 2.5)
             dlg = pg.get_by_role("dialog").filter(has_text=rx("Crear publicación", "Create post")).last
             step = "adjuntar fotos"
-            inp = dlg.locator('input[type="file"]')
+            dialogs = pg.locator('div[role="dialog"]')
+            inp = dialogs.locator('input[type="file"]')
             if not inp.count():
-                btn = br.first_visible(dlg.get_by_role("button", name=rx("Foto/video", "Photo/video")),
-                                       dlg.locator('[aria-label="Foto/video"], [aria-label="Photo/video"]'), timeout=8)
+                btn = br.first_visible(dialogs.get_by_label(rx("Foto/video", "Photo/video")),
+                                       dialogs.get_by_role("button", name=rx("Foto/video", "Photo/video")), timeout=8)
                 if not btn:
                     raise br.fail(pg, "facebook", step)
-                btn.click()
-                br.pause()
-                inp = dlg.locator('input[type="file"]')
-            inp.first.set_input_files(paths[:10])
+                try:
+                    with pg.expect_file_chooser(timeout=5000) as fc:
+                        btn.click()
+                    fc.value.set_files(paths[:10] if fc.value.is_multiple() else paths[:1])
+                    inp = None
+                except Exception:
+                    br.pause()
+                    inp = dialogs.locator('input[type="file"]')
+                    if not inp.count():
+                        add = br.first_visible(dialogs.get_by_text(rx("Agregar fotos/videos", "Add photos/videos")), timeout=6)
+                        if not add:
+                            raise br.fail(pg, "facebook", step)
+                        with pg.expect_file_chooser(timeout=8000) as fc:
+                            add.click()
+                        fc.value.set_files(paths[:10] if fc.value.is_multiple() else paths[:1])
+                        inp = None
+            if inp is not None:
+                multi = inp.first.evaluate("e => e.multiple")
+                inp.first.set_input_files(paths[:10] if multi else paths[:1])
             br.pause(3, 5)
+            dlg = dialogs.filter(has_text=rx("Crear publicación", "Create post")).last
             step = "escribir texto"
             box = br.first_visible(dlg.get_by_role("textbox"), dlg.locator('div[contenteditable="true"]'), timeout=10)
             if not box:
