@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { findCrest, teamKey } from "@/lib/crests";
+import { espnCrest, findCrest, teamKey } from "@/lib/crests";
 
 /** Team crest; monogram when there is no crest or the image fails. */
 export function Crest({ src, name, size = 24, className = "", fluid = false, sport }: {
@@ -17,14 +17,14 @@ export function Crest({ src, name, size = 24, className = "", fluid = false, spo
     fallback(name, sport).then((f) => alive && f.logo && setAlt(f.logo));
     return () => { alive = false; };
   }, [src, sport, name]);
-  src = src ?? alt;
+  const url = src ?? alt;
   const initials = name.replace(/[^\p{L}\p{N} ]/gu, "").split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join("").toUpperCase() || "?";
   return (
-    <span className={`inline-grid shrink-0 place-items-center overflow-hidden rounded-full ${src && !broken ? "" : "border border-line bg-[rgba(237,230,214,0.04)]"} ${className}`}
+    <span className={`inline-grid shrink-0 place-items-center overflow-hidden rounded-full ${url && !broken ? "" : "border border-line bg-[rgba(237,230,214,0.04)]"} ${className}`}
       style={fluid ? undefined : { width: size, height: size }} aria-hidden>
-      {src && !broken ? (
+      {url && !broken ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={src} alt="" width={size} height={size} loading="lazy" decoding="async" referrerPolicy="no-referrer"
+        <img src={url} alt="" width={size} height={size} loading="lazy" decoding="async" referrerPolicy="no-referrer"
           onError={() => setBroken(true)} className="h-full w-full object-contain" />
       ) : (
         <span className="num font-semibold text-gold-dim" style={{ fontSize: Math.max(8, size * 0.36) }}>{initials}</span>
@@ -39,12 +39,7 @@ const TSDB_SPORT: Record<string, string[]> = {
 };
 
 /** TheSportsDB straight from the browser (CORS open; its free key limits per IP, so it cannot run on shared Workers IPs). */
-async function tsdb(name: string, sport: string): Promise<{ logo?: string; color?: string }> {
-  const lsKey = `gg:crest:${sport}:${teamKey(name)}`;
-  try {
-    const c = localStorage.getItem(lsKey);
-    if (c) { const v = JSON.parse(c); if (v.t > Date.now() - (v.logo ? 30 : 1) * 86_400_000) return v; }
-  } catch { /* storage unavailable */ }
+async function tsdb(name: string, sport: string): Promise<{ logo?: string }> {
   const r = await fetch(`https://www.thesportsdb.com/api/v1/json/123/searchteams.php?t=${encodeURIComponent(name)}`);
   if (!r.ok) return {};
   const d = (await r.json()) as { teams?: { strTeam?: string; strTeamAlternate?: string; strSport?: string; strBadge?: string }[] | null };
@@ -52,18 +47,45 @@ async function tsdb(name: string, sport: string): Promise<{ logo?: string; color
   const ok = (d.teams ?? []).filter((t) => t.strBadge && sports.includes(t.strSport ?? ""));
   const hit = ok.find((t) => [t.strTeam, ...(t.strTeamAlternate ?? "").split(",")].some((n) => n && teamKey(n) === want))
     ?? ok.find((t) => { const k = teamKey(t.strTeam ?? ""); return k.length >= 4 && (k.includes(want) || want.includes(k)); });
-  const v = { logo: hit?.strBadge ? `${hit.strBadge}/small` : undefined, t: Date.now() };
-  try { localStorage.setItem(lsKey, JSON.stringify(v)); } catch { /* ignore */ }
-  return v;
+  return { logo: hit?.strBadge ? `${hit.strBadge}/small` : undefined };
 }
 
-/** Server fallback (ESPN team search), then TheSportsDB from the browser. */
+const ESPN_SPORT: Record<string, string[]> = {
+  football: ["soccer", "football"], baseball: ["baseball"], basketball: ["basketball"], hockey: ["hockey"],
+};
+
+/** ESPN's team search, from the browser (CORS open; Cloudflare's shared IPs get nothing back). */
+async function espnSearch(name: string, sport: string): Promise<{ logo?: string }> {
+  const sports = ESPN_SPORT[sport];
+  if (!sports) return {};
+  const r = await fetch(`https://site.web.api.espn.com/apis/search/v2?query=${encodeURIComponent(name)}&limit=8&type=team`);
+  if (!r.ok) return {};
+  type Hit = { displayName?: string; image?: { default?: string } | string; sport?: string };
+  const d = (await r.json()) as { results?: { type?: string; contents?: Hit[] }[] };
+  const teams = (d.results ?? []).filter((x) => x.type === "team").flatMap((x) => x.contents ?? []).filter((t) => sports.includes(t.sport ?? ""));
+  const want = teamKey(name);
+  const best = teams.find((t) => teamKey(t.displayName ?? "") === want)
+    ?? teams.find((t) => { const k = teamKey(t.displayName ?? ""); return k.length >= 4 && (k.includes(want) || want.includes(k)); });
+  const img = best ? (typeof best.image === "string" ? best.image : best.image?.default) : undefined;
+  return { logo: espnCrest(img) };
+}
+
+/** Teams the league lists miss: ESPN team search, then TheSportsDB (e-sports, small leagues). Cached in localStorage. */
 export function fallback(name: string, sport: string) {
   const k = `${sport}:${name}`;
   let p = fb.get(k);
   if (!p) {
-    p = fetch(`/api/crest?n=${encodeURIComponent(name)}&s=${sport}`).then((r) => (r.ok ? r.json() : {})).catch(() => ({}))
-      .then((v: { logo?: string }) => (v.logo ? v : tsdb(name, sport).catch(() => ({}))));
+    const lsKey = `gg:crest2:${sport}:${teamKey(name)}`;
+    p = (async () => {
+      try {
+        const c = localStorage.getItem(lsKey);
+        if (c) { const v = JSON.parse(c); if (v.t > Date.now() - (v.logo ? 30 : 1) * 86_400_000) return v; }
+      } catch { /* storage unavailable */ }
+      let v: { logo?: string } = await espnSearch(name, sport).catch(() => ({}));
+      if (!v.logo) v = await tsdb(name, sport).catch(() => ({}));
+      try { localStorage.setItem(lsKey, JSON.stringify({ logo: v.logo, t: Date.now() })); } catch { /* ignore */ }
+      return v;
+    })();
     fb.set(k, p);
   }
   return p;
