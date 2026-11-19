@@ -175,7 +175,7 @@ def build(post: dict, facts: dict, ag: Agents, now: datetime, tag: str) -> dict:
 
     wfn = lambda r: when(r["kickoffAt"], now) if r.get("kickoffAt") else ""
     if t == "reel":
-        video = V.reel_video(V.reel_script(reel_of, rows, tx, wfn), f"{tag}_reel")
+        video = V.reel_video(V.reel_script(reel_of, rows, tx, wfn, facts.get("record")), f"{tag}_reel")
         return {"feed": [], "story": None, "video": video, "reel": True, "texts": tx}
 
     def slides(w: int, h: int) -> list[str]:
@@ -195,7 +195,7 @@ def build(post: dict, facts: dict, ag: Agents, now: datetime, tag: str) -> dict:
 
     feed = R.render(slides(1080, 1350), 1080, 1350, f"{tag}_feed")
     # TikTok gets the same piece as a fast reel
-    video = V.reel_video(V.reel_script(reel_of if reel_of in ("picks_dia", "resultados") else "texto", rows, tx, wfn), f"{tag}_reel")
+    video = V.reel_video(V.reel_script(reel_of if reel_of in ("picks_dia", "resultados") else "texto", rows, tx, wfn, facts.get("record")), f"{tag}_reel")
     return {"feed": feed, "story": None, "video": video, "reel": False, "texts": tx}
 
 
