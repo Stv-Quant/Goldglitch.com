@@ -1,3 +1,4 @@
+import { tagSignupSource } from "@/lib/attribution";
 import { NextResponse } from "next/server";
 import { consumeLoginToken, createSession } from "@/lib/auth";
 import { INVITE_COOKIE, redeemInvite } from "@/lib/invites";
@@ -14,6 +15,7 @@ export async function POST(request: Request) {
 
   await createSession(user.id, request.headers.get("user-agent"));
   if (user.isNew && user.inviteCode) await redeemInvite(user.inviteCode, user.id).catch(() => false);
+  if (user.isNew) await tagSignupSource(user.id).catch(() => {});
   if (user.isNew) await later(sendWelcome(user));
   const res = NextResponse.redirect(new URL("/app", origin), { status: 303 });
   res.cookies.delete(INVITE_COOKIE);
