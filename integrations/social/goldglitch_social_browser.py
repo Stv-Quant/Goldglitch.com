@@ -73,8 +73,11 @@ class Browser:
         args = ["--disable-blink-features=AutomationControlled", "--no-first-run", "--no-default-browser-check"]
         if not self.visible:
             args.append("--window-position=-2400,0")      # real window (sites treat headless as a bot), just off-screen
-        opts: dict[str, Any] = dict(user_data_dir=PROFILE, headless=False, args=args, locale="es-CO",
-                                    viewport={"width": 1280, "height": 900}, timezone_id="America/Bogota")
+        args.append("--window-size=1320,960")
+        # No "--enable-automation" (it sets navigator.webdriver and shows the "controlled by software" bar): TikTok
+        # refuses to load its pages in a browser that announces automation.
+        opts: dict[str, Any] = dict(user_data_dir=PROFILE, headless=False, args=args, locale="es-CO", no_viewport=True,
+                                    ignore_default_args=["--enable-automation"], timezone_id="America/Bogota")
         try:
             self._ctx = self._pw.chromium.launch_persistent_context(channel="chrome", **opts)   # installed Google Chrome
         except Exception:
@@ -83,6 +86,7 @@ class Browser:
             except Exception as e:
                 self.close()
                 raise PlatformError(f"No se pudo abrir el navegador de redes (¿quedó otro abierto?): {e}")
+        self._ctx.add_init_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined});")
         self._ctx.set_default_timeout(30_000)
         return self._ctx
 
@@ -415,8 +419,11 @@ def connect() -> None:
     """Visible browser with the three sites; you sign in yourself (passwords never pass through this program)."""
     br = Browser(visible=True)
     ctx = br.context()
-    for url in (IG, FB, "https://www.tiktok.com/login"):
-        ctx.new_page().goto(url, wait_until="domcontentloaded")
+    for url in (IG, FB, "https://www.tiktok.com/"):
+        try:
+            ctx.new_page().goto(url, wait_until="domcontentloaded", timeout=60_000)
+        except Exception:
+            pass        # a slow site keeps loading in its tab; you can also reload it or type the address yourself
     for p in list(ctx.pages):
         if p.url in ("about:blank", "chrome://newtab/"):
             p.close()
@@ -424,6 +431,8 @@ def connect() -> None:
 Se abrió un navegador con tres pestañas: Instagram, Facebook y TikTok.
 
   1) Inicia sesión en cada una con las cuentas de Goldglitch (marca "recordar" si aparece).
+     Si alguna pestaña se queda en blanco, recárgala (F5) o escribe la dirección (tiktok.com) en esa pestaña.
+     En TikTok usa "Iniciar sesión" arriba a la derecha. Las sesiones que ya iniciaste se conservan.
   2) En Facebook, cambia a la PÁGINA de Goldglitch: foto de perfil (arriba a la derecha) > "Cambiar a ..." /
      "Ver todos los perfiles" > la página. Así las publicaciones salen como la página, no como tu perfil.
   3) Abre la página de Goldglitch en esa pestaña y copia su dirección (ej. https://www.facebook.com/goldglitch).
