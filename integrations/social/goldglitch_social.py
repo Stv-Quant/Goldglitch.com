@@ -33,6 +33,7 @@ import hashlib
 import hmac
 import json
 import os
+import re
 import sys
 import time
 import traceback
@@ -48,6 +49,7 @@ from goldglitch_social_agents import Agents  # noqa: E402
 import goldglitch_social_render as R  # noqa: E402
 from goldglitch_social_platforms import Meta, PlatformError, TikTok  # noqa: E402
 import goldglitch_social_browser as B  # noqa: E402
+import goldglitch_growth as G  # noqa: E402
 
 TZ = timezone(timedelta(hours=-5))  # Colombia
 STATE = os.path.join(HERE, "redes_estado.json")
@@ -142,6 +144,11 @@ def build(post: dict, facts: dict, ag: Agents, now: datetime, tag: str) -> dict:
     else:
         rows, data = [], {"historial": facts["record"]}
     tx = ag.write(post, data)
+    # Tagged link so the web can tell which post brought each visit, account and payment.
+    tx["fb"] = re.sub(r"https://easygoldglitch\.com(/[\w/-]*)?", lambda m: f"https://easygoldglitch.com{m.group(1) or '/'}?ref=fb_{tag}"[:120],
+                      tx["fb"], count=1)
+    if "easygoldglitch.com" not in tx["fb"]:
+        tx["fb"] += f"\n\nhttps://easygoldglitch.com/?ref=fb_{tag}"
 
     def slides(w: int, h: int) -> list[str]:
         if t == "resultados":
@@ -268,11 +275,18 @@ def tick(dry: bool) -> None:
     meta, tt = clients()
     today = now.strftime("%Y-%m-%d")
 
-    # 1) plan of the day (after 07:00)
+    # 1) plan of the day (after 07:00): the growth committee decides it; the Estratega is the fallback
     if st.get("day") != today and now.hour >= 7:
         facts = signed("/api/social/feed", {})
         memory = open(MEMORY, encoding="utf-8").read() if os.path.exists(MEMORY) else ""
-        plan = ag.plan(f"{now:%A %d/%m/%Y}", facts, memory)
+        plan = G.plan_for(today)
+        if plan is None and not ag.offline and os.environ.get("REDES_COMITE", "1") != "0":
+            try:
+                G.Committee(os.environ["ANTHROPIC_API_KEY"], signed, st, facts, log).meet(today)
+                plan = G.plan_for(today)
+            except Exception as e:
+                log(f"El comité no pudo reunirse ({e}); planea el Estratega")
+        plan = plan or ag.plan(f"{now:%A %d/%m/%Y}", facts, memory)
         st = {**st, "day": today, "plan": plan, "history": (st.get("history") or [])[-60:]}
         log("Plan de hoy: " + ", ".join(f"{p['time']} {p['type']}" for p in plan))
         save_json(STATE, st)

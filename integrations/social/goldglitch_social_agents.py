@@ -33,7 +33,10 @@ POST_TYPES = {
     "resultados": "Resumen de los picks ya jugados (acertados y fallados) — carrusel + video vertical.",
     "picks_dia": "Los picks más probables de los próximos partidos — carrusel + video vertical + historia.",
     "educativo": "Pieza educativa de una imagen sobre probabilidad o cómo leer los datos.",
+    "pregunta": "Pregunta a la comunidad para generar comentarios y compartidos (imagen con la pregunta).",
+    "mito_dato": "Mito vs dato sobre probabilidad o estadística deportiva (imagen).",
 }
+TEXT_TYPES = {"educativo", "pregunta", "mito_dato"}   # one text card (+ CTA in the vertical version)
 
 
 class Agents:
@@ -106,6 +109,8 @@ Formato: {{"posts":[{{"type":"...","time":"HH:MM","angle":"...","topic":"..."}}]
                 out = self._json("Redactor", f"""Escribe los textos de esta publicación.
 Tipo: {post['type']} — {POST_TYPES[post['type']]}
 Ángulo: {post.get('angle')}  Tema: {post.get('topic') or '—'}
+Gancho pedido por el comité de crecimiento: {post.get('hook') or '—'}
+Llamado a la acción pedido por el comité: {post.get('cta') or 'ver todas las estadísticas gratis creando la cuenta'}
 Datos (únicos números permitidos): {json.dumps(data, ensure_ascii=False)}
 
 Entrega:
@@ -116,7 +121,7 @@ Entrega:
 - fb: texto para Facebook (máx. 700 caracteres, incluye https://easygoldglitch.com).
 - tiktok: texto corto para TikTok (máx. 150 caracteres).
 - hashtags: 6 a 10 hashtags sin '#', en minúscula, de estadística y deporte (nada de apuestas).
-{"- edu_title (máx. 50 caracteres) y edu_body (3 a 5 frases cortas, una por línea) para la imagen." if post['type'] == 'educativo' else ''}
+{"- edu_title (máx. 50 caracteres) y edu_body (3 a 5 frases cortas, una por línea) para la imagen." if post['type'] in TEXT_TYPES else ''}
 Formato JSON con esas claves.""", max_tokens=2000)
                 texts = [out.get(k, "") for k in ("cover_title", "cover_subtitle", "ig", "fb", "tiktok", "edu_title", "edu_body")]
                 if all(self.clean(t) is not None for t in texts) and out.get("ig") and out.get("fb"):
