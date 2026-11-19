@@ -4,11 +4,19 @@ Uso (desde D:\\SoccerPrediction):
     python goldglitch_social.py tick            # lo corre la tarea programada cada 15 min: planea, publica, responde
     python goldglitch_social.py tick --dry-run  # todo menos publicar/responder (revisa redes_salida/ y redes.log)
     python goldglitch_social.py prueba          # arma piezas de ejemplo sin IA ni redes (para ver el diseño)
-    python goldglitch_social.py tiktok-login    # conecta la cuenta de TikTok (una vez)
+    python goldglitch_social.py conectar        # modo navegador: abre Chrome para iniciar sesión en las 3 redes (una vez)
+    python goldglitch_social.py ensayo          # modo navegador: arma una pieza y recorre cada red SIN el clic final
+    python goldglitch_social.py tiktok-login    # (solo modo API) conecta la cuenta de TikTok
     python goldglitch_social.py informe         # informe semanal ya (normalmente: lunes)
+
+Dos formas de llegar a las redes:
+    - Modo navegador (por defecto si no hay tokens de API): los agentes usan un Chrome con sesión iniciada por ti
+      (`conectar`). No necesita Meta Developers, TikTok for Developers ni suscripciones.
+    - Modo API: con los tokens de abajo (Graph API de Meta y Content Posting API de TikTok).
 
 Configuración (líneas en el .env de esta carpeta, junto a GG_INGEST_URL y GG_INGEST_SECRET):
     ANTHROPIC_API_KEY=...       clave de la API de Anthropic (agentes Haiku 5.5)
+    REDES_MODO=navegador        fuerza el modo navegador aunque haya tokens (o =api para lo contrario)
     META_PAGE_ID=...            id de la página de Facebook
     META_PAGE_TOKEN=...         token de larga duración de la página
     IG_USER_ID=...              id de la cuenta profesional de Instagram vinculada
@@ -38,6 +46,7 @@ sys.path.insert(0, HERE)
 from goldglitch_social_agents import Agents  # noqa: E402
 import goldglitch_social_render as R  # noqa: E402
 from goldglitch_social_platforms import Meta, PlatformError, TikTok  # noqa: E402
+import goldglitch_social_browser as B  # noqa: E402
 
 TZ = timezone(timedelta(hours=-5))  # Colombia
 STATE = os.path.join(HERE, "redes_estado.json")
@@ -166,12 +175,14 @@ def publish(post: dict, piece: dict, meta: Meta | None, tt: TikTok | None, dry: 
     done = post.setdefault("done", {})
     tx = piece["texts"]
     jobs = []
+    local = getattr(meta, "local", False)          # browser mode takes files; the API needs public URLs
+    src = (lambda p: p) if local else upload
     if meta and meta.ig:
-        jobs.append(("instagram", lambda: meta.ig_carousel([upload(p) for p in piece["feed"]], caption(tx, "ig"))
-                     if len(piece["feed"]) > 1 else meta.ig_image(upload(piece["feed"][0]), caption(tx, "ig"))))
-        if piece["story"]:
+        jobs.append(("instagram", lambda: meta.ig_carousel([src(p) for p in piece["feed"]], caption(tx, "ig"))
+                     if len(piece["feed"]) > 1 else meta.ig_image(src(piece["feed"][0]), caption(tx, "ig"))))
+        if piece["story"] and not local:
             jobs.append(("instagram_historia", lambda: meta.ig_story(upload(piece["story"]))))
-    if meta:
+    if meta and getattr(meta, "fb", True):
         jobs.append(("facebook", lambda: meta.fb_photos(piece["feed"], caption(tx, "fb"))))
     if tt:
         jobs.append(("tiktok", lambda: tt.video(piece["video"], caption(tx, "tiktok"))))
@@ -182,7 +193,11 @@ def publish(post: dict, piece: dict, meta: Meta | None, tt: TikTok | None, dry: 
             log(f"  (dry-run) {net}: listo para publicar")
             continue
         try:
-            done[net] = fn()
+            r = fn()
+            if r == "ensayo":
+                log(f"  {net}: ensayo completo (sin publicar)")
+                continue
+            done[net] = r
             log(f"  {net}: publicado ({done[net]})")
         except (PlatformError, requests.RequestException, RuntimeError) as e:
             post.setdefault("errors", {})[net] = str(e)[:300]
@@ -190,8 +205,32 @@ def publish(post: dict, piece: dict, meta: Meta | None, tt: TikTok | None, dry: 
 
 
 # ------------------------------------------------------------------ jobs
-def clients() -> tuple[Meta | None, TikTok | None]:
+BROWSER: B.Browser | None = None
+
+
+def browser_mode() -> bool:
+    mode = os.environ.get("REDES_MODO", "").lower()
+    if mode in ("navegador", "api"):
+        return mode == "navegador"
+    return not (os.environ.get("META_PAGE_TOKEN") or os.environ.get("TIKTOK_CLIENT_KEY"))
+
+
+def clients(rehearsal: bool = False) -> tuple[Meta | B.BrowserMeta | None, TikTok | B.BrowserTikTok | None]:
+    global BROWSER
     meta = tt = None
+    if browser_mode():
+        if not B.profile_ready():
+            log("Modo navegador sin sesión: ejecuta conectar_redes.bat (una vez).")
+            return None, None
+        cfg = B.load_config()
+        sess = cfg.get("sessions") or {}
+        BROWSER = B.Browser(rehearsal=rehearsal)
+        if sess.get("instagram", True) or sess.get("facebook", True):
+            meta = B.BrowserMeta(BROWSER, cfg.get("facebook_page") if sess.get("facebook", True) else None,
+                                 instagram=sess.get("instagram", True))
+        if sess.get("tiktok", True):
+            tt = B.BrowserTikTok(BROWSER)
+        return meta, tt
     if os.environ.get("META_PAGE_ID") and os.environ.get("META_PAGE_TOKEN"):
         meta = Meta(os.environ["META_PAGE_ID"], os.environ["META_PAGE_TOKEN"], os.environ.get("IG_USER_ID") or None)
     if os.environ.get("TIKTOK_CLIENT_KEY") and os.environ.get("TIKTOK_CLIENT_SECRET"):
@@ -222,7 +261,7 @@ def tick(dry: bool) -> None:
         memory = open(MEMORY, encoding="utf-8").read() if os.path.exists(MEMORY) else ""
         plan = ag.plan(f"{now:%A %d/%m/%Y}", facts, memory)
         st = {**st, "day": today, "plan": plan, "history": (st.get("history") or [])[-60:]}
-        log(f"Plan de hoy: " + ", ".join(f"{p['time']} {p['type']}" for p in plan))
+        log("Plan de hoy: " + ", ".join(f"{p['time']} {p['type']}" for p in plan))
         save_json(STATE, st)
 
     # 2) posts that are due
@@ -245,7 +284,7 @@ def tick(dry: bool) -> None:
             piece = build(post, facts, ag, now, f"{today}_{i}_{post['type']}")
             publish(post, piece, meta, tt, dry)
             nets = {"instagram"} if meta and meta.ig else set()
-            nets |= {"facebook"} if meta else set()
+            nets |= {"facebook"} if meta and getattr(meta, "fb", True) else set()
             nets |= {"tiktok"} if tt else set()
             if dry or nets <= set(post.get("done", {})) or post["tries"] >= MAX_TRIES:
                 post["status"] = "done"
@@ -260,7 +299,7 @@ def tick(dry: bool) -> None:
 
     # 3) comments
     last = st.get("community_at", 0)
-    if meta and time.time() - last >= COMMUNITY_EVERY_MIN * 60 and 7 <= now.hour <= 23:
+    if meta and not getattr(meta, "local", False) and time.time() - last >= COMMUNITY_EVERY_MIN * 60 and 7 <= now.hour <= 23:
         community(st, meta, ag, dry)
         st["community_at"] = time.time()
         save_json(STATE, st)
@@ -331,6 +370,27 @@ def prueba() -> None:
     log(f"Mira las piezas en {R.OUT}")
 
 
+def ensayo() -> None:
+    """Browser mode check: a real piece (templates, no AI cost) walked through every network WITHOUT the final click."""
+    now = datetime.now(TZ)
+    try:
+        facts = signed("/api/social/feed", {})
+    except Exception as e:
+        log(f"ensayo: sin datos de la web ({e}); uso datos de ejemplo")
+        facts = None
+    if not facts or not facts.get("upcoming"):
+        k = int((now + timedelta(hours=5)).timestamp() * 1000)
+        facts = {"upcoming": [{"league": "Liga BetPlay", "home": "Millonarios", "away": "Nacional", "kickoffAt": k,
+                               "label": "Córners totales: Más de 6.5", "group": "Córners", "p": 0.82}],
+                 "results": [], "record": {"d7": {"won": 0, "n": 0}}}
+    piece = build({"type": "picks_dia", "time": now.strftime("%H:%M"), "angle": "ensayo"}, facts, Agents(None, offline=True), now, "ensayo")
+    meta, tt = clients(rehearsal=True)
+    if not meta and not tt:
+        return
+    publish({"type": "ensayo"}, piece, meta, tt, dry=False)
+    log("Ensayo terminado. Si algún paso falló, la captura está en redes_salida/errores.")
+
+
 def tiktok_login() -> None:
     key, secret = os.environ.get("TIKTOK_CLIENT_KEY"), os.environ.get("TIKTOK_CLIENT_SECRET")
     if not key or not secret:
@@ -358,6 +418,10 @@ def main() -> int:
             tick(dry)
         elif cmd == "prueba":
             prueba()
+        elif cmd == "conectar":
+            B.connect()
+        elif cmd == "ensayo":
+            ensayo()
         elif cmd == "tiktok-login":
             tiktok_login()
         elif cmd == "informe":
@@ -372,6 +436,9 @@ def main() -> int:
     except Exception:
         log("ERROR inesperado:\n" + traceback.format_exc())
         return 1
+    finally:
+        if BROWSER:
+            BROWSER.close()
     return 0
 
 
