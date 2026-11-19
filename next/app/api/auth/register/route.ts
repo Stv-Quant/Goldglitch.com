@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { tagSignupSource } from "@/lib/attribution";
 import { createSession, normalizeEmail, normalizeUsername, recordAttempt, sameOrigin, tooManyAttempts } from "@/lib/auth";
 import { getDB } from "@/lib/env";
 import { INVITE_COOKIE, normalizeCode, redeemInvite } from "@/lib/invites";
@@ -45,6 +46,7 @@ export async function POST(request: Request) {
   const invite = normalizeCode(jar.get(INVITE_COOKIE)?.value);
   if (invite) { await redeemInvite(invite, id).catch(() => false); jar.delete(INVITE_COOKIE); }
 
+  await tagSignupSource(id).catch(() => {});
   await createSession(id, request.headers.get("user-agent"));
   await later(sendWelcome({ id, email, name: username }));
   return Response.json({ ok: true, next: "/app" });

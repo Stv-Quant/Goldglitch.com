@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { ServiceWorker } from "@/components/pwa/ServiceWorker";
+import { Attribution } from "@/components/site/Attribution";
 import "@fontsource/instrument-serif/400.css";
 import "@fontsource/instrument-serif/400-italic.css";
 import "@fontsource-variable/bricolage-grotesque";
@@ -57,6 +58,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       <body className="antialiased">
         {children}
         <ServiceWorker />
+        <Attribution />
       </body>
     </html>
   );
