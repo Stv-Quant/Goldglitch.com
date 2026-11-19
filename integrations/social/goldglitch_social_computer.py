@@ -219,7 +219,7 @@ class ScreenAgent:
                 body = {"model": MODEL, "max_tokens": 2048, "system": system, "tools": tools, "messages": messages,
                         "tool_choice": {"type": "auto", "disable_parallel_tool_use": False}}
                 r = requests.post(API, json=body, timeout=180, headers={
-                    "x-api-key": self.key, "anthropic-version": VERSION, "content-type": "application/json"})
+                    "authorization": f"Bearer {self.key}", "anthropic-version": VERSION, "content-type": "application/json"})
                 j = r.json()
                 if r.status_code >= 400:
                     raise PlatformError(f"{net}: la API de Anthropic respondió {r.status_code}: {json.dumps(j)[:300]}")
