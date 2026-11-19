@@ -359,3 +359,51 @@ class AgentTikTok:
                 "(el archivo se adjunta solo), espera a que termine de subir, borra el texto que aparezca en la descripción "
                 "(clic en el cuadro, ctrl+a, Delete), usa escribir_texto_preparado, deja la privacidad en 'Todos', y Publicar.")
         return self.agent.run(task, "https://www.tiktok.com/tiktokstudio/upload?from=webapp", [path], title, self.rehearsal, "tiktok")
+
+
+# ------------------------------------------------------------------ same agent, through Claude Code with the Pro plan
+class CliScreenAgent:
+    """Haiku 5.5 via Claude Code (your Claude subscription) driving the browser through the "pantalla" MCP server."""
+
+    def __init__(self, log=print):
+        self.log = log
+
+    def run(self, task: str, start_url: str, files: list[str], caption: str, rehearsal: bool, net: str) -> str:
+        import sys
+        import tempfile
+        import goldglitch_claude_cli as CLI
+        work = tempfile.mkdtemp(prefix="gg_tarea_")
+        task_path, result_path = os.path.join(work, "tarea.json"), os.path.join(work, "resultado.json")
+        evidence = os.path.join(ERRDIR, f"{net}_agente_{time.strftime('%Y%m%d_%H%M%S')}.png")
+        with open(task_path, "w", encoding="utf-8") as f:
+            json.dump({"start_url": start_url, "files": files, "caption": caption, "rehearsal": rehearsal,
+                       "result": result_path, "evidence": evidence}, f, ensure_ascii=False)
+        server = os.path.join(os.path.dirname(os.path.abspath(__file__)), "goldglitch_screen_mcp.py")
+        mcp = {"mcpServers": {"pantalla": {"command": sys.executable, "args": [server], "env": {"GG_TAREA": task_path}}}}
+        mode = ("MODO ENSAYO: haz todo hasta dejar la publicación lista; el botón final está bloqueado. Cuando llegues a "
+                "él, llama terminar con estado listo_para_publicar.") if rehearsal else ""
+        prompt = (f"{task}\n\n{mode}\n\nArchivos de la publicación: {len(files)}. Empieza con la herramienta captura "
+                  "para ver la pantalla. Las herramientas de acción devuelven la pantalla nueva.")
+        self.log(f"    [{net}] agente Haiku (plan Pro) trabajando…")
+        try:
+            CLI.run(prompt, SYSTEM.replace("llama terminar", "usa la herramienta terminar"), mcp_config=mcp,
+                    allowed_tools="mcp__pantalla__*", max_turns=MAX_STEPS, timeout=1200)
+        except CLI.UsageLimit:
+            raise
+        except CLI.CliError as e:
+            if not os.path.exists(result_path):
+                raise PlatformError(f"{net}: {e}")
+        try:
+            with open(result_path, encoding="utf-8") as f:
+                r = json.load(f)
+        except (OSError, ValueError):
+            raise PlatformError(f"{net}: el agente terminó sin informar el resultado")
+        estado, detalle = r.get("estado"), r.get("detalle", "")
+        self.log(f"    [{net}] terminar: {estado} — {detalle[:200]}")
+        if estado == "publicado" and not rehearsal:
+            return "publicado"
+        if rehearsal and estado in ("listo_para_publicar", "publicado"):
+            if not r.get("final_bloqueado"):
+                self.log(f"    [{net}] (aviso: terminó sin llegar al botón final bloqueado)")
+            return "ensayo"
+        raise PlatformError(f"{net}: {estado}: {detalle[:300]}" + (f" Captura: {r['captura']}" if r.get("captura") else ""))

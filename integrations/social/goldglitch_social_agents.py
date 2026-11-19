@@ -41,9 +41,11 @@ TEXT_TYPES = {"educativo", "pregunta", "mito_dato"}   # one text card (+ CTA in 
 
 class Agents:
     def __init__(self, api_key: str | None, offline: bool = False):
-        self.offline = offline or not api_key
+        import goldglitch_claude_cli as CLI
+        self.cli = not offline and not api_key and CLI.available()     # Claude Pro through Claude Code
+        self.offline = offline or (not api_key and not self.cli)
         self.client = None
-        if not self.offline:
+        if not self.offline and not self.cli:
             import anthropic
             self.client = anthropic.Anthropic(api_key=api_key)
 
@@ -51,6 +53,9 @@ class Agents:
     def _json(self, role: str, task: str, max_tokens: int = 1500) -> dict:
         if self.offline:
             raise RuntimeError("offline")
+        if self.cli:
+            import goldglitch_claude_cli as CLI
+            return CLI.ask_json(f"Eres el {role} del equipo de redes de Goldglitch.\n\n{BRAND}", task)
         last = None
         for _ in range(2):
             msg = self.client.messages.create(
