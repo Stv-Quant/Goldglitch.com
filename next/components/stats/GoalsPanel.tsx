@@ -1,6 +1,7 @@
 import { scoreStats } from "@/lib/derived";
 import { Prob, ProbMeter } from "./Prob";
 import { probColor } from "@/lib/probScale";
+import { Bell } from "./Bell";
 
 /** Pro: everything about goals the score matrix implies, most useful first. */
 export function GoalsPanel({ xg, matrix, home, away }: {
@@ -40,14 +41,13 @@ export function GoalsPanel({ xg, matrix, home, away }: {
 
           <div className="card p-4 sm:p-5">
             <h3 className="text-sm text-mid">Total de goles en el partido</h3>
-            <div className="mt-4 flex h-32 items-end gap-2">
-              {st.totalGoals.map((g) => (
-                <div key={g.label} className="flex flex-1 flex-col items-center gap-1">
-                  <span className="num text-[10px] text-lo">{Math.round(g.p * 100)}%</span>
-                  <div className="w-full rounded-t" style={{ height: `${Math.max(3, (g.p / maxTotal) * 88)}px`, background: g.p === maxTotal ? "var(--gold)" : "var(--seg-2)" }} />
-                  <span className="num text-xs text-mid">{g.label}</span>
-                </div>
-              ))}
+            <div className="mt-4">
+              <Bell pmf={st.totalGoals.map((g) => g.p)} height={110} tail={0} labels={st.totalGoals.map((g) => (
+                <>
+                  <span className="block text-[10px] text-lo">{g.label}</span>
+                  <span className={`block text-[13px] ${g.p === maxTotal ? "font-semibold text-gold" : "text-mid"}`}>{Math.round(g.p * 100)}%</span>
+                </>
+              ))} />
             </div>
           </div>
 

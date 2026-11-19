@@ -38,3 +38,15 @@ export function findCrest(map: Record<string, string>, name: string): string | u
   }
   return best;
 }
+
+/** Team colour usable on a near-black page: the primary unless it is too dark or too grey, then the alternate. */
+export function brandColor(primary?: string, alt?: string): string | undefined {
+  const ok = (h?: string) => {
+    if (!h || !/^[0-9a-f]{6}$/i.test(h)) return false;
+    const [r, g, b] = [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16));
+    const lum = 0.2126 * r + 0.7152 * g + 0.0722 * b, sat = Math.max(r, g, b) - Math.min(r, g, b);
+    return lum > 45 && (sat > 40 || lum > 200);
+  };
+  const c = ok(primary) ? primary : ok(alt) ? alt : undefined;
+  return c ? `#${c.toLowerCase()}` : undefined;
+}

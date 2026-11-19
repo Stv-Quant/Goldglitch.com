@@ -15,7 +15,7 @@ const GOLD = "#d4af37";
  * then the 1X2 strip. Colours and crests come from /api/crests; without them it falls back to gold and monograms.
  */
 export function MatchHero({ m }: { m: MatchData }) {
-  const brand = useMatchBrand(m.competition.id, m.home.name, m.away.name);
+  const brand = useMatchBrand(m.competition.id, m.home.name, m.away.name, m.sport);
   const hc = brand.home.color ?? GOLD, ac = brand.away.color ?? GOLD;
   const p = m.prediction;
   const scored = m.homeScore !== null && m.awayScore !== null;

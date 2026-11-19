@@ -1,4 +1,4 @@
-import { ESPN_LEAGUE, espnCrest, teamKey } from "@/lib/crests";
+import { ESPN_LEAGUE, brandColor, espnCrest, teamKey } from "@/lib/crests";
 
 const TTL_S = 7 * 86_400;
 
@@ -40,16 +40,4 @@ export async function GET(request: Request) {
   const res = Response.json({ teams, colors }, { headers: { "cache-control": `public, max-age=86400, s-maxage=${TTL_S}` } });
   if (cache && Object.keys(teams).length) await cache.put(key, res.clone());
   return res;
-}
-
-/** Team colour usable on a near-black page: the primary unless it is too dark or too grey, then the alternate. */
-function brandColor(primary?: string, alt?: string): string | undefined {
-  const ok = (h?: string) => {
-    if (!h || !/^[0-9a-f]{6}$/i.test(h)) return false;
-    const [r, g, b] = [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16));
-    const lum = 0.2126 * r + 0.7152 * g + 0.0722 * b, sat = Math.max(r, g, b) - Math.min(r, g, b);
-    return lum > 45 && (sat > 40 || lum > 200);
-  };
-  const c = ok(primary) ? primary : ok(alt) ? alt : undefined;
-  return c ? `#${c.toLowerCase()}` : undefined;
 }
