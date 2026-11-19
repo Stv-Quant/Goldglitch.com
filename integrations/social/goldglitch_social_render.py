@@ -172,3 +172,45 @@ def video(frames: list[str], name: str, seconds: float = 3.2) -> str:
 
 def tmpdir() -> str:
     return tempfile.mkdtemp(prefix="gg_redes_")
+
+
+# ------------------------------------------------------------------ profile assets (logo + cover)
+MARK = ('<svg viewBox="0 0 32 32" width="{s}" height="{s}"><circle cx="16" cy="16" r="14" fill="none" stroke="#d4af37" stroke-width="1.6"/>'
+        '<circle cx="16" cy="16" r="10.5" fill="none" stroke="#d4af37" stroke-opacity=".25" stroke-width="1"/>'
+        '<rect x="10" y="17" width="3" height="6" rx="1" fill="#d4af37" fill-opacity=".45"/>'
+        '<rect x="14.5" y="13" width="3" height="10" rx="1" fill="#d4af37" fill-opacity=".7"/>'
+        '<rect x="19" y="9" width="3" height="14" rx="1" fill="#d4af37"/></svg>')
+SERIF = "@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif&display=swap');"
+
+
+def avatar_page(size: int = 1080) -> str:
+    """Profile picture: the mark alone, centred inside the circle crop every network applies."""
+    return (f"<!doctype html><html><head><meta charset='utf-8'><style>*{{margin:0}}body{{width:{size}px;height:{size}px;"
+            "background:radial-gradient(circle at 50% 42%,#1d1708 0%,#070604 58%,#020202 100%);display:grid;place-items:center}"
+            f"</style></head><body>{MARK.format(s=int(size * 0.62))}</body></html>")
+
+
+def cover_page(w: int = 1640, h: int = 624) -> str:
+    """Facebook cover: content kept in the centre band (mobile crops the sides)."""
+    return f"""<!doctype html><html><head><meta charset='utf-8'><style>{SERIF}
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=JetBrains+Mono:wght@500&display=swap');
+*{{margin:0;padding:0;box-sizing:border-box}}
+body{{width:{w}px;height:{h}px;overflow:hidden;color:#ede6d6;font-family:Inter,sans-serif;
+ background:radial-gradient(700px 420px at 50% 0%,rgba(212,175,55,.20),transparent 70%),linear-gradient(180deg,#0b0906,#020202);position:relative}}
+.grid{{position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.03) 1px,transparent 1px);background-size:48px 48px}}
+.wrap{{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);display:flex;align-items:center;gap:38px}}
+.name{{font-family:'Instrument Serif',serif;font-size:96px;line-height:1;letter-spacing:-.01em;
+ background:linear-gradient(180deg,#f6e6a8,#d4af37 55%,#9c7a1f);-webkit-background-clip:text;color:transparent}}
+.tag{{margin-top:14px;font-size:30px;color:#cfc6b2;white-space:nowrap}}
+.url{{margin-top:18px;font-family:'JetBrains Mono',monospace;font-size:22px;letter-spacing:.2em;color:#d4af37;text-transform:uppercase}}
+.rule{{position:absolute;left:0;right:0;bottom:0;height:3px;background:linear-gradient(90deg,transparent,#d4af37,transparent)}}
+</style></head><body><div class='grid'></div><div class='wrap'>{MARK.format(s=190)}
+<div><div class='name'>Goldglitch Stats</div><div class='tag'>Probabilidades de cada partido. Datos, no fijas.</div>
+<div class='url'>easygoldglitch.com</div></div></div><div class='rule'></div></body></html>"""
+
+
+def profile_assets() -> dict:
+    """Renders the logo (1080×1080) and the Facebook cover (1640×624). Returns their paths."""
+    logo = render([avatar_page()], 1080, 1080, "perfil_logo")[0]
+    cover = render([cover_page()], 1640, 624, "perfil_portada")[0]
+    return {"logo": logo, "portada": cover}

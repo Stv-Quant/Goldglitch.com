@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import re
 import os
 import sys
 import time
@@ -29,6 +30,8 @@ TASK = json.load(open(os.environ["GG_TAREA"], encoding="utf-8"))
 EXEC = ThreadPoolExecutor(max_workers=1)      # Playwright's sync API lives in this one thread
 S: dict = {"pg": None, "br": None, "agent": None,
            "state": {"rehearsal": bool(TASK.get("rehearsal")), "files": TASK["files"]}}
+if TASK.get("final_regex"):
+    S["state"]["final_re"] = re.compile(TASK["final_regex"], re.I)
 mcp = FastMCP("pantalla")
 
 
@@ -143,6 +146,25 @@ async def escribir_texto_preparado() -> list:
 
 
 @mcp.tool()
+async def escribir_texto_guardado(cual: str) -> list:
+    """Escribe, donde está el cursor, uno de los textos preparados de la tarea (por ejemplo: bio, descripcion, sitio_web)."""
+    textos = TASK.get("textos") or {}
+    if cual not in textos:
+        return [f"No existe '{cual}'. Disponibles: {', '.join(textos) or 'ninguno'}"]
+    return await _run(_act, "type", {"text": textos[cual]})
+
+
+@mcp.tool()
+async def preparar_archivo(cual: str) -> str:
+    """Elige qué archivo adjuntar la próxima vez que abras un selector de archivos (por ejemplo: logo, portada)."""
+    archivos = TASK.get("archivos") or {}
+    if cual not in archivos:
+        return f"No existe '{cual}'. Disponibles: {', '.join(archivos) or 'ninguno'}"
+    S["state"]["files"] = [archivos[cual]]
+    return f"Listo: el próximo selector de archivos adjuntará '{cual}'."
+
+
+@mcp.tool()
 async def terminar(estado: str, detalle: str) -> str:
     """Termina la tarea. estado: publicado | listo_para_publicar | bloqueado | fallo. detalle: qué pasó."""
     def done():
@@ -155,7 +177,7 @@ async def terminar(estado: str, detalle: str) -> str:
             except Exception:
                 pass
         with open(TASK["result"], "w", encoding="utf-8") as f:
-            json.dump({"estado": estado, "detalle": detalle[:500], "final_bloqueado": bool(S["state"].get("blocked_final")),
+            json.dump({"estado": estado, "detalle": detalle[:3000], "final_bloqueado": bool(S["state"].get("blocked_final")),
                        "adjuntado": bool(S["state"].get("attached")), "captura": shot}, f, ensure_ascii=False)
         if S["br"] is not None:
             S["br"].close()
