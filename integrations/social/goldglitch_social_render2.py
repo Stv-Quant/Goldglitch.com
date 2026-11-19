@@ -40,6 +40,10 @@ TOP_LEAGUES = [
     (("primeira liga", "liga portugal", "p1"), "Primeira Liga", "LigaPortugal", 4),
     (("eredivisie", "n1"), "Eredivisie", "Eredivisie", 4),
 ]
+ESPN_SLUG = {"Champions League": "uefa.champions", "Europa League": "uefa.europa", "Premier League": "eng.1", "LaLiga": "esp.1",
+             "Serie A": "ita.1", "Bundesliga": "ger.1", "Ligue 1": "fra.1", "Primeira Liga": "por.1", "Eredivisie": "ned.1",
+             "Liga BetPlay": "col.1", "Brasileirão": "bra.1", "Liga Profesional Argentina": "arg.1", "Liga MX": "mex.1",
+             "Copa Libertadores": "conmebol.libertadores", "Copa Sudamericana": "conmebol.sudamericana"}
 EXCLUDE = ("2.", " 2", "segunda", "serie b", "championship", "ligue 2", "laliga 2", "austria", "premiership")
 
 ACCENT = {"Champions League": "#4f8cff", "Europa League": "#ff8a1f", "Premier League": "#a25cff", "LaLiga": "#ff4d6d",
@@ -79,6 +83,7 @@ def top_picks(rows: list[dict], n: int = 5, focus: str = "") -> list[dict]:
         best.append(r)
     best = best[: max(n * 3, n)]
     best.sort(key=lambda r: -float(r["p"]))          # strongest of the most relevant
+    load_colors([r["league"] for r in best[:n]])
     return best[:n]
 
 
@@ -117,16 +122,92 @@ def team_color(name: str) -> str:
     return f"#{int(r * 255):02x}{int(g * 255):02x}{int(b * 255):02x}"
 
 
+COLORS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "redes_colores.json")
+_COLORS: dict | None = None
+
+
+def _norm(s: str) -> str:
+    s = unicodedata.normalize("NFKD", s or "").encode("ascii", "ignore").decode().lower()
+    return " ".join(w for w in "".join(c if c.isalnum() else " " for c in s).split()
+                    if w not in ("fc", "cf", "cd", "sc", "ac", "club", "de", "the", "afc", "ca", "se", "cr"))
+
+
+def load_colors(leagues: list[str]) -> dict:
+    """Club colours (primary, alternate) from ESPN's public team list, cached for 7 days. Only colours: no logos."""
+    global _COLORS
+    import json
+    import time
+    if _COLORS is None:
+        try:
+            with open(COLORS_FILE, encoding="utf-8") as f:
+                _COLORS = json.load(f)
+        except (OSError, ValueError):
+            _COLORS = {}
+    changed = False
+    for lg in set(leagues):
+        slug_ = ESPN_SLUG.get(lg)
+        meta = _COLORS.get("_leagues", {}).get(slug_ or "")
+        if not slug_ or (meta and time.time() - meta < 7 * 86400):
+            continue
+        try:
+            import requests
+            j = requests.get(f"https://site.api.espn.com/apis/site/v2/sports/soccer/{slug_}/teams", timeout=15).json()
+            for t in ((j.get("sports") or [{}])[0].get("leagues") or [{}])[0].get("teams") or []:
+                tm = t.get("team") or {}
+                col, alt = tm.get("color"), tm.get("alternateColor")
+                if not col:
+                    continue
+                for nm in {tm.get("displayName"), tm.get("shortDisplayName"), tm.get("name"), tm.get("location")}:
+                    if nm:
+                        _COLORS[_norm(nm)] = [f"#{col}", f"#{alt or col}"]
+            _COLORS.setdefault("_leagues", {})[slug_] = time.time()
+            changed = True
+        except Exception:
+            continue
+    if changed:
+        try:
+            with open(COLORS_FILE, "w", encoding="utf-8") as f:
+                json.dump(_COLORS, f)
+        except OSError:
+            pass
+    return _COLORS
+
+
+def club_colors(name: str) -> tuple[str, str]:
+    c = (_COLORS or {}).get(_norm(name))
+    if not c:
+        n = _norm(name)
+        c = next((v for k, v in (_COLORS or {}).items() if k != "_leagues" and isinstance(v, list) and k and (k in n or n in k)), None)
+    if c:
+        return c[0], c[1]
+    h = team_color(name)
+    return h, "#d4af37"
+
+
+def _lum(hexc: str) -> float:
+    try:
+        r, g, b = (int(hexc.lstrip("#")[i:i + 2], 16) / 255 for i in (0, 2, 4))
+        return 0.2126 * r + 0.7152 * g + 0.0722 * b
+    except ValueError:
+        return 0.3
+
+
 def initials(name: str) -> str:
     words = [w for w in "".join(c if c.isalnum() else " " for c in name).split() if w.lower() not in ("fc", "cf", "de", "club", "the", "ac", "cd", "sc")]
     return ("".join(w[0] for w in words[:3]) or name[:2]).upper()
 
 
 def badge(name: str, size: int) -> str:
-    c = team_color(name)
+    """Original monogram in the club's real colours (solid primary, thick ring in the alternate colour). Not a crest."""
+    c1, c2 = club_colors(name)
+    ink = "#0b0a08" if _lum(c1) > 0.62 else "#ffffff"
+    ring = c2 if c2.lower() != c1.lower() else "#d4af37"
+    rw = max(5, size // 14)
     return (f"<div style='width:{size}px;height:{size}px;border-radius:50%;flex:none;display:grid;place-items:center;"
-            f"background:radial-gradient(circle at 35% 30%,{c},#0b0a08 78%);border:3px solid {c};box-shadow:0 0 40px {c}55;"
-            f"font-family:Anton;font-size:{int(size * .36)}px;color:#fff;letter-spacing:.02em'>{esc(initials(name))}</div>")
+            f"background:radial-gradient(circle at 34% 28%,rgba(255,255,255,.28),transparent 46%),{c1};"
+            f"border:{rw}px solid {ring};box-shadow:0 0 0 {max(2, size // 45)}px #0b0a08,0 0 {size // 2}px {c1}77,"
+            f"inset 0 -{size // 9}px {size // 5}px rgba(0,0,0,.30);"
+            f"font-family:Anton;font-size:{int(size * .36)}px;color:{ink};letter-spacing:.02em'>{esc(initials(name))}</div>")
 
 
 def base(body: str, w: int, h: int, accent: str = "#d4af37", watermark: str = "") -> str:
@@ -232,58 +313,96 @@ def cta(w: int, h: int) -> str:
 
 # ------------------------------------------------------------------ reel frames (1080×1920)
 def reel_frame(big: str, small: str = "", color: str = "#f3ecdc", accent: str = "#d4af37", glitch: bool = True,
-               badge_names: tuple[str, str] | None = None, top: str = "") -> str:
+               badge_names: tuple[str, str] | None = None, top: str = "", kicker: str = "", tilt: int = 8,
+               bars: list[tuple[str, float, str]] | None = None) -> str:
+    """One scene. Depth: blurred giant echo of the text behind, 3D tilt, glow and floating light."""
     w, h = 1080, 1920
-    shadow = "text-shadow:6px 0 0 #ff2d55,-6px 0 0 #00e5ff,0 0 60px rgba(0,0,0,.6);" if glitch else "text-shadow:0 0 60px rgba(0,0,0,.6);"
+    shadow = "text-shadow:7px 0 0 #ff2d55cc,-7px 0 0 #00e5ffcc,0 18px 60px rgba(0,0,0,.75);" if glitch else "text-shadow:0 18px 60px rgba(0,0,0,.75);"
     badges = ""
     if badge_names:
-        badges = (f"<div style='display:flex;justify-content:center;align-items:center;gap:40px;margin-bottom:60px'>{badge(badge_names[0], 230)}"
-                  f"<div class='anton' style='font-size:90px;color:#d4af37'>VS</div>{badge(badge_names[1], 230)}</div>")
-    size = 240 if len(big) <= 8 else 172 if len(big) <= 18 else 130 if len(big) <= 34 else 98
+        badges = (f"<div style='display:flex;justify-content:center;align-items:center;gap:46px;margin-bottom:70px;"
+                  f"transform:perspective(1200px) rotateX({tilt}deg)'>{badge(badge_names[0], 250)}"
+                  f"<div class='anton' style='font-size:96px;color:#d4af37;text-shadow:0 0 40px #d4af3799'>VS</div>{badge(badge_names[1], 250)}</div>")
+    chart = ""
+    if bars:
+        chart = "<div style='margin:56px auto 0;width:86%;text-align:left'>" + "".join(
+            f"<div style='margin-top:26px'><div style='display:flex;justify-content:space-between;font-size:40px;font-weight:800'>"
+            f"<span>{esc(lbl)}</span><span style='color:{c}'>{round(v * 100)}%</span></div>"
+            f"<div style='height:26px;border-radius:99px;background:#24211b;margin-top:12px;overflow:hidden'>"
+            f"<div style='width:{v * 100:.1f}%;height:100%;border-radius:99px;background:linear-gradient(90deg,{c}aa,{c});box-shadow:0 0 30px {c}'></div></div></div>"
+            for lbl, v, c in bars) + "</div>"
+    size = 250 if len(big) <= 8 else 176 if len(big) <= 18 else 132 if len(big) <= 34 else 100
+    echo = (f"<div class='anton' style='position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) scale(1.9);white-space:nowrap;"
+            f"font-size:{size}px;color:{color};opacity:.10;filter:blur(14px)'>{esc(big)}</div>")
+    kick = (f"<div class='chip' style='margin:0 auto 40px;border:2px solid {accent};color:{accent};font-size:30px'>{esc(kicker)}</div>"
+            if kicker else "")
     return base(f"""{top_bar(top or "Goldglitch", accent)}
-      <div style='margin:auto 0;text-align:center'>{badges}
-        <div class='anton' style='font-size:{size}px;line-height:.98;color:{color};{shadow}'>{esc(big)}</div>
-        <div style='font-size:58px;font-weight:800;margin-top:44px;color:#e9e1cf;line-height:1.2'>{esc(small)}</div>
+      <div style='margin:auto 0;text-align:center;position:relative'>{echo}{kick}{badges}
+        <div style='transform:perspective(1400px) rotateX({tilt // 2}deg)'>
+          <div class='anton' style='font-size:{size}px;line-height:.98;color:{color};{shadow}'>{esc(big)}</div>
+          <div style='font-size:58px;font-weight:800;margin-top:44px;color:#e9e1cf;line-height:1.2;text-shadow:0 8px 30px rgba(0,0,0,.7)'>{esc(small)}</div>
+        </div>{chart}
       </div>
-      <div class='foot' style='font-size:30px;margin-top:0'><span>easygoldglitch.com</span><span>+18 · probabilidad ≠ certeza</span></div>""", w, h, accent)
+      <div class='foot' style='font-size:30px;margin-top:0'><span>easygoldglitch.com</span><span>+18 · probabilidad ≠ certeza</span></div>""",
+                w, h, accent, watermark=top if top and top != "Goldglitch" else "")
 
 
-def reel_script(kind: str, rows: list[dict], tx: dict, when_fn) -> list[tuple[str, float, str]]:
-    """[(html, seconds, effect)] — effect: punch | flash | shake | none."""
+def _rate(rec: dict | None) -> tuple[int, int, int] | None:
+    for k in ("all", "d30", "d7"):
+        r = (rec or {}).get(k) or {}
+        if r.get("n"):
+            return int(r["won"]), int(r["n"]), round(r["won"] / r["n"] * 100)
+    return None
+
+
+def reel_script(kind: str, rows: list[dict], tx: dict, when_fn, record: dict | None = None) -> list[tuple[str, float, str]]:
+    """[(html, seconds, effect)] — effect: punch | flash | shake | slide | none."""
     f: list[tuple[str, float, str]] = []
+    rate = _rate(record)
     if kind in ("picks_dia", "reel") and rows:
-        f.append((reel_frame(tx.get("reel_hook") or "EL MODELO VIO ALGO 👀", tx.get("reel_sub") or f"top {len(rows)} de las ligas grandes"), 1.3, "punch"))
+        f.append((reel_frame(tx.get("reel_hook") or "EL MODELO VIO ALGO 👀", tx.get("reel_sub") or f"top {len(rows)} de las ligas grandes",
+                             kicker="Hoy"), 1.3, "punch"))
+        if rate:
+            f.append((reel_frame(f"{rate[0]}/{rate[1]}", f"picks de 75%+ acertados ({rate[2]}%) · fallos incluidos",
+                                 color="#d4af37", kicker="Historial público", glitch=False), 1.2, "slide"))
         for i, r in enumerate(rows):
             acc = ACCENT.get(r["league"], "#d4af37")
-            n = len(rows) - i
-            f.append((reel_frame(f"#{n}", f"{r['league']} · {when_fn(r)}", accent=acc, top=r["league"]), 0.55, "flash"))
-            f.append((reel_frame(f"{r['home']} vs {r['away']}", r["label"], accent=acc, glitch=False,
-                                 badge_names=(r["home"], r["away"]), top=r["league"]), 1.25, "punch"))
-            f.append((reel_frame(f"{round(float(r['p']) * 100)}%", r["label"], color=pcolor(float(r["p"])), accent=acc,
-                                 top=r["league"]), 1.05, "shake"))
-        f.append((reel_frame("¿ENTRA O NO ENTRA?", "comenta tu pick 👇", color="#d4af37"), 1.4, "punch"))
+            p = float(r["p"])
+            fail = max(2, round(1 / max(1e-6, 1 - p)))
+            f.append((reel_frame(f"#{len(rows) - i}", f"{r['league']} · {when_fn(r)}", accent=acc, top=r["league"], kicker="Pick"), 0.5, "flash"))
+            f.append((reel_frame(f"{r['home']} vs {r['away']}", r["label"], accent=acc, glitch=False, badge_names=(r["home"], r["away"]),
+                                 top=r["league"], tilt=10), 1.3, "punch"))
+            f.append((reel_frame(f"{round(p * 100)}%", r["label"], color=pcolor(p), accent=acc, top=r["league"],
+                                 kicker=r.get("group") or "Probabilidad"), 1.0, "shake"))
+            f.append((reel_frame(f"1 DE CADA {fail}", "veces que algo así NO pasa. Eso también es estadística.", color="#cfc6b2",
+                                 accent=acc, top=r["league"], glitch=False, tilt=4), 0.95, "slide"))
+        f.append((reel_frame("EL MÁS FUERTE", "de hoy", kicker="Ranking", bars=[(f"{r['home']}–{r['away']}"[:30], float(r["p"]), pcolor(float(r["p"])))
+                                                                            for r in rows[:4]]), 1.9, "punch"))
+        f.append((reel_frame("¿ENTRA O NO ENTRA?", "comenta tu pick 👇", color="#d4af37"), 1.3, "shake"))
     elif kind == "resultados" and rows:
         won = sum(r["status"] == "won" for r in rows)
-        f.append((reel_frame("¿CÓMO LE FUE AL MODELO?", "aciertos y fallos, sin filtro"), 1.3, "punch"))
-        for r in rows[:5]:
+        f.append((reel_frame("¿CÓMO LE FUE AL MODELO?", "aciertos y fallos, sin filtro", kicker="Resultados"), 1.3, "punch"))
+        for r in rows[:6]:
             ok = r["status"] == "won"
             f.append((reel_frame("✓ ACERTÓ" if ok else "✗ FALLÓ", f"{r['label']} · {r['home']} vs {r['away']}",
-                                 color="#00f0a0" if ok else "#ff4d6d"), 0.95, "shake" if ok else "flash"))
-        f.append((reel_frame(f"{won}/{len(rows)}", "picks de 75%+ ya jugados", color="#d4af37"), 1.4, "punch"))
+                                 color="#00f0a0" if ok else "#ff4d6d", kicker=f"{round(float(r['p']) * 100)}%"), 0.9, "shake" if ok else "flash"))
+        f.append((reel_frame(f"{won}/{len(rows)}", "picks de 75%+ jugados en las últimas horas", color="#d4af37", kicker="Balance"), 1.4, "punch"))
+        if rate:
+            f.append((reel_frame(f"{rate[2]}%", f"de acierto histórico ({rate[0]}/{rate[1]})", color="#d4af37", kicker="Historial público"), 1.3, "slide"))
     else:
-        f.append((reel_frame(tx.get("edu_title") or tx.get("cover_title") or "DATO", "espera al final 👀"), 1.5, "punch"))
+        f.append((reel_frame(tx.get("edu_title") or tx.get("cover_title") or "DATO", "espera al final 👀", kicker="Dato"), 1.5, "punch"))
         for line in [x for x in (tx.get("edu_body") or tx.get("cover_subtitle") or "").split("\n") if x.strip()][:5]:
-            f.append((reel_frame(line, "", glitch=False), 1.6, "punch"))
-    f.append((reel_frame("LINK EN LA BIO", "todas las probabilidades, gratis", color="#d4af37"), 1.8, "punch"))
+            f.append((reel_frame(line, "", glitch=False, tilt=4), 1.6, "slide"))
+    f.append((reel_frame("LINK EN LA BIO", "todas las probabilidades, gratis", color="#d4af37", kicker="Goldglitch Stats"), 1.8, "punch"))
     return f
 
 
 def beat(path: str, seconds: float, bpm: int = 148) -> str:
-    """Original percussion loop (kick, clap, hats) synthesized here — no third-party audio."""
+    """Original percussion loop (kick, clap, hats, sub, riser) synthesized here — no third-party audio."""
     import random
     sr, n = 44100, int(seconds * 44100)
     buf = [0.0] * n
-    step = 60 / bpm / 4                                      # 16th notes
+    step = 60 / bpm / 4
     rnd = random.Random(7)
 
     def add(t0: float, gen, dur: float):
@@ -291,22 +410,25 @@ def beat(path: str, seconds: float, bpm: int = 148) -> str:
         for k in range(int(dur * sr)):
             if i0 + k < n:
                 buf[i0 + k] += gen(k / sr)
-    kick = lambda t: math.sin(2 * math.pi * (55 + 140 * math.exp(-t * 28)) * t) * math.exp(-t * 9) * 0.9
-    clap = lambda t: (rnd.random() * 2 - 1) * math.exp(-t * 22) * 0.45
-    hat = lambda t: (rnd.random() * 2 - 1) * math.exp(-t * 90) * 0.18
-    sub = lambda t: math.sin(2 * math.pi * 41.2 * t) * math.exp(-t * 3) * 0.35
+    kick = lambda t: math.sin(2 * math.pi * (52 + 150 * math.exp(-t * 30)) * t) * math.exp(-t * 8) * 0.95
+    clap = lambda t: (rnd.random() * 2 - 1) * math.exp(-t * 20) * 0.45
+    hat = lambda t: (rnd.random() * 2 - 1) * math.exp(-t * 95) * 0.16
+    sub = lambda t: math.sin(2 * math.pi * 41.2 * t) * math.exp(-t * 2.5) * 0.4
+    riser = lambda t: (rnd.random() * 2 - 1) * (t / 1.2) * 0.12
     i = 0
     while i * step < seconds:
-        t = i * step
-        s = i % 16
-        if s in (0, 6, 8, 11):
+        t, s16 = i * step, i % 16
+        bar = i // 16
+        if s16 in (0, 6, 8, 11) or (bar % 4 == 3 and s16 in (12, 13, 14, 15)):
             add(t, kick, 0.35)
-        if s in (4, 12):
+        if s16 in (4, 12):
             add(t, clap, 0.2)
-        if s % 2 == 0 or s in (13, 15):
+        if s16 % 2 == 0 or s16 in (13, 15):
             add(t, hat, 0.05)
-        if s == 0 and (i // 16) % 2 == 0:
-            add(t, sub, 0.9)
+        if s16 == 0 and bar % 2 == 0:
+            add(t, sub, 1.0)
+        if s16 == 0 and bar % 4 == 2:
+            add(t + 16 * step - 1.2, riser, 1.2)
         i += 1
     peak = max(1e-6, max(abs(x) for x in buf))
     with wave.open(path, "wb") as w:
@@ -317,32 +439,51 @@ def beat(path: str, seconds: float, bpm: int = 148) -> str:
     return path
 
 
+TRANSITIONS = ["zoomin", "slideup", "smoothleft", "circleopen", "fadewhite", "slidedown", "radial", "smoothup"]
+
+
 def reel_video(frames: list[tuple[str, float, str]], name: str) -> str:
-    """Hard cuts, punch-in zooms, white flashes and shakes over an original beat. 1080×1920, 30 fps, H.264 + AAC."""
+    """Scenes with punch-in zooms, wobble, RGB-split glitches and a moving gold light, joined with varied quick
+    transitions, over an original beat. 1080×1920, 30 fps, H.264 + AAC."""
     import imageio_ffmpeg
     ff = imageio_ffmpeg.get_ffmpeg_exe()
     imgs = render([f[0] for f in frames], 1080, 1920, f"{name}_frames")
-    inputs, parts, labels = [], [], []
+    T = 0.14                                                # transition length
+    inputs, parts, durs = [], [], []
     for i, (img, (_, secs, fx)) in enumerate(zip(imgs, frames)):
-        nfr = max(8, int(secs * 30))
-        inputs += ["-i", img]
+        nfr = max(10, int((secs + T) * 30))
+        durs.append(nfr / 30)
+        inputs += ["-framerate", "30", "-loop", "1", "-t", f"{nfr / 30:.3f}", "-i", img]
         if fx == "punch":
-            z = f"zoompan=z='max(1.18-0.012*on,1)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d={nfr}:s=1080x1920:fps=30"
+            z = "zoompan=z='max(1.22-0.014*on,1.02)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=1:s=1080x1920:fps=30"
         elif fx == "shake":
-            z = (f"zoompan=z='1.08':x='iw/2-(iw/zoom/2)+if(lt(on,10),18*sin(on*2.7),0)':"
-                 f"y='ih/2-(ih/zoom/2)+if(lt(on,10),14*cos(on*3.1),0)':d={nfr}:s=1080x1920:fps=30")
+            z = ("zoompan=z='1.10':x='iw/2-(iw/zoom/2)+if(lt(on,12),22*sin(on*2.9),3*sin(on*.5))':"
+                 "y='ih/2-(ih/zoom/2)+if(lt(on,12),16*cos(on*3.3),2*cos(on*.4))':d=1:s=1080x1920:fps=30")
+        elif fx == "slide":
+            z = f"zoompan=z='1.06':x='(iw-iw/zoom)*min(on/{nfr},1)':y='ih/2-(ih/zoom/2)':d=1:s=1080x1920:fps=30"
         else:
-            z = f"zoompan=z='1.0':d={nfr}:s=1080x1920:fps=30"
-        flash = ",fade=t=in:st=0:d=0.12:color=white" if fx in ("flash", "shake") else ""
-        parts.append(f"[{i}:v]scale=1080:1920,{z},format=yuv420p,setsar=1{flash}[v{i}]")
-        labels.append(f"[v{i}]")
-    total = sum(max(8, int(f[1] * 30)) for f in frames) / 30
+            z = "zoompan=z='1.04+0.0015*on':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=1:s=1080x1920:fps=30"
+        wob = "rotate='0.012*sin(2*PI*t*0.9)':fillcolor=black@1," if fx in ("punch", "slide") else ""
+        glitch = ",rgbashift=rh=-8:bh=8:enable='lt(t,0.25)'" if fx in ("shake", "flash") else ""
+        flash = ",fade=t=in:st=0:d=0.10:color=white" if fx == "flash" else ""
+        # moving light sweep (depth) on every scene
+        sweep = r",drawbox=x='-400+mod(t*1500\,1900)':y=0:w=150:h=ih:color=0xd4af37@0.045:t=fill"
+        parts.append(f"[{i}:v]scale=1200:2134,{z},{wob}format=yuv420p,setsar=1{glitch}{flash}{sweep},"
+                     f"vignette=PI/5,trim=duration={nfr / 30:.3f},setpts=PTS-STARTPTS[v{i}]")
+    chain, last, off = [], "v0", durs[0] - T
+    for i in range(1, len(imgs)):
+        tr = TRANSITIONS[i % len(TRANSITIONS)]
+        chain.append(f"[{last}][v{i}]xfade=transition={tr}:duration={T}:offset={off:.3f}[x{i}]")
+        last, off = f"x{i}", off + durs[i] - T
+    total = off + T
     Path(OUT).mkdir(exist_ok=True)
     audio = beat(os.path.join(OUT, f"{name}_beat.wav"), total + 0.5)
-    graph = ";".join(parts) + ";" + "".join(labels) + f"concat=n={len(labels)}:v=1:a=0[v]"
+    graph = ";".join(parts + chain)
     out = os.path.join(OUT, f"{name}.mp4")
-    cmd = [ff, "-y", *inputs, "-i", audio, "-filter_complex", graph, "-map", "[v]", "-map", f"{len(imgs)}:a",
-           "-c:v", "libx264", "-preset", "veryfast", "-crf", "22", "-maxrate", "8M", "-bufsize", "16M", "-pix_fmt", "yuv420p",
+    cmd = [ff, "-y", *inputs, "-i", audio, "-filter_complex", graph, "-map", f"[{last}]", "-map", f"{len(imgs)}:a",
+           "-c:v", "libx264", "-preset", "veryfast", "-crf", "21", "-maxrate", "9M", "-bufsize", "18M", "-pix_fmt", "yuv420p",
            "-c:a", "aac", "-b:a", "160k", "-shortest", "-r", "30", "-movflags", "+faststart", out]
-    subprocess.run(cmd, check=True, capture_output=True)
+    r = subprocess.run(cmd, capture_output=True, text=True)
+    if r.returncode != 0:
+        raise RuntimeError("ffmpeg: " + r.stderr[-600:])
     return out
