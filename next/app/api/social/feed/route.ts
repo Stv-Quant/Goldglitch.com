@@ -23,7 +23,7 @@ export async function POST(req: Request) {
                      'home', home, 'away', away, 'kickoffAt', kickoff_at, 'label', label, 'group', group_name, 'p', p) AS x
               FROM (SELECT t.*, row_number() OVER (PARTITION BY match_id ORDER BY p DESC) AS rk FROM tracked_picks t
                      WHERE kind = 'featured' AND status = 'pending' AND kickoff_at > ?1 AND kickoff_at < ?1 + 36 * 3600000 AND p >= 0.8)
-             WHERE rk = 1 ORDER BY p DESC LIMIT 40)) AS upcoming,
+             WHERE rk = 1 ORDER BY p DESC LIMIT 200)) AS upcoming,
          (SELECT COALESCE(json_group_array(json(x)), '[]') FROM (
             SELECT json_object('matchId', match_id, 'sport', sport, 'league', COALESCE(competition_name, competition_id),
                      'home', home, 'away', away, 'kickoffAt', kickoff_at, 'label', label, 'p', p, 'status', status, 'result', result) AS x
