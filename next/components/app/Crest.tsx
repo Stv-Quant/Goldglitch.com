@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { findCrest } from "@/lib/crests";
+import { findCrest, teamKey } from "@/lib/crests";
 
 /** Team crest; monogram when there is no crest or the image fails. */
 export function Crest({ src, name, size = 24, className = "", fluid = false, sport }: {
@@ -34,11 +34,36 @@ export function Crest({ src, name, size = 24, className = "", fluid = false, spo
 }
 
 const fb = new Map<string, Promise<{ logo?: string; color?: string }>>();
+const TSDB_SPORT: Record<string, string[]> = {
+  football: ["Soccer"], baseball: ["Baseball"], basketball: ["Basketball"], hockey: ["Ice Hockey"], esports: ["ESports"],
+};
+
+/** TheSportsDB straight from the browser (CORS open; its free key limits per IP, so it cannot run on shared Workers IPs). */
+async function tsdb(name: string, sport: string): Promise<{ logo?: string; color?: string }> {
+  const lsKey = `gg:crest:${sport}:${teamKey(name)}`;
+  try {
+    const c = localStorage.getItem(lsKey);
+    if (c) { const v = JSON.parse(c); if (v.t > Date.now() - (v.logo ? 30 : 1) * 86_400_000) return v; }
+  } catch { /* storage unavailable */ }
+  const r = await fetch(`https://www.thesportsdb.com/api/v1/json/123/searchteams.php?t=${encodeURIComponent(name)}`);
+  if (!r.ok) return {};
+  const d = (await r.json()) as { teams?: { strTeam?: string; strTeamAlternate?: string; strSport?: string; strBadge?: string }[] | null };
+  const want = teamKey(name), sports = TSDB_SPORT[sport] ?? [];
+  const ok = (d.teams ?? []).filter((t) => t.strBadge && sports.includes(t.strSport ?? ""));
+  const hit = ok.find((t) => [t.strTeam, ...(t.strTeamAlternate ?? "").split(",")].some((n) => n && teamKey(n) === want))
+    ?? ok.find((t) => { const k = teamKey(t.strTeam ?? ""); return k.length >= 4 && (k.includes(want) || want.includes(k)); });
+  const v = { logo: hit?.strBadge ? `${hit.strBadge}/small` : undefined, t: Date.now() };
+  try { localStorage.setItem(lsKey, JSON.stringify(v)); } catch { /* ignore */ }
+  return v;
+}
+
+/** Server fallback (ESPN team search), then TheSportsDB from the browser. */
 export function fallback(name: string, sport: string) {
   const k = `${sport}:${name}`;
   let p = fb.get(k);
   if (!p) {
-    p = fetch(`/api/crest?n=${encodeURIComponent(name)}&s=${sport}`).then((r) => (r.ok ? r.json() : {})).catch(() => ({}));
+    p = fetch(`/api/crest?n=${encodeURIComponent(name)}&s=${sport}`).then((r) => (r.ok ? r.json() : {})).catch(() => ({}))
+      .then((v: { logo?: string }) => (v.logo ? v : tsdb(name, sport).catch(() => ({}))));
     fb.set(k, p);
   }
   return p;
