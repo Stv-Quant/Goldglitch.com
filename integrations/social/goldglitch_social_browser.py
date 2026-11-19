@@ -261,6 +261,21 @@ class BrowserMeta:
             pg.goto(self.fb_page or FB, wait_until="domcontentloaded")
             br.pause(2.5, 4)
             br.dismiss(pg)
+            # If the session is still the personal profile, Facebook shows "Cambiar ahora" on a page you manage:
+            # switch so the post goes out as the page, never as the personal profile.
+            sw = br.first_visible(pg.get_by_role("button", name=rx("Cambiar ahora", "Switch now", "Cambiar a la página",
+                                                                  "Switch into page")), timeout=3)
+            if sw:
+                step = "cambiar a la página"
+                sw.click()
+                br.pause(3, 5)
+                confirm = br.first_visible(pg.get_by_role("button", name=re.compile(r"^(Cambiar|Switch)$", re.I)), timeout=4)
+                if confirm:
+                    confirm.click()
+                    br.pause(4, 6)
+                pg.goto(self.fb_page or FB, wait_until="domcontentloaded")
+                br.pause(3, 4)
+                br.dismiss(pg)
             step = "abrir el cuadro de publicación"
             opener = br.first_visible(
                 pg.get_by_role("button", name=rx("¿Qué estás pensando", "What's on your mind", "Crear publicación", "Create post")),
