@@ -1,5 +1,6 @@
 import { getDB, getEnv } from "@/lib/env";
 import { later, sendPaymentApproved } from "@/lib/mail";
+import { LIFETIME_DAYS } from "@/lib/paymentCodes";
 import { PERIOD_DAYS, type BillingPeriod } from "@/lib/plans";
 import { verifyEventChecksum, type WompiEvent } from "@/lib/wompi";
 
@@ -25,9 +26,9 @@ export async function POST(request: Request) {
   const now = Date.now();
 
   const payment = await db
-    .prepare("SELECT id, user_id, plan, period, amount_in_cents, currency, applied_at FROM payments WHERE id = ?")
+    .prepare("SELECT id, user_id, plan, period, amount_in_cents, currency, applied_at, code FROM payments WHERE id = ?")
     .bind(tx.reference)
-    .first<{ id: string; user_id: string; plan: "pro" | "elite"; period: BillingPeriod; amount_in_cents: number; currency: string; applied_at: number | null }>();
+    .first<{ id: string; user_id: string; plan: "pro" | "elite"; period: BillingPeriod; amount_in_cents: number; currency: string; applied_at: number | null; code: string | null }>();
   if (!payment) return Response.json({ ok: true, ignored: "unknown_reference" });
 
   if (tx.status !== "APPROVED") {
@@ -57,7 +58,16 @@ export async function POST(request: Request) {
     .first();
   if (!claimed) return Response.json({ ok: true, duplicate: true });
 
-  const extension = PERIOD_DAYS[payment.period] * DAY_MS;
+  // Special code: spend it (one use) and apply its duration (lifetime = 100 years).
+  let lifetime = false;
+  if (payment.code) {
+    const pc = await db
+      .prepare("UPDATE payment_codes SET used_at = ?1, used_by = ?2, payment_id = ?3 WHERE code = ?4 AND used_at IS NULL RETURNING lifetime")
+      .bind(now, payment.user_id, payment.id, payment.code)
+      .first<{ lifetime: number }>();
+    lifetime = !!pc?.lifetime;
+  }
+  const extension = (lifetime ? LIFETIME_DAYS : PERIOD_DAYS[payment.period]) * DAY_MS;
   // Same plan: stack on top of remaining time. Plan change: new period starts now (no proration in v1).
   await db
     .prepare(

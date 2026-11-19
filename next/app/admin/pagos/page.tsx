@@ -51,7 +51,8 @@ export default async function PaymentsPage({ searchParams }: { searchParams: Pro
               <tr key={p.id} className="border-t border-line">
                 <td className="px-4 py-3 num text-xs">{dt(p.created_at)}</td>
                 <td className="px-4 py-3"><Link href={`/admin/usuarios/${p.user_id}`} className="hover:text-gold">{p.email}</Link></td>
-                <td className="px-4 py-3">{PLANS[p.plan as "pro" | "elite"]?.name ?? p.plan} · {p.period === "annual" ? "anual" : "mensual"}</td>
+                <td className="px-4 py-3">{PLANS[p.plan as "pro" | "elite"]?.name ?? p.plan} · {p.code ? "código especial" : p.period === "annual" ? "anual" : "mensual"}
+                  {p.note && <span className="block text-[11px] text-gold">{p.note}</span>}</td>
                 <td className="px-4 py-3 num text-right">{formatCOP(p.amount_in_cents)}</td>
                 <td className="px-4 py-3"><Badge tone={STATUS_TONE[p.status]}>{STATUS_LABEL[p.status] ?? p.status}</Badge></td>
                 <td className="px-4 py-3 num text-[11px] text-lo">{p.id}</td>
