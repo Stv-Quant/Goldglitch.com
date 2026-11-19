@@ -6,23 +6,41 @@ import "@fontsource-variable/bricolage-grotesque";
 import "@fontsource-variable/jetbrains-mono";
 import "./globals.css";
 
+const SITE = "https://easygoldglitch.com";
+const TITLE = "Goldglitch · Probabilidades de fútbol y béisbol con datos, no fijas";
+const DESC =
+  "Probabilidades de cada partido de fútbol y béisbol calculadas por un modelo estadístico: ganador, goles, córners, tarjetas y jugadores. Historial público de aciertos y fallos. Gratis.";
+
 export const metadata: Metadata = {
-  metadataBase: new URL("https://goldglitch.com"),
-  title: { default: "Goldglitch · La objetividad de los datos", template: "%s · Goldglitch" },
-  description:
-    "Estadísticas y probabilidades de fútbol, béisbol, baloncesto y hockey con incertidumbre visible e historial auditable. Datos, no corazonadas.",
+  metadataBase: new URL(SITE),
+  title: { default: TITLE, template: "%s · Goldglitch" },
+  description: DESC,
   applicationName: "Goldglitch",
+  keywords: [
+    "probabilidades de fútbol", "pronósticos de fútbol", "estadísticas de fútbol", "predicciones de partidos",
+    "estadísticas MLB", "Liga BetPlay", "Premier League", "Champions League", "córners", "tarjetas", "xG",
+  ],
+  alternates: { canonical: "/" },
   appleWebApp: { capable: true, title: "Goldglitch", statusBarStyle: "black-translucent" },
   icons: {
     icon: [{ url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" }, { url: "/icons/icon.svg", type: "image/svg+xml" }],
     apple: "/icons/apple-touch-icon.png",
   },
   openGraph: {
-    title: "Goldglitch · La objetividad de los datos",
-    description: "Probabilidades con incertidumbre visible e historial auditable.",
+    title: TITLE,
+    description: "Te venden fijas. Nosotros, números. Probabilidades de cada partido e historial público de aciertos y fallos.",
+    url: SITE,
+    siteName: "Goldglitch",
     type: "website",
     locale: "es_CO",
+    images: [{ url: "/icons/icon-512.png", width: 512, height: 512, alt: "Goldglitch" }],
   },
+  twitter: {
+    card: "summary",
+    title: TITLE,
+    description: "Probabilidades de cada partido con datos, no fijas. Historial público.",
+  },
+  robots: { index: true, follow: true },
 };
 
 export const viewport: Viewport = {

@@ -1,7 +1,11 @@
 import type { Metadata } from "next";
 import { PlanCards } from "@/components/site/PlanCards";
 
-export const metadata: Metadata = { title: "Planes" };
+export const metadata: Metadata = {
+  title: "Planes y precios",
+  description: "Goldglitch Free es gratis para siempre: probabilidades 1X2 de fútbol e historial público. Pro: todas las estadísticas de cada partido por $50.000 COP al mes.",
+  alternates: { canonical: "/planes" },
+};
 
 export default function PlanesPage() {
   return (
