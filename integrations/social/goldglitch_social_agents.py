@@ -93,13 +93,13 @@ para resumir; historial: {json.dumps(facts['record'])}.
 Lo aprendido en semanas anteriores (puede estar vacío):
 {memory or '—'}
 
-Arma el plan de HOY: entre 2 y 4 publicaciones. "resultados" solo si hay picks jugados; "picks_dia" solo si hay picks
-próximos. Horas entre 07:00 y 22:00, formato HH:MM, separadas al menos 2 horas. Para cada una da un ángulo (gancho
+Arma el plan de HOY: entre 4 y 6 publicaciones. "resultados" solo si hay picks jugados; "picks_dia" solo si hay picks
+próximos. Horas entre 07:00 y 23:00, formato HH:MM, separadas al menos 90 minutos. Para cada una da un ángulo (gancho
 editorial) distinto y, si es "educativo", el tema concreto.
 Formato: {{"posts":[{{"type":"...","time":"HH:MM","angle":"...","topic":"..."}}]}}""")
             posts = [p for p in out.get("posts", []) if p.get("type") in POST_TYPES and re.fullmatch(r"\d{2}:\d{2}", str(p.get("time", "")))]
             posts = [p for p in posts if (p["type"] != "resultados" or facts["results"]) and (p["type"] != "picks_dia" or facts["upcoming"])]
-            return posts[:4] or default
+            return posts[:6] or default
         except Exception:
             return default
 

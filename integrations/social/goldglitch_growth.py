@@ -69,7 +69,7 @@ Cómo trabajas en la reunión:
 1. Mira las métricas y el historial (ver_metricas, ver_historial).
 2. Consulta a los miembros que aporten (consultar). Si falta una especialidad, CONTRATA un agente nuevo con un rol y
    misión precisos (contratar) y consúltalo; despide a quien no aporte. Máximo {MAX_MEMBERS} miembros.
-3. Decide el plan de HOY con definir_plan: 2 a 4 publicaciones, formatos disponibles, horas 07:00–22:00 separadas 2 h,
+3. Decide el plan de HOY con definir_plan: 4 a 7 publicaciones (volumen alto: el objetivo es crecer rápido), horas 07:00–23:00 separadas al menos 90 min,
    cada una con gancho, ángulo, tema y llamado a la acción. Basa las decisiones en datos cuando los haya; cuando no,
    plantea experimentos medibles (por ejemplo, dos ganchos distintos en días distintos).
 4. Guarda 1 a 3 aprendizajes concretos y verificables (guardar_aprendizaje).
@@ -98,7 +98,8 @@ TOOLS = [
     {"name": "definir_plan", "description": "Plan de publicaciones de HOY.",
      "input_schema": {"type": "object", "properties": {"posts": {"type": "array", "items": {"type": "object", "properties": {
          "type": {"type": "string", "enum": list(POST_TYPES)},
-         "time": {"type": "string", "description": "HH:MM entre 07:00 y 22:00"},
+         "time": {"type": "string", "description": "HH:MM entre 07:00 y 23:00"},
+         "liga": {"type": "string", "description": "opcional para picks_dia: liga o deporte a destacar (ej. Liga BetPlay, Premier League, NBA)"},
          "angle": {"type": "string"}, "topic": {"type": "string"},
          "hook": {"type": "string", "description": "primera línea / gancho"},
          "cta": {"type": "string", "description": "llamado a la acción"}},
@@ -121,6 +122,11 @@ def save(path: str, data) -> None:
     with open(tmp, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=1)
     os.replace(tmp, path)
+
+
+def now_co() -> datetime:
+    from datetime import timedelta, timezone
+    return datetime.now(timezone(timedelta(hours=-5)))
 
 
 def roster() -> dict:
@@ -155,7 +161,9 @@ class Committee:
         hist = (self.state.get("history") or [])[-30:]
         memory = open(MEMORY, encoding="utf-8").read()[-6000:] if os.path.exists(MEMORY) else ""
         f = self.facts or {}
-        return json.dumps({"publicaciones_recientes": hist,
+        return json.dumps({"hora_actual_colombia": now_co().strftime("%H:%M"),
+                           "regla": "planea solo horas posteriores a la hora actual",
+                           "publicaciones_recientes": hist,
                            "datos_hoy": {"picks_80_proximas_36h": len(f.get("upcoming") or []),
                                          "picks_jugados_36h": len(f.get("results") or []), "historial": f.get("record")},
                            "aprendizajes": memory or "—"}, ensure_ascii=False)[:12000]
@@ -212,9 +220,13 @@ class Committee:
     def set_plan(self, posts: list[dict]) -> str:
         ok, problems, times = [], [], []
         f = self.facts or {}
-        for p in posts[:4]:
+        earliest = (now_co() + __import__("datetime").timedelta(minutes=10)).strftime("%H:%M")
+        for p in posts[:7]:
             t, hhmm = p.get("type"), str(p.get("time", ""))
-            if t not in POST_TYPES or not re.fullmatch(r"\d{2}:\d{2}", hhmm) or not ("07:00" <= hhmm <= "22:00"):
+            if hhmm and hhmm < earliest and now_co().strftime("%Y-%m-%d") == getattr(self, "today", ""):
+                problems.append(f"{t} {hhmm}: esa hora ya pasó (ahora son {now_co():%H:%M})")
+                continue
+            if t not in POST_TYPES or not re.fullmatch(r"\d{2}:\d{2}", hhmm) or not ("07:00" <= hhmm <= "23:00"):
                 problems.append(f"{t} {hhmm}: tipo u hora inválidos")
                 continue
             if (t == "resultados" and not f.get("results")) or (t == "picks_dia" and not f.get("upcoming")):
@@ -225,13 +237,15 @@ class Committee:
                 problems.append(f"{t} {hhmm}: usa palabras prohibidas por la marca")
                 continue
             m = int(hhmm[:2]) * 60 + int(hhmm[3:])
-            if any(abs(m - x) < 120 for x in times):
-                problems.append(f"{t} {hhmm}: menos de 2 h de otra publicación")
+            if any(abs(m - x) < 90 for x in times):
+                problems.append(f"{t} {hhmm}: menos de 90 min de otra publicación")
                 continue
             times.append(m)
-            ok.append({k: str(p.get(k, ""))[:400] for k in ("type", "time", "angle", "topic", "hook", "cta")})
-        if len(ok) < 2:
-            return "Plan rechazado: " + "; ".join(problems or ["menos de 2 publicaciones válidas"])
+            ok.append({k: str(p.get(k, ""))[:400] for k in ("type", "time", "angle", "topic", "hook", "cta", "liga")})
+        e = now_co() + __import__("datetime").timedelta(minutes=10)
+        left = (23 * 60 - (e.hour * 60 + e.minute)) // 90 + 1 if now_co().strftime("%Y-%m-%d") == getattr(self, "today", "") else 7
+        if len(ok) < (3 if left >= 3 else 1):
+            return "Plan rechazado: " + "; ".join(problems or ["menos de 3 publicaciones válidas"])
         self.plan = sorted(ok, key=lambda p: p["time"])
         return "Plan guardado." + (f" Descartadas: {'; '.join(problems)}" if problems else "")
 
@@ -272,10 +286,10 @@ Respuestas del comité: {json.dumps(answers, ensure_ascii=False)}
 Formatos disponibles: {types}
 {feedback}
 PASO 2: decide. Formato:
-{{"plan":[{{"type":"...","time":"HH:MM","angle":"...","topic":"...","hook":"...","cta":"..."}}],
+{{"plan":[{{"type":"...","time":"HH:MM","angle":"...","topic":"...","hook":"...","cta":"...","liga":"(opcional)"}}],
 "aprendizajes":["..."], "acta":"qué viste, qué decidiste, qué experimento corre y cómo se mide"}}
-2 a 4 publicaciones, horas 07:00–22:00 separadas 2 h; "picks_dia" solo si hay picks próximos y "resultados" solo si hay
-picks jugados.""")
+4 a 7 publicaciones (volumen alto), horas 07:00–23:00 separadas al menos 90 min; "picks_dia" solo si hay picks
+próximos (puede repetirse con distinta "liga": Liga BetPlay, Premier League, NBA…) y "resultados" solo si hay picks jugados.""")
             res = self.set_plan(dec.get("plan") or [])
             self.log(f"  plan: {res}")
             for t in (dec.get("aprendizajes") or [])[:3]:
@@ -288,6 +302,7 @@ picks jugados.""")
 
     # ---------------------------------------------------------------- meeting
     def meet(self, today: str) -> dict:
+        self.today = today
         if self.client is None:
             return self.meet_cli(today)
         self.log("Reunión del comité de crecimiento")

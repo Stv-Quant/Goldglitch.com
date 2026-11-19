@@ -138,7 +138,9 @@ def build(post: dict, facts: dict, ag: Agents, now: datetime, tag: str) -> dict:
         won = sum(r["status"] == "won" for r in rows)
         data = {"won": won, "n": len(rows), "historial": facts["record"]}
     elif t == "picks_dia":
-        rows = facts["upcoming"][:5]
+        focus = (post.get("liga") or "").strip().lower()
+        pool = [r for r in facts["upcoming"] if focus and (focus in str(r.get("league", "")).lower() or focus == str(r.get("sport", "")).lower())]
+        rows = (pool or facts["upcoming"])[:5]   # a league with no picks falls back to the best of all
         data = {"picks": [{k: r[k] for k in ("league", "home", "away", "label", "p")} | {"cuando": when(r["kickoffAt"], now)} for r in rows],
                 "historial": facts["record"]}
     else:
