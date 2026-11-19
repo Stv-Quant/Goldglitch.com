@@ -145,12 +145,12 @@ export async function sendMagicLink(email: string, link: string): Promise<boolea
   return sendEmail({ to: email, subject: "Tu enlace de acceso a Goldglitch", html, text, kind: "magic_link" });
 }
 
-export async function sendWelcome(user: { id: string; email: string }): Promise<boolean> {
+export async function sendWelcome(user: { id: string; email: string; name?: string | null }): Promise<boolean> {
   const base = await appUrl();
   const { html, text } = layout({
     base,
     preheader: "Probabilidades con su rango de error y un historial que no se borra.",
-    title: "Bienvenido a Goldglitch",
+    title: user.name ? `Bienvenido, ${user.name}` : "Bienvenido a Goldglitch",
     paragraphs: [
       "Ya tienes tu cuenta. Aquí no vendemos picks ni certezas: publicamos la probabilidad de cada resultado, con su rango de incertidumbre, y llevamos un historial abierto de aciertos y fallos.",
       "Con el plan gratis ves las probabilidades 1X2 de fútbol. Pro abre todas las estadísticas: picks del modelo, líneas de goles, córners, tarjetas y jugadores, marcadores probables y todos los deportes.",

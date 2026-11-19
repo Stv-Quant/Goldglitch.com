@@ -20,9 +20,12 @@ print('pbkdf2$100000$'+base64.b64encode(salt).decode()+'$'+base64.b64encode(h).d
     expect(await verifyPassword("Temp-Pass-123!y", py)).toBe(false);
   });
   it("enforces the policy", () => {
-    expect(passwordProblem("short")).toMatch(/12/);
-    expect(passwordProblem("alllowercaseletters")).toMatch(/3 de/);
+    expect(passwordProblem("short1")).toMatch(/8/);
+    expect(passwordProblem("alllowercaseletters")).toMatch(/letras y números/);
+    expect(passwordProblem("12345678")).toMatch(/letras y números/);
+    expect(passwordProblem("crack9steven", "a@x.co", "Steven")).toMatch(/usuario/);
     expect(passwordProblem("Steven-Strong-123", "steven@x.co")).toMatch(/correo/);
     expect(passwordProblem("Gold-Glitch-2026!")).toBeNull();
+    expect(passwordProblem("futbol2026")).toBeNull();
   });
 });

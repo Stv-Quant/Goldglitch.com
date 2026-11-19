@@ -16,7 +16,7 @@ export async function SiteHeader() {
           {viewer ? (
             <Link href="/app" className="btn-gold px-4 py-1.5">Abrir app</Link>
           ) : (
-            <Link href="/acceso" className="btn-gold px-4 py-1.5">Entrar</Link>
+            <Link href="/acceso?entrar" className="btn-gold px-4 py-1.5">Entrar</Link>
           )}
         </nav>
       </div>

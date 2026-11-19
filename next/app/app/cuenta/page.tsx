@@ -18,7 +18,7 @@ const PAYMENT_MSG: Record<string, { text: string; tone: string }> = {
 
 export default async function CuentaPage({ searchParams }: { searchParams: Promise<{ pago?: string }> }) {
   const viewer = await getViewer();
-  if (!viewer) redirect("/acceso");
+  if (!viewer) redirect("/acceso?entrar");
   const { pago } = await searchParams;
 
   let paymentStatus: string | null = null;

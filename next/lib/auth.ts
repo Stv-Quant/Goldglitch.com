@@ -31,6 +31,12 @@ export function normalizeEmail(raw: unknown): string | null {
   return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e) ? e : null;
 }
 
+/** 3–20 chars: letters, numbers, dot, underscore. Case is kept for display; uniqueness is case-insensitive. */
+export function normalizeUsername(raw: unknown): string | null {
+  const u = String(raw ?? "").trim();
+  return /^[A-Za-z0-9_.]{3,20}$/.test(u) && !/^[._]|[._]$/.test(u) ? u : null;
+}
+
 /** Issues a single-use login token. Returns null when rate limited. */
 export async function issueLoginToken(email: string, inviteCode: string | null = null): Promise<string | null> {
   const db = await getDB();

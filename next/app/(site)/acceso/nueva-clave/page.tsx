@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 export default async function NuevaClavePage() {
   const viewer = await getViewer();
-  if (!viewer) redirect("/acceso");
+  if (!viewer) redirect("/acceso?entrar");
 
   return (
     <section className="mx-auto max-w-md px-5 py-20">
