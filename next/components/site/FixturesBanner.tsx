@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { isTodayBogota, type Fixture } from "@/components/experience/fixture";
 import { useFixtures } from "@/components/experience/useFixtures";
-import { Crest } from "@/components/landing/Crest";
 
 const timeFmt = new Intl.DateTimeFormat("es-CO", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "America/Bogota" });
 
@@ -15,10 +14,8 @@ function Item({ f }: { f: Fixture }) {
       <span className={f.state === "in" ? "text-up" : "text-lo"}>
         {f.state === "in" ? "EN VIVO" : `${isTodayBogota(f.kickoffAt) ? "HOY" : "MAÑ"} ${timeFmt.format(f.kickoffAt)}`}
       </span>
-      <Crest src={f.homeLogo} name={f.homeName ?? f.home} size={18} />
       <span className="text-hi">{f.home}</span>
       <span className="text-lo">vs</span>
-      <Crest src={f.awayLogo} name={f.awayName ?? f.away} size={18} />
       <span className="text-hi">{f.away}</span>
       {marks.map((m) => (
         <span key={m} className="whitespace-nowrap">
