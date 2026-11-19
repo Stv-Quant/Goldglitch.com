@@ -134,7 +134,7 @@ async function fromSqpc(start: number, end: number): Promise<TodayFixture[]> {
  * Upcoming fixtures for today and tomorrow (Colombia), live ones included, finished ones dropped.
  * Our own fixtures (SQPC) first; the public schedule fills the rest so it is never empty on a match day.
  */
-export async function getTodayFixtures(now = Date.now()): Promise<TodayFixture[]> {
+export async function getTodayFixtures(now = Date.now(), limit = 40): Promise<TodayFixture[]> {
   const today = bogotaDay(now);
   const tomorrow = bogotaDay(now + 86_400_000);
   const [own, pubA, pubB] = await Promise.all([
@@ -157,5 +157,5 @@ export async function getTodayFixtures(now = Date.now()): Promise<TodayFixture[]
   return all
     .filter((f) => f.state !== "post")
     .sort((a, b) => rank[a.state] - rank[b.state] || a.kickoffAt - b.kickoffAt)
-    .slice(0, 40);
+    .slice(0, limit);
 }

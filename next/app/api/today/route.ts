@@ -9,13 +9,15 @@ const TTL_S = 600;
  */
 export async function GET(request: Request) {
   const cache = (globalThis as unknown as { caches?: { default?: Cache } }).caches?.default;
-  const key = new Request(new URL("/api/today?v=3", request.url).toString());
+  const key = new Request(new URL("/api/today?v=4", request.url).toString());
   if (cache) {
     const hit = await cache.match(key);
     if (hit) return hit;
   }
-  const fixtures = await getTodayFixtures();
-  const [sample, record] = await Promise.all([landingSample(fixtures), landingRecord()]);
+  // The sample may be later than the first 40: look its crests up in the full list.
+  const all = await getTodayFixtures(Date.now(), 200);
+  const fixtures = all.slice(0, 40);
+  const [sample, record] = await Promise.all([landingSample(all), landingRecord()]);
   const res = Response.json(
     { fixtures, sample, record, generatedAt: Date.now() },
     { headers: { "cache-control": `public, max-age=60, s-maxage=${TTL_S}` } },
