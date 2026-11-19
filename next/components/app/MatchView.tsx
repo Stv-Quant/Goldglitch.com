@@ -1,6 +1,6 @@
 "use client";
 
-import { SportBadge, SportIcon } from "./SportBadge";
+import { MatchHero } from "./MatchHero";
 
 import Link from "next/link";
 import { Tabs, type Tab } from "@/components/app/Tabs";
@@ -10,10 +10,7 @@ import { LockedPanel } from "@/components/stats/LockedPanel";
 import { MarketsPanel, PicksList } from "@/components/stats/MatchPanels";
 import { PlayersExplorer } from "@/components/stats/PlayersExplorer";
 import { StakesPanel } from "@/components/stats/StakesPanel";
-import { ProbLegend } from "@/components/stats/Prob";
-import { ProbabilityBar } from "@/components/stats/ProbabilityBar";
 import { StatLines } from "@/components/stats/StatLines";
-import { dayLabel, timeLabel } from "@/lib/format";
 import { PICK_MIN } from "@/lib/picks";
 import { SPORT_LABEL } from "@/lib/sports";
 
@@ -135,37 +132,7 @@ export function MatchView({ m }: { m: MatchData | { locked: true; sport: Sport }
     <article className="space-y-6">
       <Link href="/app" className="text-sm text-lo hover:text-hi">← Partidos</Link>
 
-      <header className="glass relative overflow-hidden p-5 sm:p-7">
-        <span aria-hidden className="pointer-events-none absolute -right-8 -top-8 text-gold opacity-[0.06]"><SportIcon sport={m.sport} league={m.competition.name} className="h-56 w-56" /></span>
-        <div className="relative flex flex-wrap items-center justify-between gap-2 text-xs text-lo">
-          <span className="flex flex-wrap items-center gap-2"><SportBadge sport={m.sport} league={m.competition.name} /><span>{m.competition.name}{m.venue ? ` · ${m.venue}` : ""}</span></span>
-          <span className="num">
-            {m.status === "live" ? <span style={{ color: "var(--neon-up)" }}>● EN VIVO</span> : `${dayLabel(m.kickoffAt)} · ${timeLabel(m.kickoffAt)}`}
-          </span>
-        </div>
-        <div className="relative mt-6 grid grid-cols-[1fr_auto_1fr] items-center gap-4">
-          <h1 className="font-display text-2xl leading-tight break-words text-hi sm:text-5xl">{m.home.name}</h1>
-          <span className="num text-lg text-lo">
-            {m.homeScore !== null && m.awayScore !== null ? `${m.homeScore} – ${m.awayScore}` : "vs"}
-          </span>
-          <p className="font-display text-right text-2xl leading-tight break-words text-hi sm:text-5xl">{m.away.name}</p>
-        </div>
-        {p ? (
-          <div className="mt-6">
-            <ProbabilityBar home={p.outcome.home} draw={p.outcome.draw} away={p.outcome.away}
-              labels={{ home: m.home.short, away: m.away.short }} interval={p.interval} />
-            <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
-              <p className="num text-[11px] text-lo">
-                Modelo {p.modelVersion} · actualizado {timeLabel(p.generatedAt)}
-                {p.locked.pro && " · el rango de incertidumbre es parte de Pro"}
-              </p>
-              <ProbLegend />
-            </div>
-          </div>
-        ) : (
-          <p className="mt-6 text-sm text-lo">El modelo aún no publica este partido.</p>
-        )}
-      </header>
+      <MatchHero m={m} />
 
       {p && upcoming && (m.picks.length > 0 || m.picksLocked > 0) && (
         <section aria-labelledby="h-picks">
