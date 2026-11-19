@@ -188,20 +188,35 @@ class BrowserMeta:
             br.pause(2, 3.5)
             br.dismiss(pg)
             step = "botón Crear"
-            create = br.first_visible(
-                pg.get_by_role("link", name=rx("Crear", "Create", "Nueva publicación", "New post")),
-                pg.locator('svg[aria-label="Nueva publicación"], svg[aria-label="New post"]'), timeout=12)
-            if not create:
-                raise br.fail(pg, "instagram", step)
-            create.click()
-            br.pause()
-            sub = br.first_visible(pg.get_by_role("link", name=rx("Publicación", "Post")),
-                                   pg.get_by_text(re.compile(r"^(Publicación|Post)$")), timeout=3)
-            if sub:
-                sub.click()
+            file_in = pg.locator('input[type="file"][accept*="image"], input[type="file"][accept*="video"]')
+
+            def has_input(t: float) -> bool:
+                end = time.time() + t
+                while time.time() < end:
+                    if file_in.count():
+                        return True
+                    time.sleep(0.5)
+                return False
+
+            # The sidebar changes often (text, icon-only, inside "Más"): try the button, then the direct address.
+            label = re.compile(r"^(Crear|Create|Nueva publicación|New post|Publicar|Post)$", re.I)
+            create = br.first_visible(pg.get_by_role("link", name=label), pg.get_by_label(label),
+                                      pg.locator('a[href*="/create/"]'), timeout=8)
+            if create:
+                create.click()
                 br.pause()
+                sub = br.first_visible(pg.get_by_role("link", name=rx("Publicación", "Post")),
+                                       pg.get_by_text(re.compile(r"^(Publicación|Post)$")), timeout=3)
+                if sub:
+                    sub.click()
+                    br.pause()
+            if not has_input(6):
+                pg.goto(IG + "create/select/", wait_until="domcontentloaded")
+                br.pause(2, 3)
+            if not has_input(10):
+                raise br.fail(pg, "instagram", step)
             step = "subir archivos"
-            pg.locator('div[role="dialog"] input[type="file"], form input[type="file"]').first.set_input_files(paths)
+            file_in.first.set_input_files(paths)
             br.pause(2.5, 4)
             ok = br.first_visible(pg.get_by_role("button", name=rx("Aceptar", "OK")), timeout=3)   # "videos now share as reels"
             if ok:
