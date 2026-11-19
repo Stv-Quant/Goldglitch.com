@@ -102,14 +102,14 @@ class ScreenAgent:
             if m:
                 (pg.keyboard.down if down else pg.keyboard.up)(XKEYS.get(m.lower(), m))
 
-    def _final_button_at(self, pg, x: float, y: float) -> bool:
+    def _final_button_at(self, pg, x: float, y: float, final_re: re.Pattern | None = None) -> bool:
         try:
             t = pg.evaluate("""([x, y]) => { let e = document.elementFromPoint(x, y);
                 for (let i = 0; e && i < 6; i++, e = e.parentElement) {
                   const r = e.getAttribute('role'), tag = e.tagName;
                   if (tag === 'BUTTON' || r === 'button' || tag === 'A') return (e.getAttribute('aria-label') || e.innerText || '').trim();
                 } return ''; }""", [x, y])
-            return bool(FINAL_BUTTON.match(t or ""))
+            return bool((final_re or FINAL_BUTTON).match(t or ""))
         except Exception:
             return False
 
@@ -124,7 +124,7 @@ class ScreenAgent:
             if xy:
                 state["cursor"] = xy
             x, y = state.get("cursor", (W / 2, H / 2))
-            if state["rehearsal"] and name == "left_click" and self._final_button_at(pg, x, y):
+            if state["rehearsal"] and name == "left_click" and self._final_button_at(pg, x, y, state.get("final_re")):
                 state["blocked_final"] = True
                 return ("ENSAYO: ese es el botón final de publicar y está bloqueado. Todo lo anterior quedó listo: "
                         "llama terminar con estado listo_para_publicar.")
@@ -367,8 +367,12 @@ class CliScreenAgent:
 
     def __init__(self, log=print):
         self.log = log
+        self.last: dict = {}
 
-    def run(self, task: str, start_url: str, files: list[str], caption: str, rehearsal: bool, net: str) -> str:
+    def run(self, task: str, start_url: str, files: list[str], caption: str, rehearsal: bool, net: str,
+            system: str | None = None, named_files: dict | None = None, final_regex: str | None = None,
+            texts: dict | None = None,
+            max_steps: int = MAX_STEPS) -> str:
         import sys
         import tempfile
         import goldglitch_claude_cli as CLI
@@ -377,7 +381,8 @@ class CliScreenAgent:
         evidence = os.path.join(ERRDIR, f"{net}_agente_{time.strftime('%Y%m%d_%H%M%S')}.png")
         with open(task_path, "w", encoding="utf-8") as f:
             json.dump({"start_url": start_url, "files": files, "caption": caption, "rehearsal": rehearsal,
-                       "result": result_path, "evidence": evidence}, f, ensure_ascii=False)
+                       "result": result_path, "evidence": evidence, "archivos": named_files or {},
+                       "final_regex": final_regex, "textos": texts or {}}, f, ensure_ascii=False)
         server = os.path.join(os.path.dirname(os.path.abspath(__file__)), "goldglitch_screen_mcp.py")
         mcp = {"mcpServers": {"pantalla": {"command": sys.executable, "args": [server], "env": {"GG_TAREA": task_path}}}}
         mode = ("MODO ENSAYO: haz todo hasta dejar la publicación lista; el botón final está bloqueado. Cuando llegues a "
@@ -386,8 +391,8 @@ class CliScreenAgent:
                   "para ver la pantalla. Las herramientas de acción devuelven la pantalla nueva.")
         self.log(f"    [{net}] agente Haiku (plan Pro) trabajando…")
         try:
-            CLI.run(prompt, SYSTEM.replace("llama terminar", "usa la herramienta terminar"), mcp_config=mcp,
-                    allowed_tools="mcp__pantalla__*", max_turns=MAX_STEPS, timeout=1200)
+            CLI.run(prompt, system or SYSTEM.replace("llama terminar", "usa la herramienta terminar"), mcp_config=mcp,
+                    allowed_tools="mcp__pantalla__*", max_turns=max_steps, timeout=1800)
         except CLI.UsageLimit:
             raise
         except CLI.CliError as e:
@@ -399,6 +404,7 @@ class CliScreenAgent:
         except (OSError, ValueError):
             raise PlatformError(f"{net}: el agente terminó sin informar el resultado")
         estado, detalle = r.get("estado"), r.get("detalle", "")
+        self.last = r
         self.log(f"    [{net}] terminar: {estado} — {detalle[:200]}")
         if estado == "publicado" and not rehearsal:
             return "publicado"
