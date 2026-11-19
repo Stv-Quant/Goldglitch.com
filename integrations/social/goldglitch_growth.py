@@ -130,9 +130,11 @@ def roster() -> dict:
 
 
 class Committee:
-    def __init__(self, api_key: str, signed, state: dict, facts: dict, log=print):
-        import anthropic
-        self.client = anthropic.Anthropic(api_key=api_key)
+    def __init__(self, api_key: str | None, signed, state: dict, facts: dict, log=print):
+        self.client = None
+        if api_key:
+            import anthropic
+            self.client = anthropic.Anthropic(api_key=api_key)
         self.signed, self.state, self.facts, self.log = signed, state, facts, log
         self.r = roster()
         self.metrics: dict | None = None
@@ -164,14 +166,18 @@ class Committee:
         if not m:
             return f"No existe el miembro '{key}'. Plantilla: {', '.join(self.r['miembros'])}"
         self.calls += 1
-        msg = self.client.messages.create(
-            model=MODEL, max_tokens=1200,
-            system=(f"Eres {m['rol']} en el comité de crecimiento de Goldglitch Stats. Tu misión: {m['mision']}\n\n{BRAND}\n\n"
-                    "Responde en español, concreto y accionable (máx. 250 palabras). Basa lo que digas en las métricas "
-                    "cuando existan; si no hay datos suficientes, dilo y propone un experimento medible."),
-            messages=[{"role": "user", "content": f"Métricas de la web: {self.metrics_text()}\n\n"
-                                                  f"Contexto: {self.history_text()}\n\nPregunta del Director: {question}"}])
-        out = "".join(b.text for b in msg.content if getattr(b, "type", "") == "text").strip()
+        system = (f"Eres {m['rol']} en el comité de crecimiento de Goldglitch Stats. Tu misión: {m['mision']}\n\n{BRAND}\n\n"
+                  "Responde en español, concreto y accionable (máx. 250 palabras). Basa lo que digas en las métricas "
+                  "cuando existan; si no hay datos suficientes, dilo y propone un experimento medible.")
+        task = (f"Métricas de la web: {self.metrics_text()}\n\nContexto: {self.history_text()}\n\n"
+                f"Pregunta del Director: {question}")
+        if self.client is None:
+            import goldglitch_claude_cli as CLI
+            out = CLI.ask_text(system, task).strip()
+        else:
+            msg = self.client.messages.create(model=MODEL, max_tokens=1200, system=system,
+                                              messages=[{"role": "user", "content": task}])
+            out = "".join(b.text for b in msg.content if getattr(b, "type", "") == "text").strip()
         self.log(f"  [{key}] {out[:160]}")
         return out
 
@@ -236,8 +242,54 @@ class Committee:
         self.learned.append(text)
         return "Guardado."
 
+    # ---------------------------------------------------------------- meeting with the Pro plan (Claude Code)
+    def meet_cli(self, today: str) -> dict:
+        """Same meeting in three steps (Claude Code has no custom tools here): agenda → consultations → decisions."""
+        import goldglitch_claude_cli as CLI
+        self.log("Reunión del comité de crecimiento (plan Pro, Haiku 5.5)")
+        ctx = (f"Hoy es {today} (hora de Colombia).\nMétricas de la web: {self.metrics_text()}\n\n"
+               f"Historial y datos de hoy: {self.history_text()}\n\n"
+               f"Plantilla: {json.dumps({k: v['rol'] for k, v in self.r['miembros'].items()}, ensure_ascii=False)}")
+        agenda = CLI.ask_json(DIRECTOR, ctx + """
+
+PASO 1 de la reunión. Decide a quién consultar y si hace falta contratar o despedir.
+Formato: {"contratar":[{"clave":"...","rol":"...","mision":"..."}], "despedir":[{"clave":"...","motivo":"..."}],
+"consultas":[{"miembro":"clave","pregunta":"..."}]}  (máximo 6 consultas; los contratados de hoy se pueden consultar)""")
+        for h in (agenda.get("contratar") or [])[:3]:
+            self.log("  " + self.hire(str(h.get("clave", "")), str(h.get("rol", "")), str(h.get("mision", ""))))
+        for d in (agenda.get("despedir") or [])[:2]:
+            self.fire(str(d.get("clave", "")), str(d.get("motivo", "")))
+        answers = []
+        for c in (agenda.get("consultas") or [])[:6]:
+            k = str(c.get("miembro", ""))
+            answers.append({"miembro": k, "pregunta": c.get("pregunta"), "respuesta": self.ask(k, str(c.get("pregunta", "")))})
+        types = json.dumps(POST_TYPES, ensure_ascii=False)
+        feedback, acta = "", ""
+        for _ in range(2):
+            dec = CLI.ask_json(DIRECTOR, ctx + f"""
+
+Respuestas del comité: {json.dumps(answers, ensure_ascii=False)}
+Formatos disponibles: {types}
+{feedback}
+PASO 2: decide. Formato:
+{{"plan":[{{"type":"...","time":"HH:MM","angle":"...","topic":"...","hook":"...","cta":"..."}}],
+"aprendizajes":["..."], "acta":"qué viste, qué decidiste, qué experimento corre y cómo se mide"}}
+2 a 4 publicaciones, horas 07:00–22:00 separadas 2 h; "picks_dia" solo si hay picks próximos y "resultados" solo si hay
+picks jugados.""")
+            res = self.set_plan(dec.get("plan") or [])
+            self.log(f"  plan: {res}")
+            for t in (dec.get("aprendizajes") or [])[:3]:
+                self.learn(str(t))
+            acta = str(dec.get("acta") or "")
+            if self.plan:
+                break
+            feedback = f"Tu plan anterior fue rechazado: {res}. Corrígelo."
+        return self._close(today, acta)
+
     # ---------------------------------------------------------------- meeting
     def meet(self, today: str) -> dict:
+        if self.client is None:
+            return self.meet_cli(today)
         self.log("Reunión del comité de crecimiento")
         messages: list[dict[str, Any]] = [{"role": "user", "content":
             f"Hoy es {today} (hora de Colombia). Inicia la reunión del comité. Plantilla actual: "
@@ -312,8 +364,9 @@ def main() -> int:
     import goldglitch_social as S
     S.load_env()
     key = os.environ.get("ANTHROPIC_API_KEY")
-    if not key:
-        print("Falta ANTHROPIC_API_KEY en el .env")
+    import goldglitch_claude_cli as CLI
+    if not key and not CLI.available():
+        print("Falta Claude Code con tu sesión de Claude (o ANTHROPIC_API_KEY en el .env)")
         return 1
     today = datetime.now(S.TZ).strftime("%Y-%m-%d")
     if plan_for(today) and "--forzar" not in sys.argv:

@@ -1,0 +1,168 @@
+"""Servidor MCP "pantalla": le da a Claude Code (Haiku 5.5 con tu plan Pro) ojos y manos sobre el navegador de redes.
+
+Lo arranca Claude Code para una sola tarea (GG_TAREA apunta a un JSON con la página inicial, los archivos, la descripción,
+si es ensayo y dónde dejar el resultado). Herramientas: captura, clic, escribir, tecla, desplazar, arrastrar, esperar,
+ampliar, abrir_pagina, escribir_texto_preparado y terminar. Las mismas protecciones que el agente por API:
+  - el selector de archivos adjunta solo los archivos de la publicación;
+  - solo Instagram, Facebook y TikTok;
+  - en ensayo, el botón final (Compartir/Publicar) está bloqueado.
+"""
+from __future__ import annotations
+
+import asyncio
+import json
+import os
+import sys
+import time
+from concurrent.futures import ThreadPoolExecutor
+from urllib.parse import urlsplit
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, HERE)
+
+from mcp.server.fastmcp import FastMCP, Image  # noqa: E402
+
+from goldglitch_social_browser import Browser  # noqa: E402
+from goldglitch_social_computer import ALLOWED, H, W, ScreenAgent  # noqa: E402
+
+TASK = json.load(open(os.environ["GG_TAREA"], encoding="utf-8"))
+EXEC = ThreadPoolExecutor(max_workers=1)      # Playwright's sync API lives in this one thread
+S: dict = {"pg": None, "br": None, "agent": None,
+           "state": {"rehearsal": bool(TASK.get("rehearsal")), "files": TASK["files"]}}
+mcp = FastMCP("pantalla")
+
+
+def _page():
+    if S["pg"] is None:
+        br = Browser()
+        pg = br.page()
+        pg.set_viewport_size({"width": W, "height": H})
+
+        def on_chooser(fc) -> None:
+            files = S["state"]["files"]
+            fc.set_files(files if fc.is_multiple() else files[:1])
+            S["state"]["attached"] = True
+        pg.on("filechooser", on_chooser)
+        pg.on("dialog", lambda d: d.dismiss())
+        try:
+            pg.goto(TASK["start_url"], wait_until="domcontentloaded", timeout=60_000)
+        except Exception:
+            pass
+        time.sleep(4)
+        S.update(br=br, pg=pg, agent=ScreenAgent(br, "", lambda m: None))
+    return S["pg"]
+
+
+def _img(block: dict) -> Image:
+    import base64
+    return Image(data=base64.b64decode(block["source"]["data"]), format="png")
+
+
+def _act(name: str, a: dict):
+    pg = _page()
+    out = S["agent"]._do(pg, name, a, S["state"])
+    if isinstance(out, list):
+        return [_img(out[0])]
+    if out.startswith("ENSAYO") or out.startswith("Acción no"):
+        return [out]
+    time.sleep(0.6)
+    return [out, _img(S["agent"]._shot(pg))]
+
+
+async def _run(fn, *args):
+    return await asyncio.get_running_loop().run_in_executor(EXEC, fn, *args)
+
+
+@mcp.tool()
+async def captura() -> list:
+    """Captura de la pantalla actual (1280×800). Las coordenadas de las demás herramientas usan esta imagen."""
+    return await _run(lambda: [_img(S["agent"]._shot(_page())) if _page() else "sin página"])
+
+
+@mcp.tool()
+async def clic(x: int, y: int, boton: str = "left", veces: int = 1) -> list:
+    """Clic en (x, y). boton: left | right | middle. veces: 1, 2 (doble) o 3 (triple). Devuelve la pantalla nueva."""
+    name = {"right": "right_click", "middle": "middle_click"}.get(boton) or {2: "double_click", 3: "triple_click"}.get(veces, "left_click")
+    return await _run(_act, name, {"coordinate": [x, y]})
+
+
+@mcp.tool()
+async def escribir(texto: str) -> list:
+    """Escribe texto donde está el cursor (no la uses para la descripción: usa escribir_texto_preparado)."""
+    return await _run(_act, "type", {"text": texto})
+
+
+@mcp.tool()
+async def tecla(combinacion: str, repetir: int = 1) -> list:
+    """Pulsa una tecla o combinación: Return, Escape, Tab, BackSpace, Delete, ctrl+a, Page_Down…"""
+    return await _run(_act, "key", {"text": combinacion, "repeat": repetir})
+
+
+@mcp.tool()
+async def desplazar(x: int, y: int, direccion: str = "down", cantidad: int = 3) -> list:
+    """Desplaza la página en (x, y). direccion: up | down | left | right."""
+    return await _run(_act, "scroll", {"coordinate": [x, y], "scroll_direction": direccion, "scroll_amount": cantidad})
+
+
+@mcp.tool()
+async def arrastrar(x1: int, y1: int, x2: int, y2: int) -> list:
+    """Arrastra con el botón izquierdo de (x1, y1) a (x2, y2)."""
+    return await _run(_act, "left_click_drag", {"start_coordinate": [x1, y1], "coordinate": [x2, y2]})
+
+
+@mcp.tool()
+async def esperar(segundos: float = 3) -> list:
+    """Espera (máx. 30 s), por ejemplo mientras sube un video, y devuelve la pantalla."""
+    return await _run(_act, "wait", {"duration": segundos})
+
+
+@mcp.tool()
+async def ampliar(x0: int, y0: int, x1: int, y1: int) -> list:
+    """Imagen ampliada de una zona de la pantalla para leer texto pequeño."""
+    return await _run(_act, "zoom", {"region": [x0, y0, x1, y1]})
+
+
+@mcp.tool()
+async def abrir_pagina(url: str) -> list:
+    """Abre una dirección de Instagram, Facebook o TikTok."""
+    def go():
+        host = urlsplit(url).hostname or ""
+        if not any(host == d or host.endswith("." + d) for d in ALLOWED):
+            return ["Solo se permiten direcciones de Instagram, Facebook o TikTok."]
+        pg = _page()
+        pg.goto(url, wait_until="domcontentloaded", timeout=60_000)
+        time.sleep(3)
+        return [_img(S["agent"]._shot(pg))]
+    return await _run(go)
+
+
+@mcp.tool()
+async def escribir_texto_preparado() -> list:
+    """Escribe la descripción exacta de la publicación donde está el cursor (haz clic antes en el cuadro de texto)."""
+    return await _run(_act, "type", {"text": TASK["caption"]})
+
+
+@mcp.tool()
+async def terminar(estado: str, detalle: str) -> str:
+    """Termina la tarea. estado: publicado | listo_para_publicar | bloqueado | fallo. detalle: qué pasó."""
+    def done():
+        shot = None
+        if estado not in ("publicado", "listo_para_publicar") and S["pg"] is not None:
+            try:
+                os.makedirs(os.path.dirname(TASK["evidence"]), exist_ok=True)
+                S["pg"].screenshot(path=TASK["evidence"])
+                shot = TASK["evidence"]
+            except Exception:
+                pass
+        with open(TASK["result"], "w", encoding="utf-8") as f:
+            json.dump({"estado": estado, "detalle": detalle[:500], "final_bloqueado": bool(S["state"].get("blocked_final")),
+                       "adjuntado": bool(S["state"].get("attached")), "captura": shot}, f, ensure_ascii=False)
+        if S["br"] is not None:
+            S["br"].close()
+            S.update(br=None, pg=None)
+        return "Tarea terminada. No hagas nada más."
+    return await _run(done)
+
+
+if __name__ == "__main__":
+    mcp.run()

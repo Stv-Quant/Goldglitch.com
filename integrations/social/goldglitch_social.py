@@ -244,7 +244,19 @@ def clients(rehearsal: bool = False) -> tuple[Meta | B.BrowserMeta | None, TikTo
             if sess.get("tiktok", True):
                 tt = C.AgentTikTok(ag, rehearsal)
             return meta, tt
-        log("Sin ANTHROPIC_API_KEY: se usan los pasos automáticos sin agente de pantalla.")
+        import goldglitch_claude_cli as CLI
+        if CLI.available() and os.environ.get("REDES_AGENTE_PANTALLA", "1") != "0":
+            # Same Haiku agents, through Claude Code with your Claude plan. The MCP server opens the browser itself.
+            import goldglitch_social_computer as C
+            BROWSER = None
+            ag = C.CliScreenAgent(log)
+            if sess.get("instagram", True) or sess.get("facebook", True):
+                meta = C.AgentMeta(ag, cfg.get("facebook_page") if sess.get("facebook", True) else None,
+                                   sess.get("instagram", True), rehearsal)
+            if sess.get("tiktok", True):
+                tt = C.AgentTikTok(ag, rehearsal)
+            return meta, tt
+        log("Sin ANTHROPIC_API_KEY ni Claude Code: se usan los pasos automáticos sin agente de pantalla.")
         if sess.get("instagram", True) or sess.get("facebook", True):
             meta = B.BrowserMeta(BROWSER, cfg.get("facebook_page") if sess.get("facebook", True) else None,
                                  instagram=sess.get("instagram", True))
@@ -271,7 +283,9 @@ def tick(dry: bool) -> None:
     st = load_json(STATE, {})
     ag = Agents(os.environ.get("ANTHROPIC_API_KEY"))
     if ag.offline:
-        log("Sin ANTHROPIC_API_KEY: los textos salen de plantillas (sin IA).")
+        log("Sin ANTHROPIC_API_KEY ni Claude Code: los textos salen de plantillas (sin IA).")
+    elif ag.cli:
+        log("Agentes con tu plan de Claude (Claude Code, Haiku 5.5).")
     meta, tt = clients()
     today = now.strftime("%Y-%m-%d")
 
@@ -282,7 +296,7 @@ def tick(dry: bool) -> None:
         plan = G.plan_for(today)
         if plan is None and not ag.offline and os.environ.get("REDES_COMITE", "1") != "0":
             try:
-                G.Committee(os.environ["ANTHROPIC_API_KEY"], signed, st, facts, log).meet(today)
+                G.Committee(os.environ.get("ANTHROPIC_API_KEY"), signed, st, facts, log).meet(today)
                 plan = G.plan_for(today)
             except Exception as e:
                 log(f"El comité no pudo reunirse ({e}); planea el Estratega")
