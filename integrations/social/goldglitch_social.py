@@ -51,6 +51,7 @@ from goldglitch_social_platforms import Meta, PlatformError, TikTok  # noqa: E40
 import goldglitch_social_browser as B  # noqa: E402
 import goldglitch_growth as G  # noqa: E402
 import goldglitch_social_render2 as V  # noqa: E402
+import goldglitch_trends as T  # noqa: E402
 
 TZ = timezone(timedelta(hours=-5))  # Colombia
 STATE = os.path.join(HERE, "redes_estado.json")
@@ -179,6 +180,11 @@ def build(post: dict, facts: dict, ag: Agents, now: datetime, tag: str, shown: s
                 "historial": facts["record"]}
     else:
         rows, data = [], {"historial": facts["record"]}
+    if t in ("meme", "reel", "pregunta", "picks_dia"):        # ride what is happening right now
+        try:
+            data["tendencias_del_momento"] = T.brief(n=6)
+        except Exception:
+            pass
     if t in ("picks_dia", "resultados") or (t == "reel" and reel_of != "texto"):
         if not rows:
             raise SkipPiece("no hay partidos nuevos de ligas top (los de las últimas 36 h ya se mostraron)"
@@ -206,6 +212,8 @@ def build(post: dict, facts: dict, ag: Agents, now: datetime, tag: str, shown: s
         video = V.reel_video(V.reel_script(reel_of, rows, tx, wfn, facts.get("record")), f"{tag}_reel")
         return {"feed": [], "story": None, "video": video, "reel": True, "texts": tx, "shown": shown_keys}
     if t == "meme":
+        if tx.get("meme_formato") == "noticia" and not data.get("tendencias_del_momento"):   # never a news meme without real news
+            tx["meme_formato"], tx["meme"] = "tweet", {"texto": (tx.get("meme") or {}).get("reaccion") or tx.get("cover_title", "")}
         feed = R.render([V.meme(tx.get("meme_formato") or "", tx.get("meme") or {}, 1080, 1350)], 1080, 1350, f"{tag}_feed")
         video = V.reel_video(V.reel_script("meme", [], tx, wfn), f"{tag}_reel")
         return {"feed": feed, "story": None, "video": video, "reel": False, "texts": tx, "shown": []}
@@ -451,6 +459,10 @@ def _tick(dry: bool) -> None:
         log("Agentes con tu plan de Claude (Claude Code, Haiku 5.5).")
     meta, tt = clients()
     today = now.strftime("%Y-%m-%d")
+    try:                                   # what is trending now (cached 2 h) for the committee, memes and hooks
+        T.get(log)
+    except Exception as e:
+        log(f"Tendencias no disponibles: {e}")
 
     # 1) plan of the day (after 07:00): the growth committee decides it; the Estratega is the fallback
     if st.get("day") != today and now.hour >= 7:

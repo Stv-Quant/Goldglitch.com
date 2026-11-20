@@ -162,7 +162,7 @@ TOOLS = [
          "type": {"type": "string", "enum": list(POST_TYPES)},
          "time": {"type": "string", "description": "HH:MM entre 07:00 y 23:00, o \"ahora\" para publicar apenas termine la reunión (máx. 1)"},
          "liga": {"type": "string", "description": "opcional para picks_dia: liga o deporte a destacar (ej. Liga BetPlay, Premier League, NBA)"},
-         "meme_formato": {"type": "string", "enum": ["tweet", "nadie", "expectativa", "pov", "starter", "no_si"],
+         "meme_formato": {"type": "string", "enum": ["tweet", "nadie", "expectativa", "pov", "starter", "no_si", "noticia", "cuando", "tier"],
                           "description": "solo para meme"},
          "angle": {"type": "string"}, "topic": {"type": "string"},
          "hook": {"type": "string", "description": "primera línea / gancho"},
@@ -238,6 +238,7 @@ class Committee:
         return json.dumps({"hora_actual_colombia": now_co().strftime("%H:%M"),
                            "borrador_reunion_extraordinaria": draft,
                            "regla": "planea solo horas posteriores a la hora actual",
+                           "tendencias_ahora": _trends(),
                            "publicaciones_recientes": hist,
                            "datos_hoy": {"picks_80_proximas_36h": len(f.get("upcoming") or []),
                                          "picks_jugados_36h": len(f.get("results") or []), "historial": f.get("record")},
@@ -386,11 +387,13 @@ Formato: {"contratar":[{"clave":"...","rol":"Nombre — rol","mision":"..."}], "
                               "zafiro, violeta o champana), portada (impacto o editorial) y ritmo de reels (rapido, "
                               "muy_rapido o elegante), y por qué."})
         if not any(str(c.get("miembro")) == "viralidad" for c in consultas):  # Valeria: the meme of the day
-            consultas.append({"miembro": "viralidad", "pregunta": "El meme de hoy: formato (tweet, nadie, expectativa, pov, "
-                              "starter o no_si), idea y remate atados a lo que pasa hoy en el fútbol, y la hora en que más "
-                              "se compartiría. Más una idea viral para un reel."})
+            consultas.append({"miembro": "viralidad", "pregunta": "Mira tendencias_ahora (búsquedas en tendencia, titulares de "
+                              "fútbol y hashtags de TikTok). El meme de hoy: formato (tweet, nadie, expectativa, pov, starter, "
+                              "no_si, noticia, cuando o tier), sobre qué tendencia REAL se monta, idea y remate, y la hora en que "
+                              "más se compartiría. Más una idea viral para un reel atada a lo que está pasando hoy."})
         if not any(str(c.get("miembro")) == "seo" for c in consultas):        # Daniela: the SEO bank of the day
-            consultas.append({"miembro": "seo", "pregunta": "Banco SEO de hoy: 15 a 20 hashtags (grandes, medianos y de nicho, "
+            consultas.append({"miembro": "seo", "pregunta": "Banco SEO de hoy, usando tendencias_ahora (búsquedas en tendencia "
+                              "y hashtags de TikTok de esta semana): 15 a 20 hashtags (grandes, medianos y de nicho, "
                               "con ligas, clásicos, equipos y jugadores del día) y 6 a 10 palabras clave, y el deseo del "
                               "hincha detrás de las búsquedas principales para orientar los ganchos."})
         for c in consultas:
@@ -408,7 +411,8 @@ PASO 2: decide. Formato:
 {{"plan":[{{"type":"...","time":"HH:MM","angle":"...","topic":"...","hook":"...","cta":"...","liga":"(opcional)"}}],
 "direccion_arte":{{"acento":"oro|esmeralda|rubi|zafiro|violeta|champana","portada":"impacto|editorial","ritmo":"rapido|muy_rapido|elegante"}},
 "seo":{{"hashtags":["15 a 20 sin #, de Daniela, los más importantes primero"],"palabras":["6 a 10 palabras clave"]}},
-(para cada "meme" agrega "meme_formato": tweet|nadie|expectativa|pov|starter|no_si, según Valeria)
+(para cada "meme" agrega "meme_formato": tweet|nadie|expectativa|pov|starter|no_si|noticia|cuando|tier, según Valeria; puedes
+poner 2 memes si hay tendencias fuertes, y si una tendencia explota justo ahora, el meme puede ir con "time":"ahora")
 (opcional: UNA publicación del plan puede llevar "time":"ahora" si debe salir apenas termine la reunión)
 "aprendizajes":["..."], "acta":"qué viste, qué decidiste, qué experimento corre y cómo se mide"}}
 4 a 7 publicaciones (volumen alto), horas 07:00–23:00 separadas al menos 90 min; "picks_dia" solo si hay picks
@@ -512,6 +516,14 @@ repite en 36 h: no pongas más piezas de picks que partidos nuevos (varía la "l
         if getattr(self, "now_posts", None):
             self.log(f"Publicación inmediata decidida: {self.now_posts[0]['type']} — {self.now_posts[0].get('angle', '')}")
         return {"plan": self.plan, "acta": acta, "ahora": getattr(self, "now_posts", [])}
+
+
+def _trends() -> dict:
+    try:
+        import goldglitch_trends as T
+        return T.brief(n=6)
+    except Exception:
+        return {}
 
 
 def plan_version(today: str) -> float:
