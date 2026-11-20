@@ -360,8 +360,8 @@ def reel_script(kind: str, rows: list[dict], tx: dict, when_fn, record: dict | N
     f: list[tuple[str, float, str]] = []
     rate = _rate(record)
     if kind in ("picks_dia", "reel") and rows:
-        f.append((reel_frame(tx.get("reel_hook") or "EL MODELO VIO ALGO 👀", tx.get("reel_sub") or f"top {len(rows)} de las ligas grandes",
-                             kicker="Hoy"), 1.3, "punch"))
+        f.append((reel_frame(tx.get("reel_hook") or "EL MODELO VIO ALGO 👀", tx.get("reel_sub") or "quédate hasta el #1",
+                             kicker=f"Top {len(rows)} · ligas grandes"), 1.3, "punch"))
         if rate:
             f.append((reel_frame(f"{rate[0]}/{rate[1]}", f"picks de 75%+ acertados ({rate[2]}%) · fallos incluidos",
                                  color="#d4af37", kicker="Historial público", glitch=False), 1.2, "slide"))
@@ -378,7 +378,9 @@ def reel_script(kind: str, rows: list[dict], tx: dict, when_fn, record: dict | N
                                  accent=acc, top=r["league"], glitch=False, tilt=4), 0.95, "slide"))
         f.append((reel_frame("EL MÁS FUERTE", "de hoy", kicker="Ranking", bars=[(f"{r['home']}–{r['away']}"[:30], float(r["p"]), pcolor(float(r["p"])))
                                                                             for r in rows[:4]]), 1.9, "punch"))
-        f.append((reel_frame("¿ENTRA O NO ENTRA?", "comenta tu pick 👇", color="#d4af37"), 1.3, "shake"))
+        f.append((reel_frame("¿ENTRA O NO ENTRA?", "comenta 1 (entra) o 2 (no entra) 👇", color="#d4af37"), 1.3, "shake"))
+        f.append((reel_frame("GUÁRDALO", "para revisarlo cuando juegue · mándaselo a tu parcero que 'sabe de fútbol'",
+                             color="#f3ecdc", kicker="📌"), 1.2, "punch"))
     elif kind == "resultados" and rows:
         won = sum(r["status"] == "won" for r in rows)
         f.append((reel_frame("¿CÓMO LE FUE AL MODELO?", "aciertos y fallos, sin filtro", kicker="Resultados"), 1.3, "punch"))
@@ -393,11 +395,11 @@ def reel_script(kind: str, rows: list[dict], tx: dict, when_fn, record: dict | N
         f.append((reel_frame(tx.get("edu_title") or tx.get("cover_title") or "DATO", "espera al final 👀", kicker="Dato"), 1.5, "punch"))
         for line in [x for x in (tx.get("edu_body") or tx.get("cover_subtitle") or "").split("\n") if x.strip()][:5]:
             f.append((reel_frame(line, "", glitch=False, tilt=4), 1.6, "slide"))
-    f.append((reel_frame("LINK EN LA BIO", "todas las probabilidades, gratis", color="#d4af37", kicker="Goldglitch Stats"), 1.8, "punch"))
+    f.append((reel_frame("LINK EN LA BIO", "todas las probabilidades, GRATIS", color="#d4af37", kicker="Goldglitch Stats"), 1.8, "punch"))
     return f
 
 
-def beat(path: str, seconds: float, bpm: int = 148) -> str:
+def beat(path: str, seconds: float, bpm: int = 148, cuts: list[tuple[float, str]] | None = None) -> str:
     """Original percussion loop (kick, clap, hats, sub, riser) synthesized here — no third-party audio."""
     import random
     sr, n = 44100, int(seconds * 44100)
@@ -415,6 +417,16 @@ def beat(path: str, seconds: float, bpm: int = 148) -> str:
     hat = lambda t: (rnd.random() * 2 - 1) * math.exp(-t * 95) * 0.16
     sub = lambda t: math.sin(2 * math.pi * 41.2 * t) * math.exp(-t * 2.5) * 0.4
     riser = lambda t: (rnd.random() * 2 - 1) * (t / 1.2) * 0.12
+    # sound design synced to the edit
+    whoosh = lambda t: (rnd.random() * 2 - 1) * math.sin(math.pi * min(t / 0.22, 1)) * 0.34
+    impact = lambda t: (math.sin(2 * math.pi * (38 + 90 * math.exp(-t * 18)) * t) * 1.1 + (rnd.random() * 2 - 1) * math.exp(-t * 35) * .5) * math.exp(-t * 5)
+    zap = lambda t: math.sin(2 * math.pi * (1800 - 1500 * t / .12) * t) * math.exp(-t * 25) * 0.25
+    for t0, fx in (cuts or []):
+        add(max(0.0, t0 - 0.11), whoosh, 0.24)
+        if fx in ("shake", "punch"):
+            add(t0, impact, 0.6)
+        if fx == "flash":
+            add(t0, zap, 0.12)
     i = 0
     while i * step < seconds:
         t, s16 = i * step, i % 16
@@ -477,7 +489,11 @@ def reel_video(frames: list[tuple[str, float, str]], name: str) -> str:
         last, off = f"x{i}", off + durs[i] - T
     total = off + T
     Path(OUT).mkdir(exist_ok=True)
-    audio = beat(os.path.join(OUT, f"{name}_beat.wav"), total + 0.5)
+    starts, acc = [], 0.0
+    for d, (_, _, fx) in zip(durs, frames):
+        starts.append((acc, fx))
+        acc += d - T
+    audio = beat(os.path.join(OUT, f"{name}_beat.wav"), total + 0.5, cuts=starts)
     graph = ";".join(parts + chain)
     out = os.path.join(OUT, f"{name}.mp4")
     cmd = [ff, "-y", *inputs, "-i", audio, "-filter_complex", graph, "-map", f"[{last}]", "-map", f"{len(imgs)}:a",

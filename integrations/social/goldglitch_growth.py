@@ -23,7 +23,7 @@ import time
 from datetime import datetime
 from typing import Any
 
-from goldglitch_social_agents import BRAND, BANNED, MODEL, POST_TYPES
+from goldglitch_social_agents import BRAND, BANNED, MODEL, POST_TYPES, VIRAL
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROSTER = os.path.join(HERE, "redes_comite.json")
@@ -65,11 +65,15 @@ Producto: plan Free (con cuenta), Pro $50.000/mes, Elite $250.000/mes. La web mi
 Instagram, Facebook (página) y TikTok los publican los agentes de redes con tu plan. En Instagram y TikTok el enlace va
 en la bio (ref ig_bio / tt_bio); en Facebook el enlace va en el texto con su propio ref.
 
+{VIRAL}
+Construye SERIES con nombre fijo que se repitan cada día a la misma hora (hábito y exposición repetida), alterna formatos
+y prioriza lo que genera guardados, compartidos y comentarios.
+
 Cómo trabajas en la reunión:
 1. Mira las métricas y el historial (ver_metricas, ver_historial).
 2. Consulta a los miembros que aporten (consultar). Si falta una especialidad, CONTRATA un agente nuevo con un rol y
    misión precisos (contratar) y consúltalo; despide a quien no aporte. Máximo {MAX_MEMBERS} miembros.
-3. Decide el plan de HOY con definir_plan: 4 a 7 publicaciones (volumen alto: el objetivo es crecer rápido), al menos 2 de
+3. Decide el plan de HOY con definir_plan: 4 a 7 publicaciones (volumen alto: el objetivo es crecer rápido), al menos 3 de
    ellas "reel" (video vertical de ritmo rápido, el formato que más alcance orgánico da; topic "resultados" para un reel
    de resultados, si no son picks), solo equipos de ligas top, horas 07:00–23:00 separadas al menos 90 min,
    cada una con gancho, ángulo, tema y llamado a la acción. Basa las decisiones en datos cuando los haya; cuando no,
@@ -291,7 +295,7 @@ PASO 2: decide. Formato:
 {{"plan":[{{"type":"...","time":"HH:MM","angle":"...","topic":"...","hook":"...","cta":"...","liga":"(opcional)"}}],
 "aprendizajes":["..."], "acta":"qué viste, qué decidiste, qué experimento corre y cómo se mide"}}
 4 a 7 publicaciones (volumen alto), horas 07:00–23:00 separadas al menos 90 min; "picks_dia" solo si hay picks
-próximos (puede repetirse con distinta "liga": Liga BetPlay, Premier League, LaLiga…), al menos 2 "reel" (topic "resultados"
+próximos (puede repetirse con distinta "liga": Liga BetPlay, Premier League, LaLiga…), al menos 3 "reel" (topic "resultados"
 para un reel de resultados) y "resultados" solo si hay picks jugados.""")
             res = self.set_plan(dec.get("plan") or [])
             self.log(f"  plan: {res}")

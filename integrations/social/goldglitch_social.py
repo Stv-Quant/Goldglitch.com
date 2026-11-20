@@ -166,7 +166,7 @@ def build(post: dict, facts: dict, ag: Agents, now: datetime, tag: str) -> dict:
         if h and k not in seen:
             seen.add(k)
             tags.append(h)
-    tx["hashtags"] = tags[:28]
+    tx["hashtags"] = tags[:30]
     # Tagged link so the web can tell which post brought each visit, account and payment.
     tx["fb"] = re.sub(r"https://easygoldglitch\.com(/[\w/-]*)?", lambda m: f"https://easygoldglitch.com{m.group(1) or '/'}?ref=fb_{tag}"[:120],
                       tx["fb"], count=1)
@@ -204,9 +204,12 @@ class SkipPiece(RuntimeError):
 
 
 def caption(tx: dict, key: str) -> str:
-    """Instagram: up to 28 hashtags; TikTok: 8; Facebook: 6."""
+    """Instagram: 30 hashtags (its limit); TikTok: 10 (big + topic); Facebook: 8."""
     tags = list(tx.get("hashtags", []))
-    n = {"ig": 28, "tiktok": 8, "fb": 6}.get(key, 10)
+    if key == "tiktok":   # TikTok rewards a few broad tags first
+        big = [t for t in tags if t.lower() in ("fyp", "parati", "viral", "futbol", "football", "soccer")]
+        tags = big + [t for t in tags if t not in big]
+    n = {"ig": 30, "tiktok": 10, "fb": 8}.get(key, 10)
     return f"{tx[key]}\n\n{' '.join('#' + h for h in tags[:n])}".strip()
 
 

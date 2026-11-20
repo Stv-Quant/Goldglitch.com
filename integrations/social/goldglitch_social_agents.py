@@ -26,6 +26,19 @@ Reglas que nunca se rompen:
 - Contenido para mayores de 18 años.
 - Si mencionas resultados, muestra también los fallos: la transparencia es la marca."""
 
+VIRAL = """Psicología de contenido viral (úsala con honestidad, sin escasez falsa ni presión):
+- Gancho de curiosidad en la primera línea (bucle abierto): "El #1 nadie lo vio venir", "Quédate hasta el final".
+- Cuenta regresiva (#5 → #1): el pico al final mantiene la retención.
+- Prueba social real: el historial público (solo con los números dados).
+- Transparencia que genera confianza: mostrar también los fallos.
+- Compromiso: pedir una acción mínima y concreta: "comenta tu pick", "¿entra o no entra?", "1 o 2 en comentarios".
+- Guardados y compartidos (lo que más alcance orgánico da): "Guárdalo para el partido", "Mándaselo al parcero que
+  siempre dice que sabe de fútbol".
+- Identidad de comunidad: "los que leemos el fútbol con datos".
+- Series recurrentes con nombre fijo (ej. "Top 5 de las ligas grandes", "¿Entra o no entra?") para que la gente vuelva.
+- Gratis es un imán: "todas las probabilidades, gratis, en el enlace de la bio".
+- Español de Colombia, emojis con medida (1 por línea como máximo)."""
+
 BANNED = re.compile(r"\b(cuotas?|apuest\w*|apostar\w*|apostador\w*|stake|bank|fijas?|segur[oa]s?|garantiz\w*|"
                     r"gana(r|s)? (plata|dinero)|dinero f[aá]cil)\b", re.I)
 
@@ -113,6 +126,8 @@ Formato: {{"posts":[{{"type":"...","time":"HH:MM","angle":"...","topic":"..."}}]
         for _ in range(2):
             try:
                 out = self._json("Redactor", f"""Escribe los textos de esta publicación.
+{VIRAL}
+
 Tipo: {post['type']} — {POST_TYPES[post['type']]}
 Ángulo: {post.get('angle')}  Tema: {post.get('topic') or '—'}
 Gancho pedido por el comité de crecimiento: {post.get('hook') or '—'}
@@ -122,19 +137,21 @@ Datos (únicos números permitidos): {json.dumps(data, ensure_ascii=False)}
 Entrega:
 - cover_title: título de portada, máx. 38 caracteres.
 - cover_subtitle: subtítulo de portada, máx. 90 caracteres.
-- ig: texto para Instagram (máx. 900 caracteres, gancho en la primera línea, saltos de línea, termina invitando a
-  ver todas las estadísticas en el enlace de la bio).
+- ig: texto para Instagram (máx. 900 caracteres, gancho de curiosidad en la primera línea, saltos de línea, una pregunta
+  para comentar, un "guárdalo / mándaselo a…" y termina invitando a ver todo gratis en el enlace de la bio).
 - fb: texto para Facebook (máx. 700 caracteres, incluye https://easygoldglitch.com).
-- tiktok: texto corto para TikTok (máx. 150 caracteres).
-- hashtags: 18 a 24 hashtags sin '#' (mezcla: ligas y equipos de los datos, fútbol en español, estadística, temporada,
-  tendencias del fútbol latino; nada de apuestas, pronósticos de apuestas ni casas de apuestas).
+- tiktok: texto corto para TikTok (máx. 150 caracteres) con gancho y pregunta.
+- hashtags: 26 a 30 hashtags sin '#'. Mezcla en tres niveles: 8 grandes y en tendencia (futbol, football, soccer,
+  championsleague, premierleague, laliga, fyp, parati, viral), 12 medianos del tema (ligas, equipos, jugadores conocidos
+  de los datos, "futbolcolombiano", "futbollatino", "datosdefutbol") y 8 de nicho (estadística, probabilidad,
+  analisisdeportivo, goldglitch…). Nada de apuestas ni casas de apuestas.
 - reel_hook: texto de impacto para la primera pantalla del reel, máx. 26 caracteres, estilo viral (ej. "EL MODELO VIO ALGO 👀").
 - reel_sub: segunda línea del reel, máx. 40 caracteres.
 {"- edu_title (máx. 50 caracteres) y edu_body (3 a 5 frases cortas, una por línea) para la imagen." if post['type'] in TEXT_TYPES else ''}
 Formato JSON con esas claves.""", max_tokens=2000)
                 texts = [out.get(k, "") for k in ("cover_title", "cover_subtitle", "ig", "fb", "tiktok", "edu_title", "edu_body")]
                 if all(self.clean(t) is not None for t in texts) and out.get("ig") and out.get("fb"):
-                    out["hashtags"] = [h.strip("#").replace(" ", "") for h in out.get("hashtags", []) if self.clean(h)][:24]
+                    out["hashtags"] = [h.strip("#").replace(" ", "") for h in out.get("hashtags", []) if self.clean(h)][:30]
                     return {**fallback, **{k: v for k, v in out.items() if v}}
             except Exception:
                 continue
@@ -142,9 +159,10 @@ Formato JSON con esas claves.""", max_tokens=2000)
 
     @staticmethod
     def _fallback(post: dict, data: dict) -> dict:
-        tags = ["futbol", "estadistica", "datos", "probabilidad", "analisisdeportivo", "goldglitch", "futbolcolombiano",
-                "futbollatino", "futboleuropeo", "statsfutbol", "datosdefutbol", "golazo", "futbolcolombia", "ligabetplay",
-                "championsleague", "premierleague", "laliga", "seriea"]
+        tags = ["futbol", "football", "soccer", "fyp", "parati", "viral", "championsleague", "premierleague", "laliga",
+                "seriea", "bundesliga", "ligabetplay", "futbolcolombiano", "futbollatino", "futboleuropeo", "datosdefutbol",
+                "statsfutbol", "golazo", "futbolcolombia", "libertadores", "estadistica", "datos", "probabilidad",
+                "analisisdeportivo", "futbolconsdatos", "goldglitch", "goldglitchstats", "deportes"]
         if post["type"] == "resultados":
             won, n = data.get("won", 0), data.get("n", 0)
             t = f"Así le fue al modelo: {won} de {n}"
