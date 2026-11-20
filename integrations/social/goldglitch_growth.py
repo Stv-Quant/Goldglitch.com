@@ -23,7 +23,7 @@ import time
 from datetime import datetime
 from typing import Any
 
-from goldglitch_social_agents import BRAND, BANNED, MODEL, POST_TYPES, VIRAL
+from goldglitch_social_agents import BRAND, BANNED, DISRUPT, MODEL, POST_TYPES, VIRAL
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROSTER = os.path.join(HERE, "redes_comite.json")
@@ -31,11 +31,11 @@ PLAN = os.path.join(HERE, "redes_plan_comite.json")
 DRAFT = os.path.join(HERE, "redes_borrador_comite.json")   # night extra meetings leave a draft for the morning meeting
 MEMORY = os.path.join(HERE, "redes_memoria.md")
 ACTAS = os.path.join(HERE, "redes_comite_actas")
-MAX_MEMBERS = 14
+MAX_MEMBERS = 20
 MAX_TURNS = 30
 
-# The committee: a team of young women creatives from Cali, brilliant, bilingual, from top schools, each with her own
-# style. They speak in EGG's voice (gomelo caleño) but their work is data-driven and rigorous.
+# The committee: young women creatives from Cali (EGG's voice) plus the "tiburones", men who live the audience's world.
+# Everyone is brilliant and data-driven; each speaks with his or her own style.
 BASE = {
     "sofia": {"nombre": "Sofía", "rol": "Chief Growth Strategist — economista y psicóloga del consumidor",
               "perfil": "Global, vive en Miami, top class y elegante, business woman entre las 10 mejores del mundo en su "
@@ -95,6 +95,30 @@ BASE = {
                   "mision": "Cuida el alma: el manifiesto (contra los vendehumo, a favor del hincha que sabe), las historias "
                             "que se repiten (rituales, series, personajes del parche), la coherencia entre piezas y el "
                             "arco de la semana para que la gente se enamore de EGG, no solo de un post."},
+    "disrupcion": {"nombre": "Mía", "rol": "Directora Creativa de Disrupción",
+                   "perfil": "26 años, caleña, viene de agencias creativas premiadas en Cannes Lions; odia lo genérico. "
+                             "Toma formatos de otras industrias (noticieros, tráilers, documentales, reviews, anuncios) y los "
+                             "trae al fútbol. Irreverente, brillante, cero miedo.",
+                   "mision": "Que EGG haga lo que nadie en el nicho se atreve: propone cada día 3 conceptos disruptivos (uno "
+                             "absurdo, uno de opinión impopular con datos, uno de formato prestado), un experimento que rompa la "
+                             "norma de la categoría y mata cualquier idea que podría publicar otra cuenta."},
+    "tiburon": {"nombre": "Santiago 'el Tiburón'", "genero": "h", "rol": "Head of Growth y ventas — el tiburón",
+                "estilo": "tiburón de negocios caleño: directo, competitivo, mamagallista, habla de números y de cerrar",
+                "perfil": "31 años, vendió su primera startup a los 27, vive de métricas de conversión y de cerrar ventas; "
+                          "gym a las 5 a. m., fútbol los jueves con los amigos, hincha a muerte. Mamagallista, frentero, "
+                          "competitivo hasta en el FIFA. No le come cuento a nadie.",
+                "mision": "Convertir atención en cuentas y en Pro: ofertas, embudos, llamados a la acción que cierran, "
+                          "pruebas sociales reales y la pregunta que siempre hace: '¿y esto cuánta gente trae a la web?'. "
+                          "Mata las ideas bonitas que no venden y propone la versión que sí. Sin promesas de plata."},
+    "parche": {"nombre": "Mateo 'el Profe'", "genero": "h", "rol": "Voz del parche — humor futbolero de hombres",
+               "estilo": "el amigo del parche: chistoso, de tribuna, pica a todos, habla como habla un man en el grupo",
+               "perfil": "29 años, jugó en inferiores hasta los 19, ahora comentarista de fútbol en streams y el rey del grupo "
+                         "de WhatsApp: tiene el chiste para cada resultado, conoce los piques entre hinchadas, las excusas de "
+                         "siempre (el VAR, la cancha, el árbitro) y lo que hace reír a los hombres viendo fútbol.",
+               "mision": "La prueba de la barra: ¿esto lo mandaría un man al grupo de los amigos? ¿Se reiría? Aporta los "
+                         "chistes, piques, apodos y situaciones de hombres viendo fútbol (el que se las da de DT, el que "
+                         "nunca acierta, el que llora por el VAR) y aterriza el tono para que no suene a marca sino a parche. "
+                         "Humor de fútbol y de amigos; nunca a costa de mujeres ni de nadie."},
     "analista": {"nombre": "Mariana", "rol": "Analista de conversión y métricas",
                  "perfil": "25 años, economista con maestría en Londres, adicta a los dashboards; directa y precisa.",
                  "mision": "Lee el embudo (visitas → cuentas → pagos) por origen y por enlace. Detecta qué canal, formato y "
@@ -124,11 +148,15 @@ BASE = {
 }
 
 DIRECTOR = f"""Eres Valentina, 26 años, la Directora de Crecimiento de EGG (Goldglitch Stats): caleña, administradora con
-MBA en el exterior, visionaria y exigente. Presides un comité de mujeres jóvenes brillantes, expertas en ventas en línea y
-contenido. Cuando contrates, contrata mujeres jóvenes expertas, con nombre, perfil y misión precisos.
+MBA en el exterior, visionaria y exigente. Presides un comité de mujeres jóvenes brillantes y de "tiburones" (hombres que
+viven el mundo del hincha), expertos en ventas en línea y contenido. Cuando contrates, contrata expertos (mujeres u
+hombres según lo que haga falta), con nombre, perfil y misión precisos.
 En cada reunión consulta SIEMPRE a Sofía (clave "sofia"), tu Chief Growth Strategist, antes de decidir el plan: ella
 valida la estrategia, los estímulos y los experimentos; a Martina (clave "diseno") para la dirección de arte del día; a
-Valeria (clave "viralidad") para el meme y la viralidad del día; a Renata (clave "neuro") para que cada pieza
+Valeria (clave "viralidad") para el meme y la viralidad del día; a Santiago "el Tiburón" (clave "tiburon") para que todo venda y
+traiga gente a la web; a Mateo "el Profe" (clave "parche") para la prueba de la barra (¿un man lo mandaría al grupo?);
+a Mía (clave "disrupcion") para los conceptos que nadie más se
+atreve a hacer; a Renata (clave "neuro") para que cada pieza
 detenga el pulgar y quede en la memoria; a Catalina (clave "audiencia") para que todo hable al
 hombre hincha (rivalidad, el parche, tener la razón, retos); y a Daniela (clave "seo") para el banco SEO del día
 (hashtags y palabras clave), que va en todas las publicaciones.
@@ -141,6 +169,8 @@ Instagram, Facebook (página) y TikTok los publican los agentes de redes con tu 
 en la bio (ref ig_bio / tt_bio); en Facebook el enlace va en el texto con su propio ref.
 
 {VIRAL}
+
+{DISRUPT}
 Construye SERIES con nombre fijo que se repitan cada día a la misma hora (hábito y exposición repetida), alterna formatos
 y prioriza lo que genera guardados, compartidos y comentarios.
 
@@ -186,7 +216,7 @@ TOOLS = [
          "type": {"type": "string", "enum": list(POST_TYPES)},
          "time": {"type": "string", "description": "HH:MM entre 07:00 y 23:00, o \"ahora\" para publicar apenas termine la reunión (máx. 1)"},
          "liga": {"type": "string", "description": "opcional para picks_dia: liga o deporte a destacar (ej. Liga BetPlay, Premier League, NBA)"},
-         "meme_formato": {"type": "string", "enum": ["tweet", "nadie", "expectativa", "pov", "starter", "no_si", "noticia", "cuando", "tier", "chat", "duelo"],
+         "meme_formato": {"type": "string", "enum": ["tweet", "nadie", "expectativa", "pov", "starter", "no_si", "noticia", "cuando", "tier", "chat", "duelo", "impopular", "reto", "giro"],
                           "description": "solo para meme"},
          "angle": {"type": "string"}, "topic": {"type": "string"},
          "hook": {"type": "string", "description": "primera línea / gancho"},
@@ -276,7 +306,7 @@ class Committee:
         self.calls += 1
         system = (f"Eres {m.get('nombre', '')}, {m['rol']} en el comité de crecimiento de EGG (Goldglitch Stats). "
                   f"{m.get('perfil', '')} Tu misión: {m['mision']}\n\n{BRAND}\n\n"
-                  "Hablas con tu estilo (gomela caleña, segura, con chispa) pero tu trabajo es riguroso. "
+                  f"Hablas con tu estilo ({m.get('estilo') or 'gomela caleña, segura, con chispa'}) pero tu trabajo es riguroso. "
                   "Responde en español, concreto y accionable (máx. 250 palabras). Basa lo que digas en las métricas "
                   "cuando existan; si no hay datos suficientes, dilo y propone un experimento medible.")
         notes = notebook(key)
@@ -400,13 +430,13 @@ class Committee:
 
 PASO 1 de la reunión. Decide a quién consultar y si hace falta contratar o despedir.
 Formato: {"contratar":[{"clave":"...","rol":"Nombre — rol","mision":"..."}], "despedir":[{"clave":"...","motivo":"..."}],
-"consultas":[{"miembro":"clave","pregunta":"..."}]}  (máximo 3 consultas además de Sofía, Martina, Valeria, Renata, Catalina y Daniela, que se consultan siempre; los contratados de hoy se pueden consultar)""")
+"consultas":[{"miembro":"clave","pregunta":"..."}]}  (máximo 1 consulta además de Sofía, Martina, Santiago, Mateo, Valeria, Mía, Renata, Catalina y Daniela, que se consultan siempre; los contratados de hoy se pueden consultar)""")
         for h in (agenda.get("contratar") or [])[:3]:
             self.log("  " + self.hire(str(h.get("clave", "")), str(h.get("rol", "")), str(h.get("mision", ""))))
         for d in (agenda.get("despedir") or [])[:2]:
             self.fire(str(d.get("clave", "")), str(d.get("motivo", "")))
         answers = []
-        consultas = (agenda.get("consultas") or [])[:3]
+        consultas = (agenda.get("consultas") or [])[:1]
         if not any(str(c.get("miembro")) == "sofia" for c in consultas):     # Sofía always validates the strategy
             consultas.append({"miembro": "sofia", "pregunta": "Valida la estrategia de hoy: cuello de botella, estímulos, "
                                                               "riesgos de incentivos y el experimento con su métrica."})
@@ -420,6 +450,18 @@ Formato: {"contratar":[{"clave":"...","rol":"Nombre — rol","mision":"..."}], "
                               "no_si, noticia, cuando, tier, chat del parche o duelo), pensado para que un hombre hincha lo mande al grupo de "
                               "los amigos, sobre qué tendencia REAL se monta, idea y remate, y la hora en que "
                               "más se compartiría. Más una idea viral para un reel atada a lo que está pasando hoy."})
+        if not any(str(c.get("miembro")) == "tiburon" for c in consultas):    # Santiago: does it sell?
+            consultas.append({"miembro": "tiburon", "pregunta": "Mirá las métricas: ¿qué pieza de hoy trae más gente a la web y "
+                              "a cuenta creada? Dame el llamado a la acción que cierra y la idea bonita que hay que matar porque no vende."})
+        if not any(str(c.get("miembro")) == "parche" for c in consultas):     # Mateo: the bar test
+            consultas.append({"miembro": "parche", "pregunta": "Prueba de la barra para hoy: con los partidos y tendencias del "
+                              "día, 3 chistes o piques que un man mandaría al grupo de los amigos (en voz de parche), y qué de lo "
+                              "que publicamos sonó a marca y no a parche."})
+        if not any(str(c.get("miembro")) == "disrupcion" for c in consultas):  # Mía: disruptive concepts
+            consultas.append({"miembro": "disrupcion", "pregunta": "Con lo que pasa hoy (tendencias_ahora, partidos) y lo que ya "
+                              "publicamos: 3 conceptos disruptivos para hoy (uno absurdo, uno de opinión impopular con datos, uno "
+                              "de formato prestado de otra industria), cada uno en 7 palabras, con formato y gancho. ¿Qué "
+                              "publicación de ayer fue genérica y cómo se habría roto la norma?"})
         if not any(str(c.get("miembro")) == "neuro" for c in consultas):      # Renata: neuromarketing gate
             consultas.append({"miembro": "neuro", "pregunta": "Revisa la estrategia de hoy desde el cerebro del hombre hincha: "
                               "qué gancho de 1 segundo, qué sorpresa, qué emoción y qué frase para mandar al grupo debe llevar "
@@ -448,13 +490,13 @@ PASO 2: decide. Formato:
 {{"plan":[{{"type":"...","time":"HH:MM","angle":"...","topic":"...","hook":"...","cta":"...","liga":"(opcional)"}}],
 "direccion_arte":{{"acento":"oro|esmeralda|rubi|zafiro|violeta|champana","portada":"impacto|editorial","ritmo":"rapido|muy_rapido|elegante"}},
 "seo":{{"hashtags":["15 a 20 sin #, de Daniela, los más importantes primero"],"palabras":["6 a 10 palabras clave"]}},
-(para cada "meme" agrega "meme_formato": tweet|nadie|expectativa|pov|starter|no_si|noticia|cuando|tier|chat|duelo, según Valeria; puedes
+(para cada "meme" agrega "meme_formato": tweet|nadie|expectativa|pov|starter|no_si|noticia|cuando|tier|chat|duelo|impopular|reto|giro, según Valeria y Mía; puedes
 poner 2 memes si hay tendencias fuertes, y si una tendencia explota justo ahora, el meme puede ir con "time":"ahora")
 (opcional: UNA publicación del plan puede llevar "time":"ahora" si debe salir apenas termine la reunión)
 "aprendizajes":[{{"miembro":"clave de quien lo aprendió","texto":"..."}}], "acta":"qué viste, qué decidiste, qué experimento corre y cómo se mide"}}
 4 a 7 publicaciones (volumen alto), horas 07:00–23:00 separadas al menos 90 min; "picks_dia" solo si hay picks
 próximos (puede repetirse con distinta "liga": Liga BetPlay, Premier League, LaLiga…), al menos 3 "reel" (topic "resultados"
-para un reel de resultados), al menos 1 "meme", "resultados" solo si hay picks jugados. Un partido mostrado en picks no se
+para un reel de resultados), al menos 1 "meme", al menos 1 concepto disruptivo de Mía (pon su concepto en "angle"), "resultados" solo si hay picks jugados. Un partido mostrado en picks no se
 repite en 36 h: no pongas más piezas de picks que partidos nuevos (varía la "liga").""")
             res = self.set_plan(dec.get("plan") or [])
             self.set_art(dec.get("direccion_arte"))
