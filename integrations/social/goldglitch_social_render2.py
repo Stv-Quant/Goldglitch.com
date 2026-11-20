@@ -380,7 +380,7 @@ def reel_script(kind: str, rows: list[dict], tx: dict, when_fn, record: dict | N
     f: list[tuple[str, float, str]] = []
     rate = _rate(record)
     if kind in ("picks_dia", "reel") and rows:
-        f.append((reel_frame(tx.get("reel_hook") or "MOR, MIRÁ ESTO 👀", tx.get("reel_sub") or "o sea… quédate hasta el #1",
+        f.append((reel_frame(tx.get("reel_hook") or "MIRÁ ESTO 👀", tx.get("reel_sub") or "o sea… quédate hasta el #1",
                              kicker=f"Top {len(rows)} · ligas grandes"), 1.3, "punch"))
         if rate:
             f.append((reel_frame(f"{rate[0]}/{rate[1]}", f"picks de 75%+ acertados ({rate[2]}%) · fallos incluidos",
