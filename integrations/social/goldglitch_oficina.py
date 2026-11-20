@@ -36,6 +36,9 @@ def esc(s) -> str:
 
 
 # ------------------------------------------------------------------ pixel sprites
+SPRITE_M = ["....HHHH....", "...HHHHHH...", "...HSSSSH...", "...SESSES...", "...SSSSSS...", "...SSMMSS...",
+            ".....SS.....", "..TTTTTTTT..", ".TTTTTTTTTT.", ".STTTTTTTTS.", ".S.TTTTTT.S.", "...PPPPPP...",
+            "...PP..PP...", "...PP..PP...", "...KK..KK..."]
 SPRITE = ["....HHHH....", "...HHHHHH...", "..HHSSSSHH..", "..HSESSESH..", "..HSSSSSSH..", "..HHSMMSHH..",
           "..HH.SS.HH..", "..HTTTTTTH..", "..TTTTTTTT..", ".STTTTTTTTS.", ".S.TTTTTT.S.", "...PPPPPP...",
           "...PP..PP...", "...PP..PP...", "...KK..KK..."]
@@ -46,15 +49,16 @@ LOOKS = {  # hair, skin, top, pants
     "video": ("#0d0d0d", "#c98c63", "#ef4444", "#0f172a"), "comunidad": ("#7a4a2a", "#efc3a0", "#22c55e", "#334155"),
     "marca": ("#1a1a1a", "#e6b896", "#0f766e", "#111827"), "viralidad": ("#b8325a", "#f0c4a2", "#f59e0b", "#1f2937"),
     "seo": ("#2e1b10", "#d29a74", "#6366f1", "#18181b"), "audiencia": ("#4b2e1c", "#c98e66", "#16a34a", "#1c1917"),
-    "neuro": ("#101010", "#e2ad88", "#06b6d4", "#0b1220"), "narrativa": ("#8a5a33", "#f2cfb3", "#be185d", "#27272a"),
+    "tiburon": ("#151515", "#c98a62", "#1e3a8a", "#0a0a0a"), "parche": ("#3b2416", "#b97a52", "#16a34a", "#1e293b"),
+    "neuro": ("#101010", "#e2ad88", "#06b6d4", "#0b1220"), "disrupcion": ("#7c3aed", "#e8b691", "#facc15", "#111111"), "narrativa": ("#8a5a33", "#f2cfb3", "#be185d", "#27272a"),
 }
 
 
-def sprite(key: str, scale: int = 4) -> str:
+def sprite(key: str, scale: int = 4, male: bool = False) -> str:
     hair, skin, top, pants = LOOKS.get(key) or ("#3b2a1f", "#e0aa84", f"hsl({sum(map(ord, key)) * 37 % 360},70%,55%)", "#1f2937")
     col = {"H": hair, "S": skin, "E": "#1b1b1b", "M": "#c2566b", "T": top, "P": pants, "K": "#0b0b0b"}
     rects = "".join(f"<rect x='{x}' y='{y}' width='1' height='1' fill='{col[c]}'/>"
-                    for y, row in enumerate(SPRITE) for x, c in enumerate(row) if c in col)
+                    for y, row in enumerate(SPRITE_M if male else SPRITE) for x, c in enumerate(row) if c in col)
     return (f"<svg class='spr' width='{12 * scale}' height='{15 * scale}' viewBox='0 0 12 15' shape-rendering='crispEdges'>"
             f"{rects}</svg>")
 
@@ -100,8 +104,8 @@ def roster() -> dict:
 
 
 ROOMS = {  # where each member sits
-    "direccion": ["sofia"], "datos": ["analista", "seo", "viralidad", "audiencia"],
-    "estudio": ["diseno", "video", "copy", "neuro", "narrativa"], "juntas": ["marca", "comunidad", "viral"],
+    "direccion": ["sofia", "tiburon"], "datos": ["analista", "seo", "viralidad", "audiencia"],
+    "estudio": ["disrupcion", "diseno", "video", "copy", "neuro", "narrativa"], "juntas": ["parche", "marca", "comunidad", "viral"],
 }
 
 
@@ -115,7 +119,7 @@ def person(key: str, m: dict, st: dict, now: datetime) -> str:
             pass
     bubble = (f"<div class='bubble{' live' if fresh else ''}'><b>{esc(t[11:])}</b> {esc(said[:110])}…</div>" if said
               else "<div class='bubble'>en su escritorio ✨</div>")
-    return (f"<div class='person{' talking' if fresh else ''}' title='{esc(m.get('rol'))}'>{bubble}{sprite(key)}"
+    return (f"<div class='person{' talking' if fresh else ''}' title='{esc(m.get('rol'))}'>{bubble}{sprite(key, male=m.get('genero') == 'h')}"
             f"<div class='tag'>{esc(m.get('nombre') or key)}<small>{esc((m.get('rol') or '')[:38])}</small></div></div>")
 
 

@@ -387,6 +387,24 @@ def meme(fmt: str, m: dict, w: int, h: int) -> str:
         body = (f"<div style='margin:auto 0;display:flex;gap:22px;align-items:stretch'>{side(m.get('izquierda') or 'Tu amigo', m.get('izq_texto') or '', '#9a9384', '🗣️')}"
                 f"<div class='anton' style='align-self:center;font-size:70px;color:#d4af37'>VS</div>"
                 f"{side(m.get('derecha') or 'Vos con datos', m.get('der_texto') or '', '#d4af37', '📊')}</div>")
+    elif fmt == "impopular":
+        body = (f"<div style='margin:auto 0'><div class='chip' style='border:2px solid #ff4d6d;color:#ff4d6d'>🌶️ Opinión impopular</div>"
+                f"<div class='anton' style='font-size:{int(w * .08)}px;line-height:1.05;margin-top:34px'>{esc(m.get('opinion') or '')}</div>"
+                f"<div style='margin-top:40px;display:flex;gap:16px;align-items:center;font-size:{int(w * .042)}px;color:#cfc6b2'>"
+                f"<span style='font-size:{int(w * .08)}px'>📊</span>{esc(m.get('dato') or '')}</div>"
+                f"<div style='margin-top:34px;font-size:30px;color:#d4af37;font-weight:800'>¿De acuerdo o te dolió? 👇</div></div>")
+    elif fmt == "reto":
+        qs = "".join(f"<div style='background:#0e0c09;border:2px solid #2a261f;border-radius:26px;padding:22px 28px;margin-top:18px;"
+                     f"font-size:{int(w * .04)}px;font-weight:700'><span style='color:#d4af37'>{i + 1}.</span> {esc(q)}</div>"
+                     for i, q in enumerate((m.get("opciones") or [])[:3]))
+        body = (f"<div style='margin:auto 0'><div class='chip' style='border:2px solid #00f0a0;color:#00f0a0'>🏆 Reto</div>"
+                f"<div class='anton gold' style='font-size:{int(w * .085)}px;line-height:1;margin-top:26px'>{esc(m.get('titulo') or '')}</div>{qs}"
+                f"<div style='margin-top:26px;font-size:28px;color:#cfc6b2'>Respuestas en comentarios · etiquetá al que se cree DT</div></div>")
+    elif fmt == "giro":
+        body = (f"<div style='margin:auto 0'><div style='font-size:{int(w * .062)}px;font-weight:800;line-height:1.25'>{esc(m.get('setup') or '')}</div>"
+                f"<div style='margin:46px 0 20px;height:6px;background:repeating-linear-gradient(90deg,#ff2d55 0 30px,#00e5ff 30px 60px)'></div>"
+                f"<div class='chip' style='border:2px solid #00e5ff;color:#00e5ff'>Plot twist</div>"
+                f"<div class='anton gold' style='font-size:{int(w * .08)}px;line-height:1.05;margin-top:24px'>{esc(m.get('giro') or '')}</div></div>")
     else:  # no_si
         row = lambda e, txt, c: (f"<div style='display:flex;align-items:center;gap:34px;padding:40px 0;border-top:2px solid #2a261f'>"
                                  f"<div style='font-size:{int(w * .13)}px'>{e}</div><div style='font-size:{int(w * .058)}px;font-weight:800;"
@@ -408,6 +426,12 @@ def meme_lines(fmt: str, m: dict) -> list[tuple[str, str]]:
         return [(m.get("titulo") or "STARTER PACK", "")] + [(str(x), "") for x in (m.get("items") or [])[:5]]
     if fmt == "no_si":
         return [("🙅‍♀️", m.get("no") or ""), ("💅", m.get("si") or "")]
+    if fmt == "impopular":
+        return [("🌶️ OPINIÓN IMPOPULAR", ""), (m.get("opinion") or "", ""), ("📊", m.get("dato") or ""), ("¿TE DOLIÓ?", "comentá 👇")]
+    if fmt == "reto":
+        return [(m.get("titulo") or "RETO", "")] + [(str(q), f"{i + 1}/3") for i, q in enumerate((m.get("opciones") or [])[:3])]
+    if fmt == "giro":
+        return [(m.get("setup") or "", ""), ("PLOT TWIST", ""), (m.get("giro") or "", "")]
     if fmt == "chat":
         return [(m.get("grupo") or "EL PARCHE ⚽", "")] + [(str(x.get("texto") or ""), str(x.get("de") or ""))
                                                          for x in (m.get("mensajes") or []) if isinstance(x, dict)][:5]

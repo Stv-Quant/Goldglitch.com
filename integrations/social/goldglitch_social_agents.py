@@ -14,6 +14,21 @@ import os
 import re
 
 MODEL = os.environ.get("SOCIAL_MODEL", "claude-haiku-5-5")
+IDEAS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "redes_ideas.json")   # recent concepts: never repeat
+
+DISRUPT = """DISRUPCIÓN CREATIVA (lo que separa lo viral de lo olvidable):
+- Rompe la norma de la categoría: las cuentas de fútbol publican capturas, tablas y "fijas"; EGG hace lo que nadie hace
+  en el nicho (formatos de otras industrias llevados al fútbol: noticiero, tráiler de película, chat, documental de
+  naturaleza narrando a un hincha, review de restaurante de un partido, horóscopo del fin de semana con datos,
+  "unboxing" de un clásico, anuncio de aeropuerto, comparación absurda pero exacta).
+- Una idea, no un post: cada pieza tiene un CONCEPTO que se pueda contar en 7 palabras y que dé ganas de copiar.
+- Giro inesperado: la línea 1 promete una cosa y la última la voltea (plot twist con datos reales).
+- Opinión impopular con datos: decir lo que el parche no quiere oír, respaldado por los números dados.
+- Retos y participación: "si acertás estos 3, sos DT", "etiquetá al que dijo que…".
+- Auto-ironía de marca: EGG se ríe de sus propios fallos (también son datos).
+- Valentía con límite: provocar a la discusión futbolera sí; ofender personas, grupos o mentir, nunca.
+- Prohibido lo genérico: "los mejores picks de hoy", "no te lo pierdas", "increíble" y cualquier frase que podría
+  publicar cualquier cuenta. Si podría ser de otro, reescríbelo."""
 
 BRAND = """Goldglitch Stats (easygoldglitch.com) es una plataforma colombiana de estadística deportiva: un modelo
 calcula probabilidades de partidos (fútbol, NBA, NHL, e-sports) y publica un historial público de aciertos y fallos.
@@ -110,6 +125,9 @@ MEME_FORMATS = {
     "tier": '{"titulo": "Tier list de… (máx. 40)", "S": ["1 a 3 ítems cortos"], "A": ["…"], "B": ["…"]}',
     "chat": '{"grupo": "nombre del grupo de amigos (máx. 30, ej. \'Fútbol los jueves ⚽\')", '
             '"mensajes": [{"de": "nombre de pila", "texto": "máx. 70"}, "… 3 a 5 mensajes; el último es de EGG con el dato"]}',
+    "impopular": '{"opinion": "Opinión impopular: … (máx. 90, respaldada por los datos dados)", "dato": "el dato que la respalda (máx. 70)"}',
+    "reto": '{"titulo": "el reto (máx. 50, ej. \'Si acertás estos 3 sos DT\')", "opciones": ["3 preguntas cortas de fútbol con 2 opciones cada una"]}',
+    "giro": '{"setup": "la promesa / situación (máx. 90)", "giro": "el plot twist con un dato real (máx. 90)"}',
     "duelo": '{"izquierda": "Tu amigo / el parche (máx. 18)", "izq_texto": "lo que dice (máx. 60)", '
              '"derecha": "Vos con datos / EGG (máx. 18)", "der_texto": "lo que dice (máx. 60)"}',
 }   # one text card (+ CTA in the vertical version)
@@ -187,8 +205,14 @@ Formato: {{"posts":[{{"type":"...","time":"HH:MM","angle":"...","topic":"..."}}]
             return fallback
         for _ in range(2):
             try:
+                recent = self.recent_ideas()
                 out = self._json("Redactor", f"""Escribe los textos de esta publicación.
 {VIRAL}
+{DISRUPT}
+
+ANTES de escribir, piensa en silencio 5 conceptos radicalmente distintos (uno absurdo, uno de opinión impopular, uno de
+formato prestado de otra industria, uno de reto al público y uno emocional) y elige el MÁS disruptivo que respete las
+reglas. Conceptos ya usados (no repitas ni te parezcas): {json.dumps(recent, ensure_ascii=False) if recent else '—'}
 
 Tipo: {post['type']} — {POST_TYPES[post['type']]}
 Ángulo: {post.get('angle')}  Tema: {post.get('topic') or '—'}
@@ -215,6 +239,7 @@ Entrega:
 {"Si en los datos hay tendencias_del_momento, monta el gancho y el texto sobre la que más pegue con esta pieza (sin inventar hechos)." if data.get("tendencias_del_momento") and post['type'] != 'meme' else ''}
 {self._seo_ask(post)}
 No escribas hashtags dentro de ig, fb ni tiktok (van aparte) y no uses "#" para numerar: escribe "Nº1" o "el 1".
+- concepto: el concepto elegido en máx. 7 palabras.
 Formato JSON con esas claves.""", max_tokens=2000)
                 texts = [out.get(k, "") for k in ("cover_title", "cover_subtitle", "ig", "fb", "tiktok", "edu_title", "edu_body")]
                 texts.append(json.dumps(out.get("meme") or {}, ensure_ascii=False))
@@ -224,10 +249,28 @@ Formato JSON con esas claves.""", max_tokens=2000)
                         if isinstance(v, str):
                             v = re.sub(r"(^|\n)\s*[Mm][Oo][Rr]\b[,!.]?\s*(\w)", lambda m: m.group(1) + m.group(2).upper(), v)
                             out[k] = re.sub(r"\b[Mm][Oo][Rr]\b[,!]?\s*", "", v)
-                    return self.polish(post, data, {**fallback, **{k: v for k, v in out.items() if v}})
+                    final = self.polish(post, data, {**fallback, **{k: v for k, v in out.items() if v}})
+                    self.remember_idea(final)
+                    return final
             except Exception:
                 continue
         return fallback
+
+    @staticmethod
+    def recent_ideas() -> list[str]:
+        try:
+            return json.load(open(IDEAS, encoding="utf-8"))[-25:]
+        except (OSError, ValueError):
+            return []
+
+    def remember_idea(self, tx: dict) -> None:
+        idea = " · ".join(str(tx.get(k) or "") for k in ("concepto", "reel_hook", "cover_title") if tx.get(k))[:160]
+        if idea:
+            try:
+                with open(IDEAS, "w", encoding="utf-8") as f:
+                    json.dump((self.recent_ideas() + [idea])[-40:], f, ensure_ascii=False)
+            except OSError:
+                pass
 
     # ------------------------------------------------------------ Jefa de copy + neuromarketing (control de calidad)
     def polish(self, post: dict, data: dict, tx: dict) -> dict:
@@ -243,8 +286,10 @@ Tipo: {post['type']} · Ángulo: {post.get('angle')}
 Datos (únicos números permitidos): {json.dumps(data, ensure_ascii=False)[:3000]}
 Pieza: {json.dumps({k: tx[k] for k in keys}, ensure_ascii=False)}
 
-Califica de 1 a 10: gancho del primer segundo, relevancia para el hombre hincha, emoción/alma, claridad, moneda social
-(¿lo mandaría al grupo?), llamado a la acción, voz EGG y reglas de marca. Si algo está por debajo de 9, REESCRIBE esas
+{DISRUPT}
+Califica de 1 a 10: gancho del primer segundo, DISRUPCIÓN (¿algo que nadie en el nicho haría? ¿o es genérico?),
+relevancia para el hombre hincha, emoción/alma, claridad, moneda social (¿lo mandaría al grupo?), llamado a la acción,
+voz EGG y reglas de marca. Si algo está por debajo de 9, REESCRIBE esas
 claves para subirlo (mismos límites de largo, mismos datos, sin hashtags dentro del texto, sin "#" para numerar).
 Formato: {{"puntajes":{{...}}, "mejorado":{{solo las claves que reescribiste}}}}""", max_tokens=2000)
             better = out.get("mejorado") or {}
