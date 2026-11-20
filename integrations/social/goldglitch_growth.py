@@ -73,6 +73,14 @@ BASE = {
                       "explica el deseo detrás de cada búsqueda para que los ganchos hablen a ese deseo con ética (sin "
                       "explotar ansiedad ni prometer nada). Cuida que los textos lleven las palabras clave en la primera "
                       "línea y que nunca falten los hashtags."},
+    "audiencia": {"nombre": "Catalina", "rol": "Insights de audiencia masculina y cultura futbolera",
+                  "perfil": "27 años, socióloga y antropóloga del consumo, creció entre hermanos y primos en la tribuna del "
+                            "Pascual y en la cancha del club; conoce el parche, el grupo de WhatsApp del fútbol, los piques entre "
+                            "hinchadas y cómo hablan los hombres de 18 a 40 cuando nadie los ve. Divertida, frentera.",
+                  "mision": "Que cada pieza conecte en serio con el hombre hincha: rivalidad, orgullo, tener la razón en el parche, "
+                            "retos entre amigos, el ritual del partido, estatus. Propone los piques, retos y situaciones del día "
+                            "que harían que un hombre comente, etiquete al amigo y lo mande al grupo. Cuida el límite: humor "
+                            "sobre fútbol y amigos, nunca denigrar a las mujeres ni a nadie."},
     "analista": {"nombre": "Mariana", "rol": "Analista de conversión y métricas",
                  "perfil": "25 años, economista con maestría en Londres, adicta a los dashboards; directa y precisa.",
                  "mision": "Lee el embudo (visitas → cuentas → pagos) por origen y por enlace. Detecta qué canal, formato y "
@@ -106,7 +114,8 @@ MBA en el exterior, visionaria y exigente. Presides un comité de mujeres jóven
 contenido. Cuando contrates, contrata mujeres jóvenes expertas, con nombre, perfil y misión precisos.
 En cada reunión consulta SIEMPRE a Sofía (clave "sofia"), tu Chief Growth Strategist, antes de decidir el plan: ella
 valida la estrategia, los estímulos y los experimentos; a Martina (clave "diseno") para la dirección de arte del día; a
-Valeria (clave "viralidad") para el meme y la viralidad del día; y a Daniela (clave "seo") para el banco SEO del día
+Valeria (clave "viralidad") para el meme y la viralidad del día; a Catalina (clave "audiencia") para que todo hable al
+hombre hincha (rivalidad, el parche, tener la razón, retos); y a Daniela (clave "seo") para el banco SEO del día
 (hashtags y palabras clave), que va en todas las publicaciones.
 Objetivo: crecimiento ORGÁNICO y viral (sin pauta pagada) que se convierta en cuentas creadas y en suscripciones Pro/Elite.
 
@@ -162,7 +171,7 @@ TOOLS = [
          "type": {"type": "string", "enum": list(POST_TYPES)},
          "time": {"type": "string", "description": "HH:MM entre 07:00 y 23:00, o \"ahora\" para publicar apenas termine la reunión (máx. 1)"},
          "liga": {"type": "string", "description": "opcional para picks_dia: liga o deporte a destacar (ej. Liga BetPlay, Premier League, NBA)"},
-         "meme_formato": {"type": "string", "enum": ["tweet", "nadie", "expectativa", "pov", "starter", "no_si", "noticia", "cuando", "tier"],
+         "meme_formato": {"type": "string", "enum": ["tweet", "nadie", "expectativa", "pov", "starter", "no_si", "noticia", "cuando", "tier", "chat", "duelo"],
                           "description": "solo para meme"},
          "angle": {"type": "string"}, "topic": {"type": "string"},
          "hook": {"type": "string", "description": "primera línea / gancho"},
@@ -372,13 +381,13 @@ class Committee:
 
 PASO 1 de la reunión. Decide a quién consultar y si hace falta contratar o despedir.
 Formato: {"contratar":[{"clave":"...","rol":"Nombre — rol","mision":"..."}], "despedir":[{"clave":"...","motivo":"..."}],
-"consultas":[{"miembro":"clave","pregunta":"..."}]}  (máximo 6 consultas; los contratados de hoy se pueden consultar)""")
+"consultas":[{"miembro":"clave","pregunta":"..."}]}  (máximo 4 consultas además de Sofía, Martina, Valeria, Catalina y Daniela, que se consultan siempre; los contratados de hoy se pueden consultar)""")
         for h in (agenda.get("contratar") or [])[:3]:
             self.log("  " + self.hire(str(h.get("clave", "")), str(h.get("rol", "")), str(h.get("mision", ""))))
         for d in (agenda.get("despedir") or [])[:2]:
             self.fire(str(d.get("clave", "")), str(d.get("motivo", "")))
         answers = []
-        consultas = (agenda.get("consultas") or [])[:6]
+        consultas = (agenda.get("consultas") or [])[:4]
         if not any(str(c.get("miembro")) == "sofia" for c in consultas):     # Sofía always validates the strategy
             consultas.append({"miembro": "sofia", "pregunta": "Valida la estrategia de hoy: cuello de botella, estímulos, "
                                                               "riesgos de incentivos y el experimento con su métrica."})
@@ -389,8 +398,13 @@ Formato: {"contratar":[{"clave":"...","rol":"Nombre — rol","mision":"..."}], "
         if not any(str(c.get("miembro")) == "viralidad" for c in consultas):  # Valeria: the meme of the day
             consultas.append({"miembro": "viralidad", "pregunta": "Mira tendencias_ahora (búsquedas en tendencia, titulares de "
                               "fútbol y hashtags de TikTok). El meme de hoy: formato (tweet, nadie, expectativa, pov, starter, "
-                              "no_si, noticia, cuando o tier), sobre qué tendencia REAL se monta, idea y remate, y la hora en que "
+                              "no_si, noticia, cuando, tier, chat del parche o duelo), pensado para que un hombre hincha lo mande al grupo de "
+                              "los amigos, sobre qué tendencia REAL se monta, idea y remate, y la hora en que "
                               "más se compartiría. Más una idea viral para un reel atada a lo que está pasando hoy."})
+        if not any(str(c.get("miembro")) == "audiencia" for c in consultas):  # Catalina: the male fan audience
+            consultas.append({"miembro": "audiencia", "pregunta": "Con lo que pasa hoy en el fútbol (tendencias_ahora y los "
+                              "partidos): ¿qué pique, reto o situación del parche haría que un hombre hincha comente, etiquete "
+                              "al amigo y lo mande al grupo? Da 3 ganchos concretos en voz EGG."})
         if not any(str(c.get("miembro")) == "seo" for c in consultas):        # Daniela: the SEO bank of the day
             consultas.append({"miembro": "seo", "pregunta": "Banco SEO de hoy, usando tendencias_ahora (búsquedas en tendencia "
                               "y hashtags de TikTok de esta semana): 15 a 20 hashtags (grandes, medianos y de nicho, "
@@ -411,7 +425,7 @@ PASO 2: decide. Formato:
 {{"plan":[{{"type":"...","time":"HH:MM","angle":"...","topic":"...","hook":"...","cta":"...","liga":"(opcional)"}}],
 "direccion_arte":{{"acento":"oro|esmeralda|rubi|zafiro|violeta|champana","portada":"impacto|editorial","ritmo":"rapido|muy_rapido|elegante"}},
 "seo":{{"hashtags":["15 a 20 sin #, de Daniela, los más importantes primero"],"palabras":["6 a 10 palabras clave"]}},
-(para cada "meme" agrega "meme_formato": tweet|nadie|expectativa|pov|starter|no_si|noticia|cuando|tier, según Valeria; puedes
+(para cada "meme" agrega "meme_formato": tweet|nadie|expectativa|pov|starter|no_si|noticia|cuando|tier|chat|duelo, según Valeria; puedes
 poner 2 memes si hay tendencias fuertes, y si una tendencia explota justo ahora, el meme puede ir con "time":"ahora")
 (opcional: UNA publicación del plan puede llevar "time":"ahora" si debe salir apenas termine la reunión)
 "aprendizajes":["..."], "acta":"qué viste, qué decidiste, qué experimento corre y cómo se mide"}}

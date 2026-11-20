@@ -368,6 +368,25 @@ def meme(fmt: str, m: dict, w: int, h: int) -> str:
                            f"<div style='font-size:{int(w * .036)}px;font-weight:700;background:#1b1813;border-radius:14px;padding:10px 18px'>{esc(x)}</div>"
                            for x in (m.get(k) or [])[:3]) + "</div></div>" for k, c in colors.items())
         body = f"<div style='margin:auto 0'><div class='anton' style='font-size:{int(w * .08)}px;line-height:1'>{esc(m.get('titulo') or 'Tier list')}</div>{rows}</div>"
+    elif fmt == "chat":
+        msgs = [x for x in (m.get("mensajes") or []) if isinstance(x, dict)][:5]
+        bubbles = "".join(
+            (f"<div style='align-self:flex-end;max-width:80%;background:#d4af37;color:#050403;border-radius:30px 30px 6px 30px;padding:22px 30px'>"
+             f"<div style='font-size:24px;font-weight:800;opacity:.7'>EGG 💅</div><div style='font-size:{int(w * .042)}px;font-weight:700;line-height:1.25'>{esc(x.get('texto') or '')}</div></div>")
+            if i == len(msgs) - 1 else
+            (f"<div style='align-self:flex-start;max-width:80%;background:#1b1813;border:2px solid #2a261f;border-radius:30px 30px 30px 6px;padding:22px 30px'>"
+             f"<div style='font-size:24px;font-weight:800;color:{('#00e5ff', '#ff8a3d', '#a78bfa', '#00f0a0')[i % 4]}'>{esc(x.get('de') or 'Parce')}</div>"
+             f"<div style='font-size:{int(w * .04)}px;line-height:1.25'>{esc(x.get('texto') or '')}</div></div>")
+            for i, x in enumerate(msgs))
+        body = (f"<div style='margin:auto 0;display:flex;flex-direction:column;gap:18px'>"
+                f"<div style='text-align:center;font-size:30px;font-weight:800;color:#cfc6b2;margin-bottom:10px'>👥 {esc(m.get('grupo') or 'El parche ⚽')}</div>{bubbles}</div>")
+    elif fmt == "duelo":
+        side = lambda who, txt, c, e: (f"<div style='flex:1;border:2px solid {c}66;background:{c}12;border-radius:34px;padding:34px 30px;text-align:center'>"
+                                       f"<div style='font-size:{int(w * .12)}px'>{e}</div><div class='anton' style='font-size:{int(w * .05)}px;color:{c};margin-top:10px'>{esc(who)}</div>"
+                                       f"<div style='font-size:{int(w * .038)}px;font-weight:700;line-height:1.25;margin-top:18px'>{esc(txt)}</div></div>")
+        body = (f"<div style='margin:auto 0;display:flex;gap:22px;align-items:stretch'>{side(m.get('izquierda') or 'Tu amigo', m.get('izq_texto') or '', '#9a9384', '🗣️')}"
+                f"<div class='anton' style='align-self:center;font-size:70px;color:#d4af37'>VS</div>"
+                f"{side(m.get('derecha') or 'Vos con datos', m.get('der_texto') or '', '#d4af37', '📊')}</div>")
     else:  # no_si
         row = lambda e, txt, c: (f"<div style='display:flex;align-items:center;gap:34px;padding:40px 0;border-top:2px solid #2a261f'>"
                                  f"<div style='font-size:{int(w * .13)}px'>{e}</div><div style='font-size:{int(w * .058)}px;font-weight:800;"
@@ -389,6 +408,11 @@ def meme_lines(fmt: str, m: dict) -> list[tuple[str, str]]:
         return [(m.get("titulo") or "STARTER PACK", "")] + [(str(x), "") for x in (m.get("items") or [])[:5]]
     if fmt == "no_si":
         return [("🙅‍♀️", m.get("no") or ""), ("💅", m.get("si") or "")]
+    if fmt == "chat":
+        return [(m.get("grupo") or "EL PARCHE ⚽", "")] + [(str(x.get("texto") or ""), str(x.get("de") or ""))
+                                                         for x in (m.get("mensajes") or []) if isinstance(x, dict)][:5]
+    if fmt == "duelo":
+        return [(m.get("izquierda") or "TU AMIGO", m.get("izq_texto") or ""), ("VS", ""), (m.get("derecha") or "VOS CON DATOS", m.get("der_texto") or "")]
     if fmt == "noticia":
         return [("ÚLTIMO MOMENTO 🚨", m.get("titular") or ""), (m.get("reaccion") or "", "— EGG")]
     if fmt == "cuando":

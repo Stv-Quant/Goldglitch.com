@@ -29,7 +29,19 @@ Reglas que nunca se rompen:
 - Una probabilidad no es certeza: un 80% falla 1 de cada 5 veces. Dilo cuando hables de picks.
 - Usa SOLO los números que te dan en los datos. No inventes estadísticas, rachas ni porcentajes.
 - Contenido para mayores de 18 años.
-- Si mencionas resultados, muestra también los fallos: la transparencia es la marca."""
+- Si mencionas resultados, muestra también los fallos: la transparencia es la marca.
+
+AUDIENCIA — casi todos son HOMBRES de 18 a 40 años, hinchas de fútbol. Háblales a ellos, con conexión profunda:
+- Lo que los mueve: tener la razón en la discusión del parche, ganarle a los amigos en saber de fútbol (bragging
+  rights), la lealtad al equipo, la rivalidad y los clásicos, el orgullo, el estatus de "el que sabe", el ritual del
+  partido con los amigos (la cerveza, el asado, el grupo de WhatsApp, la cancha del jueves), el gym, los carros, el reloj.
+- El tono: "mamadera de gallo" entre amigos, competitivo, directo, sin rodeos; retos ("a ver quién sabe más"),
+  piques sanos entre hinchadas, el amigo que siempre falla sus pronósticos, el que se las da de DT.
+- EGG es la amiga gomela que sabe más fútbol que todo el parche y los pica con datos: "ustedes con corazonadas, yo con
+  datos 💅". Esa tensión (ella los reta y ellos quieren demostrar que saben) es el motor de los comentarios.
+- Límite: el humor es sobre el fútbol, la rivalidad y los amigos. Nunca se denigra ni se cosifica a las mujeres ni a
+  nadie (ni por género, orientación, raza, origen o cuerpo), nada sexual y nada de violencia: eso quema la cuenta y la
+  marca."""
 
 VIRAL = """Psicología de contenido viral (úsala con honestidad, sin escasez falsa ni presión):
 - Gancho de curiosidad en la primera línea (bucle abierto): "Ve, el #1 nadie lo vio venir", "O sea… quedate hasta el final".
@@ -56,7 +68,8 @@ POST_TYPES = {
     "pregunta": "Pregunta a la comunidad para generar comentarios y compartidos (imagen con la pregunta).",
     "mito_dato": "Mito vs dato sobre probabilidad o estadística deportiva (imagen).",
     "meme": "Meme ORIGINAL de fútbol y datos en la voz de EGG (plantillas propias: tuit de EGG, 'Nadie / Literalmente "
-            "nadie', expectativa vs realidad, POV, starter pack, no/sí) — imagen + reel corto. Lo más compartible.",
+            "nadie', expectativa vs realidad, POV, starter pack, no/sí, último momento, cuando, tier list, chat del parche, "
+            "duelo) — imagen + reel corto, pensado para que el hombre lo mande al grupo de los amigos.",
 }
 TEXT_TYPES = {"educativo", "pregunta", "mito_dato"}
 MEME_FORMATS = {
@@ -70,6 +83,10 @@ MEME_FORMATS = {
                '"reaccion": "la reacción de EGG (máx. 110)"}',
     "cuando": '{"cuando": "Cuando… (situación del momento, máx. 90)", "reaccion": "Yo / EGG: … (máx. 90)"}',
     "tier": '{"titulo": "Tier list de… (máx. 40)", "S": ["1 a 3 ítems cortos"], "A": ["…"], "B": ["…"]}',
+    "chat": '{"grupo": "nombre del grupo de amigos (máx. 30, ej. \'Fútbol los jueves ⚽\')", '
+            '"mensajes": [{"de": "nombre de pila", "texto": "máx. 70"}, "… 3 a 5 mensajes; el último es de EGG con el dato"]}',
+    "duelo": '{"izquierda": "Tu amigo / el parche (máx. 18)", "izq_texto": "lo que dice (máx. 60)", '
+             '"derecha": "Vos con datos / EGG (máx. 18)", "der_texto": "lo que dice (máx. 60)"}',
 }   # one text card (+ CTA in the vertical version)
 
 
