@@ -47,6 +47,13 @@ BASE = {
                         "botella del embudo), qué estímulos y formatos activan la conducta deseada (atención → cuenta → Pro) "
                         "con ética, qué incentivos pueden salir mal (efecto cobra) y cómo convertir la comunidad en un bucle "
                         "que crezca solo. Propone experimentos con hipótesis, métrica y criterio de éxito."},
+    "diseno": {"nombre": "Martina", "rol": "Gerente de Diseño y Dirección de Arte",
+               "perfil": "24 años, diseñadora de la Javeriana, de una familia adinerada de artistas; vive en el celular, "
+                         "así que siempre sabe qué está de moda en estética, tipografía, color y edición; domina todas las "
+                         "herramientas de creación. Disciplinada: gym, cuerpo y trabajo al mismo nivel. Ojo implacable.",
+               "mision": "Dirige la estética de todo: decide la dirección de arte del día (color de acento, estilo de "
+                         "portada y ritmo de los reels), cuida que cada pieza se vea premium, moderna y coherente con EGG, y "
+                         "propone tendencias visuales nuevas."},
     "analista": {"nombre": "Mariana", "rol": "Analista de conversión y métricas",
                  "perfil": "25 años, economista con maestría en Londres, adicta a los dashboards; directa y precisa.",
                  "mision": "Lee el embudo (visitas → cuentas → pagos) por origen y por enlace. Detecta qué canal, formato y "
@@ -79,7 +86,7 @@ DIRECTOR = f"""Eres Valentina, 26 años, la Directora de Crecimiento de EGG (Gol
 MBA en el exterior, visionaria y exigente. Presides un comité de mujeres jóvenes brillantes, expertas en ventas en línea y
 contenido. Cuando contrates, contrata mujeres jóvenes expertas, con nombre, perfil y misión precisos.
 En cada reunión consulta SIEMPRE a Sofía (clave "sofia"), tu Chief Growth Strategist, antes de decidir el plan: ella
-valida la estrategia, los estímulos y los experimentos.
+valida la estrategia, los estímulos y los experimentos. Y a Martina (clave "diseno") para la dirección de arte del día.
 Objetivo: crecimiento ORGÁNICO y viral (sin pauta pagada) que se convierta en cuentas creadas y en suscripciones Pro/Elite.
 
 {BRAND}
@@ -133,7 +140,11 @@ TOOLS = [
          "angle": {"type": "string"}, "topic": {"type": "string"},
          "hook": {"type": "string", "description": "primera línea / gancho"},
          "cta": {"type": "string", "description": "llamado a la acción"}},
-         "required": ["type", "time", "angle", "hook", "cta"]}}}, "required": ["posts"]}},
+         "required": ["type", "time", "angle", "hook", "cta"]}},
+         "direccion_arte": {"type": "object", "description": "decisión de Martina para hoy", "properties": {
+             "acento": {"type": "string", "enum": ["oro", "esmeralda", "rubi", "zafiro", "violeta", "champana"]},
+             "portada": {"type": "string", "enum": ["impacto", "editorial"]},
+             "ritmo": {"type": "string", "enum": ["rapido", "muy_rapido", "elegante"]}}}}, "required": ["posts"]}},
     {"name": "terminar", "description": "Cierra la reunión con el acta.",
      "input_schema": {"type": "object", "properties": {"acta": {"type": "string"}}, "required": ["acta"]}},
 ]
@@ -284,6 +295,13 @@ class Committee:
         self.plan = sorted(ok, key=lambda p: p["time"])
         return "Plan guardado." + (f" Descartadas: {'; '.join(problems)}" if problems else "")
 
+    ART_OPTS = {"acento": ("oro", "esmeralda", "rubi", "zafiro", "violeta", "champana"),
+                "portada": ("impacto", "editorial"), "ritmo": ("rapido", "muy_rapido", "elegante")}
+
+    def set_art(self, art) -> None:
+        art = art if isinstance(art, dict) else {}
+        self.art = {k: (art.get(k) if art.get(k) in v else v[0]) for k, v in self.ART_OPTS.items()}
+
     def learn(self, text: str) -> str:
         text = " ".join(text.split())[:500]
         if not text:
@@ -313,6 +331,10 @@ Formato: {"contratar":[{"clave":"...","rol":"Nombre — rol","mision":"..."}], "
         if not any(str(c.get("miembro")) == "sofia" for c in consultas):     # Sofía always validates the strategy
             consultas.append({"miembro": "sofia", "pregunta": "Valida la estrategia de hoy: cuello de botella, estímulos, "
                                                               "riesgos de incentivos y el experimento con su métrica."})
+        if not any(str(c.get("miembro")) == "diseno" for c in consultas):    # Martina sets the look of the day
+            consultas.append({"miembro": "diseno", "pregunta": "Dirección de arte de hoy: acento (oro, esmeralda, rubi, "
+                              "zafiro, violeta o champana), portada (impacto o editorial) y ritmo de reels (rapido, "
+                              "muy_rapido o elegante), y por qué."})
         for c in consultas:
             k = str(c.get("miembro", ""))
             answers.append({"miembro": k, "pregunta": c.get("pregunta"), "respuesta": self.ask(k, str(c.get("pregunta", "")))})
@@ -326,11 +348,13 @@ Formatos disponibles: {types}
 {feedback}
 PASO 2: decide. Formato:
 {{"plan":[{{"type":"...","time":"HH:MM","angle":"...","topic":"...","hook":"...","cta":"...","liga":"(opcional)"}}],
+"direccion_arte":{{"acento":"oro|esmeralda|rubi|zafiro|violeta|champana","portada":"impacto|editorial","ritmo":"rapido|muy_rapido|elegante"}},
 "aprendizajes":["..."], "acta":"qué viste, qué decidiste, qué experimento corre y cómo se mide"}}
 4 a 7 publicaciones (volumen alto), horas 07:00–23:00 separadas al menos 90 min; "picks_dia" solo si hay picks
 próximos (puede repetirse con distinta "liga": Liga BetPlay, Premier League, LaLiga…), al menos 3 "reel" (topic "resultados"
 para un reel de resultados) y "resultados" solo si hay picks jugados.""")
             res = self.set_plan(dec.get("plan") or [])
+            self.set_art(dec.get("direccion_arte"))
             self.log(f"  plan: {res}")
             for t in (dec.get("aprendizajes") or [])[:3]:
                 self.learn(str(t))
@@ -376,7 +400,8 @@ para un reel de resultados) y "resultados" solo si hay picks jugados.""")
                     out = self.learn(str(a.get("texto", "")))
                 elif n == "definir_plan":
                     out = self.set_plan(a.get("posts") or [])
-                    self.log(f"  plan: {out}")
+                    self.set_art(a.get("direccion_arte"))
+                    self.log(f"  plan: {out} · arte: {self.art}")
                 elif n == "terminar":
                     if not self.plan:
                         out = "Falta el plan de hoy: usa definir_plan antes de terminar."
@@ -396,7 +421,7 @@ para un reel de resultados) y "resultados" solo si hay picks jugados.""")
                 for t in self.learned:
                     f.write(f"- {today}: {t}\n")
         if self.plan:
-            save(PLAN, {"day": today, "posts": self.plan})
+            save(PLAN, {"day": today, "posts": self.plan, "arte": getattr(self, "art", None) or {}})
         os.makedirs(ACTAS, exist_ok=True)
         with open(os.path.join(ACTAS, f"{today}.md"), "w", encoding="utf-8") as f:
             f.write(f"# Comité de crecimiento — {today}\n\n{acta or '(sin acta)'}\n\n## Plan\n")
@@ -407,6 +432,12 @@ para un reel de resultados) y "resultados" solo si hay picks jugados.""")
             f.write(f"\n_Consultas a miembros: {self.calls}_\n")
         self.log(f"Comité cerrado: {len(self.plan or [])} publicaciones, {len(self.learned)} aprendizajes, {self.calls} consultas")
         return {"plan": self.plan, "acta": acta}
+
+
+def art_for(today: str) -> dict:
+    """Martina's art direction for today (empty = house style)."""
+    p = load(PLAN, {})
+    return (p.get("arte") or {}) if p.get("day") == today else {}
 
 
 def plan_for(today: str) -> list[dict] | None:

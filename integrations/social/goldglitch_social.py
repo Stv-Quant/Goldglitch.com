@@ -136,6 +136,7 @@ def build(post: dict, facts: dict, ag: Agents, now: datetime, tag: str) -> dict:
 
     Picks come only from top first-division leagues of LATAM and Europe (and their continental cups)."""
     t = post["type"]
+    V.set_style(G.art_for(now.strftime("%Y-%m-%d")))       # Martina's art direction for today
     focus = (post.get("liga") or "").strip()
     picks = V.top_picks(facts.get("upcoming") or [], 5, focus) or V.top_picks(facts.get("upcoming") or [], 5)
     res = sorted([r for r in facts.get("results") or [] if V.top_league(r.get("league"))],

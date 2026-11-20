@@ -103,7 +103,7 @@ def hashtags_for(rows: list[dict]) -> list[str]:
 
 
 # ------------------------------------------------------------------ shared look
-FONTS = ("@import url('https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;600;800"
+FONTS = ("@import url('https://fonts.googleapis.com/css2?family=Anton&family=Instrument+Serif&family=Inter:wght@400;600;800"
          "&family=JetBrains+Mono:wght@500;700&display=swap');")
 STEPS = [(0.85, "#00f0a0"), (0.75, "#a6ff3c"), (0.65, "#ffe14d"), (0.55, "#ffb020"), (0.40, "#ff7a2f"), (0.0, "#ff4d6d")]
 
@@ -210,7 +210,22 @@ def badge(name: str, size: int) -> str:
             f"font-family:Anton;font-size:{int(size * .36)}px;color:{ink};letter-spacing:.02em'>{esc(initials(name))}</div>")
 
 
-def base(body: str, w: int, h: int, accent: str = "#d4af37", watermark: str = "") -> str:
+ACCENTS = {"oro": "#d4af37", "esmeralda": "#19e0a0", "rubi": "#ff3b5c", "zafiro": "#3d8bff", "violeta": "#a25cff", "champana": "#f1d9a7"}
+STYLE = {"acento": "oro", "portada": "impacto", "ritmo": "rapido"}     # set each day from Martina's art direction
+
+
+def set_style(art: dict | None) -> None:
+    for k in STYLE:
+        if art and art.get(k):
+            STYLE[k] = art[k]
+
+
+def house() -> str:
+    return ACCENTS.get(STYLE["acento"], "#d4af37")
+
+
+def base(body: str, w: int, h: int, accent: str | None = None, watermark: str = "") -> str:
+    accent = accent or house()
     wm = (f"<div style='position:absolute;right:-40px;top:38%;font-family:Anton;font-size:{int(w * .26)}px;line-height:.85;"
           f"color:rgba(255,255,255,.035);text-transform:uppercase;transform:rotate(-8deg);white-space:nowrap'>{esc(watermark)}</div>") if watermark else ""
     return f"""<!doctype html><html><head><meta charset='utf-8'><style>{FONTS}
@@ -229,7 +244,8 @@ body{{width:{w}px;height:{h}px;overflow:hidden;position:relative;color:#f3ecdc;f
 </style></head><body><div class='grain'></div><div class='streak'></div>{wm}<div class='wrap'>{body}</div></body></html>"""
 
 
-def top_bar(right: str, accent: str = "#d4af37") -> str:
+def top_bar(right: str, accent: str | None = None) -> str:
+    accent = accent or house()
     return (f"<div class='top'><div class='brand'>{MARK.format(s=46)}<span>Goldglitch <span style='color:#d4af37'>Stats</span></span></div>"
             f"<div class='chip' style='border:2px solid {accent};color:{accent}'>{esc(right)}</div></div>")
 
@@ -243,9 +259,12 @@ def cover(hook: str, sub: str, leagues: list[str], w: int, h: int) -> str:
                     for l in leagues[:5])
     words = esc(hook).split()
     head = " ".join(words[:-2]) + (f" <span class='gold'>{' '.join(words[-2:])}</span>" if len(words) > 2 else " ".join(words))
-    return base(f"""{top_bar("Ligas top")}
+    editorial = STYLE["portada"] == "editorial"
+    title = (f"<div style=\"font-family:'Instrument Serif',serif;font-size:{int(w * .13)}px;line-height:.95;letter-spacing:-.01em\">{head}</div>"
+             if editorial else f"<div class='anton' style='font-size:{int(w * .118)}px;line-height:.98'>{head}</div>")
+    return base(f"""{top_bar("Ligas top", house())}
       <div style='margin:auto 0'>
-        <div class='anton' style='font-size:{int(w * .118)}px;line-height:.98'>{head}</div>
+        {title}
         <div style='font-size:{int(w * .034)}px;color:#cfc6b2;margin-top:34px;line-height:1.35;max-width:92%'>{esc(sub)}</div>
         <div style='display:flex;flex-wrap:wrap;gap:14px;margin-top:44px'>{chips}</div>
       </div>
@@ -312,10 +331,11 @@ def cta(w: int, h: int) -> str:
 
 
 # ------------------------------------------------------------------ reel frames (1080×1920)
-def reel_frame(big: str, small: str = "", color: str = "#f3ecdc", accent: str = "#d4af37", glitch: bool = True,
+def reel_frame(big: str, small: str = "", color: str = "#f3ecdc", accent: str | None = None, glitch: bool = True,
                badge_names: tuple[str, str] | None = None, top: str = "", kicker: str = "", tilt: int = 8,
                bars: list[tuple[str, float, str]] | None = None) -> str:
     """One scene. Depth: blurred giant echo of the text behind, 3D tilt, glow and floating light."""
+    accent = accent or house()
     w, h = 1080, 1920
     shadow = "text-shadow:7px 0 0 #ff2d55cc,-7px 0 0 #00e5ffcc,0 18px 60px rgba(0,0,0,.75);" if glitch else "text-shadow:0 18px 60px rgba(0,0,0,.75);"
     badges = ""
@@ -463,7 +483,8 @@ def reel_video(frames: list[tuple[str, float, str]], name: str) -> str:
     T = 0.14                                                # transition length
     inputs, parts, durs = [], [], []
     for i, (img, (_, secs, fx)) in enumerate(zip(imgs, frames)):
-        nfr = max(10, int((secs + T) * 30))
+        pace = {"muy_rapido": 0.78, "elegante": 1.25}.get(STYLE["ritmo"], 1.0)
+        nfr = max(10, int((secs * pace + T) * 30))
         durs.append(nfr / 30)
         inputs += ["-framerate", "30", "-loop", "1", "-t", f"{nfr / 30:.3f}", "-i", img]
         if fx == "punch":
