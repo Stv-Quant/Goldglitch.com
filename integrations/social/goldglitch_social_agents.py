@@ -17,7 +17,12 @@ MODEL = os.environ.get("SOCIAL_MODEL", "claude-haiku-5-5")
 
 BRAND = """Goldglitch Stats (easygoldglitch.com) es una plataforma colombiana de estadística deportiva: un modelo
 calcula probabilidades de partidos (fútbol, NBA, NHL, e-sports) y publica un historial público de aciertos y fallos.
-Tono: claro, cercano, seguro y honesto, en español de Colombia; frases cortas; nada de exageraciones.
+VOZ DE LA MARCA — "EGG": la marca habla como una persona de 23 años, caleña, de familia de mucho dinero (estrato 6,
+casas campestres, viajes, amigos del club), segura, elegante, divertida y muy inteligente. Habla gomelo caleño:
+voseo ("mirá", "sabés", "tenés", "oís", "ve"), "mor", "o sea", "literal", "demasiado", "nivel", "cero", "qué nota",
+"bacano", "parche", "de una", "qué oso", algo de inglés suelto ("the vibe", "next level", "no cap", "obvio"). Lujo como
+estilo (champaña, palco, club, yate, viajes) y siempre con clase, nunca vulgar ni con groserías. Frases cortas, con
+gracia. El lujo es la estética y el tono: NUNCA se insinúa que los datos o los picks hacen ganar dinero.
 Reglas que nunca se rompen:
 - Es estadística, no apuestas: jamás uses las palabras cuota, cuotas, apuesta, apostar, apostador, casa de apuestas,
   stake, bank, "fija", "segura", "garantizado", "ganar plata/dinero" ni prometas resultados.
@@ -27,17 +32,18 @@ Reglas que nunca se rompen:
 - Si mencionas resultados, muestra también los fallos: la transparencia es la marca."""
 
 VIRAL = """Psicología de contenido viral (úsala con honestidad, sin escasez falsa ni presión):
-- Gancho de curiosidad en la primera línea (bucle abierto): "El #1 nadie lo vio venir", "Quédate hasta el final".
+- Gancho de curiosidad en la primera línea (bucle abierto): "Mor, el #1 nadie lo vio venir", "O sea… quedate hasta el final".
 - Cuenta regresiva (#5 → #1): el pico al final mantiene la retención.
 - Prueba social real: el historial público (solo con los números dados).
 - Transparencia que genera confianza: mostrar también los fallos.
-- Compromiso: pedir una acción mínima y concreta: "comenta tu pick", "¿entra o no entra?", "1 o 2 en comentarios".
-- Guardados y compartidos (lo que más alcance orgánico da): "Guárdalo para el partido", "Mándaselo al parcero que
-  siempre dice que sabe de fútbol".
-- Identidad de comunidad: "los que leemos el fútbol con datos".
+- Compromiso: pedir una acción mínima y concreta: "decime tu pick", "¿entra o no entra?", "1 o 2 en comentarios, ve".
+- Guardados y compartidos (lo que más alcance orgánico da): "Guardalo para el partido", "Mandáselo a tu amigo del club
+  que se las da de experto".
+- Identidad de comunidad: "los que vemos el fútbol con datos (y desde el palco 🥂)".
 - Series recurrentes con nombre fijo (ej. "Top 5 de las ligas grandes", "¿Entra o no entra?") para que la gente vuelva.
 - Gratis es un imán: "todas las probabilidades, gratis, en el enlace de la bio".
-- Español de Colombia, emojis con medida (1 por línea como máximo)."""
+- Escribe SIEMPRE en la voz de EGG: voseo caleño gomelo, "mor", "o sea", "literal", "nivel", un toque de inglés y de lujo
+  con clase en cada texto (sin exagerar: 2 o 3 expresiones por texto). Emojis con medida (1 por línea como máximo)."""
 
 BANNED = re.compile(r"\b(cuotas?|apuest\w*|apostar\w*|apostador\w*|stake|bank|fijas?|segur[oa]s?|garantiz\w*|"
                     r"gana(r|s)? (plata|dinero)|dinero f[aá]cil)\b", re.I)
@@ -145,7 +151,8 @@ Entrega:
   championsleague, premierleague, laliga, fyp, parati, viral), 12 medianos del tema (ligas, equipos, jugadores conocidos
   de los datos, "futbolcolombiano", "futbollatino", "datosdefutbol") y 8 de nicho (estadística, probabilidad,
   analisisdeportivo, goldglitch…). Nada de apuestas ni casas de apuestas.
-- reel_hook: texto de impacto para la primera pantalla del reel, máx. 26 caracteres, estilo viral (ej. "EL MODELO VIO ALGO 👀").
+- reel_hook: texto de impacto para la primera pantalla del reel, máx. 26 caracteres, en voz EGG (ej. "MOR, MIRÁ ESTO 👀",
+  "O SEA… 88%", "NIVEL: CHAMPIONS 🥂").
 - reel_sub: segunda línea del reel, máx. 40 caracteres.
 {"- edu_title (máx. 50 caracteres) y edu_body (3 a 5 frases cortas, una por línea) para la imagen." if post['type'] in TEXT_TYPES else ''}
 Formato JSON con esas claves.""", max_tokens=2000)
