@@ -28,6 +28,7 @@ from goldglitch_social_agents import BRAND, BANNED, MODEL, POST_TYPES, VIRAL
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROSTER = os.path.join(HERE, "redes_comite.json")
 PLAN = os.path.join(HERE, "redes_plan_comite.json")
+DRAFT = os.path.join(HERE, "redes_borrador_comite.json")   # night extra meetings leave a draft for the morning meeting
 MEMORY = os.path.join(HERE, "redes_memoria.md")
 ACTAS = os.path.join(HERE, "redes_comite_actas")
 MAX_MEMBERS = 14
@@ -202,7 +203,10 @@ class Committee:
         hist = (self.state.get("history") or [])[-30:]
         memory = open(MEMORY, encoding="utf-8").read()[-6000:] if os.path.exists(MEMORY) else ""
         f = self.facts or {}
+        draft = load(DRAFT, {})
+        draft = draft if draft.get("for_day") == now_co().strftime("%Y-%m-%d") else None
         return json.dumps({"hora_actual_colombia": now_co().strftime("%H:%M"),
+                           "borrador_reunion_extraordinaria": draft,
                            "regla": "planea solo horas posteriores a la hora actual",
                            "publicaciones_recientes": hist,
                            "datos_hoy": {"picks_80_proximas_36h": len(f.get("upcoming") or []),
@@ -269,7 +273,8 @@ class Committee:
         earliest = (now_co() + __import__("datetime").timedelta(minutes=10)).strftime("%H:%M")
         for p in posts[:7]:
             t, hhmm = p.get("type"), str(p.get("time", ""))
-            if hhmm and hhmm < earliest and now_co().strftime("%Y-%m-%d") == getattr(self, "today", ""):
+            if hhmm and hhmm < earliest and now_co().strftime("%Y-%m-%d") == getattr(self, "today", "") \
+                    and getattr(self, "mode", "normal") != "extra_noche":
                 problems.append(f"{t} {hhmm}: esa hora ya pasó (ahora son {now_co():%H:%M})")
                 continue
             if t not in POST_TYPES or not re.fullmatch(r"\d{2}:\d{2}", hhmm) or not ("07:00" <= hhmm <= "23:00"):
@@ -289,7 +294,8 @@ class Committee:
             times.append(m)
             ok.append({k: str(p.get(k, ""))[:400] for k in ("type", "time", "angle", "topic", "hook", "cta", "liga")})
         e = now_co() + __import__("datetime").timedelta(minutes=10)
-        left = (23 * 60 - (e.hour * 60 + e.minute)) // 90 + 1 if now_co().strftime("%Y-%m-%d") == getattr(self, "today", "") else 7
+        left = (23 * 60 - (e.hour * 60 + e.minute)) // 90 + 1 if (now_co().strftime("%Y-%m-%d") == getattr(self, "today", "")
+                                                                and getattr(self, "mode", "normal") != "extra_noche") else 7
         if len(ok) < (3 if left >= 3 else 1):
             return "Plan rechazado: " + "; ".join(problems or ["menos de 3 publicaciones válidas"])
         self.plan = sorted(ok, key=lambda p: p["time"])
@@ -365,8 +371,9 @@ para un reel de resultados) y "resultados" solo si hay picks jugados.""")
         return self._close(today, acta)
 
     # ---------------------------------------------------------------- meeting
-    def meet(self, today: str) -> dict:
-        self.today = today
+    def meet(self, today: str, mode: str = "normal") -> dict:
+        """mode: normal (morning) | extra (daytime: replaces the rest of today's plan) | extra_noche (draft only)."""
+        self.today, self.mode = today, mode
         if self.client is None:
             return self.meet_cli(today)
         self.log("Reunión del comité de crecimiento")
@@ -416,15 +423,21 @@ para un reel de resultados) y "resultados" solo si hay picks jugados.""")
         return self._close(today, acta)
 
     def _close(self, today: str, acta: str) -> dict:
+        mode = getattr(self, "mode", "normal")
         if self.learned:
             with open(MEMORY, "a", encoding="utf-8") as f:
                 for t in self.learned:
                     f.write(f"- {today}: {t}\n")
-        if self.plan:
-            save(PLAN, {"day": today, "posts": self.plan, "arte": getattr(self, "art", None) or {}})
+        if self.plan and mode == "extra_noche":
+            save(DRAFT, {"for_day": today, "posts": self.plan, "arte": getattr(self, "art", None) or {}, "acta": acta[:2000]})
+        elif self.plan:
+            save(PLAN, {"day": today, "posts": self.plan, "arte": getattr(self, "art", None) or {}, "v": time.time()})
         os.makedirs(ACTAS, exist_ok=True)
-        with open(os.path.join(ACTAS, f"{today}.md"), "w", encoding="utf-8") as f:
-            f.write(f"# Comité de crecimiento — {today}\n\n{acta or '(sin acta)'}\n\n## Plan\n")
+        name = f"{today}.md" if mode == "normal" else f"{today}_extraordinaria_{now_co():%H%M}.md"
+        title = {"normal": "Comité de crecimiento", "extra": "Reunión extraordinaria (reemplaza el resto del plan de hoy)",
+                 "extra_noche": "Reunión extraordinaria de noche (borrador para la reunión de la mañana)"}[mode]
+        with open(os.path.join(ACTAS, name), "w", encoding="utf-8") as f:
+            f.write(f"# {title} — {today}\n\n{acta or '(sin acta)'}\n\n## Plan\n")
             for p in self.plan or []:
                 f.write(f"- {p['time']} · {p['type']} · {p['angle']}\n  - Gancho: {p['hook']}\n  - CTA: {p['cta']}\n")
             f.write("\n## Aprendizajes\n" + "".join(f"- {t}\n" for t in self.learned))
@@ -432,6 +445,11 @@ para un reel de resultados) y "resultados" solo si hay picks jugados.""")
             f.write(f"\n_Consultas a miembros: {self.calls}_\n")
         self.log(f"Comité cerrado: {len(self.plan or [])} publicaciones, {len(self.learned)} aprendizajes, {self.calls} consultas")
         return {"plan": self.plan, "acta": acta}
+
+
+def plan_version(today: str) -> float:
+    p = load(PLAN, {})
+    return float(p.get("v") or 0) if p.get("day") == today else 0.0
 
 
 def art_for(today: str) -> dict:
@@ -447,19 +465,33 @@ def plan_for(today: str) -> list[dict] | None:
 
 
 def main() -> int:
+    """Normal: today's meeting if it has not happened. --extra: extraordinary meeting now:
+    between 07:00 and 22:00 it replaces the rest of today's plan; at night it leaves a draft that the morning meeting
+    takes into account (the morning meeting still happens)."""
     import goldglitch_social as S
+    from datetime import timedelta
     S.load_env()
     key = os.environ.get("ANTHROPIC_API_KEY")
     import goldglitch_claude_cli as CLI
     if not key and not CLI.available():
         print("Falta Claude Code con tu sesión de Claude (o ANTHROPIC_API_KEY en el .env)")
         return 1
-    today = datetime.now(S.TZ).strftime("%Y-%m-%d")
-    if plan_for(today) and "--forzar" not in sys.argv:
-        print("El comité ya se reunió hoy (usa --forzar para repetir).")
+    now = datetime.now(S.TZ)
+    today = now.strftime("%Y-%m-%d")
+    extra = "--extra" in sys.argv or "--forzar" in sys.argv
+    if not extra and plan_for(today):
+        print("El comité ya se reunió hoy (usa reunion_extra.bat para una reunión extraordinaria).")
         return 0
     facts = S.signed("/api/social/feed", {})
-    Committee(key, S.signed, S.load_json(S.STATE, {}), facts, S.log).meet(today)
+    c = Committee(key, S.signed, S.load_json(S.STATE, {}), facts, S.log)
+    if extra and not (7 <= now.hour < 22):
+        day = today if now.hour < 7 else (now + timedelta(days=1)).strftime("%Y-%m-%d")
+        S.log(f"Reunión extraordinaria de noche: deja un borrador para la reunión de la mañana del {day}")
+        c.meet(day, "extra_noche")
+    else:
+        c.meet(today, "extra" if extra else "normal")
+        if extra:
+            S.log("Reunión extraordinaria: el resto del plan de hoy se actualiza en la próxima vuelta de los agentes")
     return 0
 
 
