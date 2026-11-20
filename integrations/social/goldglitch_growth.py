@@ -61,7 +61,8 @@ BASE = {
                   "mision": "Responde por que EGG se comparta: cada día propone al menos un meme original (tuit de EGG, "
                             "'Nadie / Literalmente nadie', expectativa vs realidad, POV, starter pack, no/sí) atado a lo que "
                             "está pasando en el fútbol (resultados, VAR, clásicos, el minuto 90), elige el formato y el remate, "
-                            "y mide qué se comparte y guarda. Humor sobre el fútbol y sobre nosotros, nunca sobre grupos de personas; "
+                            "y mide qué se comparte y guarda. En los reels se usa el audio en tendencia de la propia red "
+                            "(Instagram, TikTok): ella define la vibra del audio de cada reel. Humor sobre el fútbol y sobre nosotros, nunca sobre grupos de personas; "
                             "sin personajes, marcas ni imágenes de memes ajenos."},
     "seo": {"nombre": "Daniela", "rol": "Experta en SEO social y psicoanalista del deseo",
             "perfil": "29 años, psicoanalista (formación lacaniana, maestría en psicoanálisis en Buenos Aires) y especialista "
