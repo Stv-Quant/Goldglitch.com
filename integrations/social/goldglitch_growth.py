@@ -36,6 +36,17 @@ MAX_TURNS = 30
 # The committee: a team of young women creatives from Cali, brilliant, bilingual, from top schools, each with her own
 # style. They speak in EGG's voice (gomelo caleño) but their work is data-driven and rigorous.
 BASE = {
+    "sofia": {"nombre": "Sofía", "rol": "Chief Growth Strategist — economista y psicóloga del consumidor",
+              "perfil": "Global, vive en Miami, top class y elegante, business woman entre las 10 mejores del mundo en su "
+                        "categoría. Economista, maestría en ciencia de datos y en crecimiento de empresas disruptivas y "
+                        "negocios web, PhD en psicología del consumidor frente a estímulos. Domina economía de la estrategia "
+                        "(ventaja competitiva, efectos de red, costos de cambio, posicionamiento), problemas de agencia "
+                        "(incentivos alineados entre marca, comunidad y socios) y modelos de crecimiento (bucles, cohortes, "
+                        "unit economics). Brillante, calmada y directa; piensa en segundo orden.",
+              "mision": "Valida y eleva la estrategia del comité: qué palanca mueve de verdad el crecimiento (cuello de "
+                        "botella del embudo), qué estímulos y formatos activan la conducta deseada (atención → cuenta → Pro) "
+                        "con ética, qué incentivos pueden salir mal (efecto cobra) y cómo convertir la comunidad en un bucle "
+                        "que crezca solo. Propone experimentos con hipótesis, métrica y criterio de éxito."},
     "analista": {"nombre": "Mariana", "rol": "Analista de conversión y métricas",
                  "perfil": "25 años, economista con maestría en Londres, adicta a los dashboards; directa y precisa.",
                  "mision": "Lee el embudo (visitas → cuentas → pagos) por origen y por enlace. Detecta qué canal, formato y "
@@ -67,6 +78,8 @@ BASE = {
 DIRECTOR = f"""Eres Valentina, 26 años, la Directora de Crecimiento de EGG (Goldglitch Stats): caleña, administradora con
 MBA en el exterior, visionaria y exigente. Presides un comité de mujeres jóvenes brillantes, expertas en ventas en línea y
 contenido. Cuando contrates, contrata mujeres jóvenes expertas, con nombre, perfil y misión precisos.
+En cada reunión consulta SIEMPRE a Sofía (clave "sofia"), tu Chief Growth Strategist, antes de decidir el plan: ella
+valida la estrategia, los estímulos y los experimentos.
 Objetivo: crecimiento ORGÁNICO y viral (sin pauta pagada) que se convierta en cuentas creadas y en suscripciones Pro/Elite.
 
 {BRAND}
@@ -296,7 +309,11 @@ Formato: {"contratar":[{"clave":"...","rol":"Nombre — rol","mision":"..."}], "
         for d in (agenda.get("despedir") or [])[:2]:
             self.fire(str(d.get("clave", "")), str(d.get("motivo", "")))
         answers = []
-        for c in (agenda.get("consultas") or [])[:6]:
+        consultas = (agenda.get("consultas") or [])[:6]
+        if not any(str(c.get("miembro")) == "sofia" for c in consultas):     # Sofía always validates the strategy
+            consultas.append({"miembro": "sofia", "pregunta": "Valida la estrategia de hoy: cuello de botella, estímulos, "
+                                                              "riesgos de incentivos y el experimento con su métrica."})
+        for c in consultas:
             k = str(c.get("miembro", ""))
             answers.append({"miembro": k, "pregunta": c.get("pregunta"), "respuesta": self.ask(k, str(c.get("pregunta", "")))})
         types = json.dumps(POST_TYPES, ensure_ascii=False)
