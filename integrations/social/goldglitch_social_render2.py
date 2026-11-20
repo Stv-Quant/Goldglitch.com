@@ -321,6 +321,59 @@ def text_card(title: str, body: str, eyebrow: str, w: int, h: int) -> str:
                 w, h, watermark="datos")
 
 
+def meme(fmt: str, m: dict, w: int, h: int) -> str:
+    """Original meme layouts (no third-party images or characters): EGG's tweet, Nadie/Literalmente nadie,
+    expectativa vs realidad, POV, starter pack and no/sí."""
+    m = m if isinstance(m, dict) else {}
+    big = int(w * .062)
+    if fmt == "tweet":
+        body = (f"<div style='margin:auto 0;background:#0e0c09;border:2px solid #2a261f;border-radius:44px;padding:56px 54px'>"
+                f"<div style='display:flex;align-items:center;gap:22px'>{MARK.format(s=92)}<div><div style='font-size:38px;font-weight:800'>"
+                f"EGG <span style='color:#d4af37'>✦</span></div><div style='font-size:28px;color:#8e877a'>@easygoldglitch</div></div></div>"
+                f"<div style='font-size:{big}px;line-height:1.3;margin-top:40px;font-weight:600'>{esc(m.get('texto') or '')}</div></div>")
+    elif fmt == "nadie":
+        body = (f"<div style='margin:auto 0'><div style='font-size:{big}px;line-height:1.5;color:#cfc6b2'>Nadie:<br>Literalmente nadie:</div>"
+                f"<div class='anton' style='font-size:{int(w * .085)}px;line-height:1.05;margin-top:46px'>{esc(m.get('remate') or '')}</div></div>")
+    elif fmt == "expectativa":
+        panel = lambda lbl, txt, c: (f"<div style='flex:1;border:2px solid {c}66;background:{c}14;border-radius:36px;padding:40px 44px'>"
+                                     f"<div class='chip' style='border:2px solid {c};color:{c}'>{lbl}</div>"
+                                     f"<div style='font-size:{int(w * .055)}px;font-weight:800;line-height:1.2;margin-top:26px'>{esc(txt)}</div></div>")
+        body = (f"<div style='margin:auto 0;display:flex;flex-direction:column;gap:30px'>{panel('Expectativa', m.get('expectativa') or '', '#00e5ff')}"
+                f"{panel('Realidad', m.get('realidad') or '', '#ff4d6d')}</div>")
+    elif fmt == "pov":
+        body = (f"<div style='margin:auto 0;text-align:center'><div style='font-size:{int(w * .2)}px'>{esc(m.get('emoji') or '👀')}</div>"
+                f"<div class='anton gold' style='font-size:{int(w * .12)}px;line-height:1'>POV:</div>"
+                f"<div style='font-size:{int(w * .066)}px;font-weight:800;line-height:1.2;margin-top:30px'>{esc(m.get('texto') or '')}</div></div>")
+    elif fmt == "starter":
+        items = [str(x) for x in (m.get("items") or [])][:6]
+        tiles = "".join(f"<div style='background:#0e0c09;border:2px solid #2a261f;border-radius:30px;padding:30px 26px;"
+                        f"font-size:{int(w * .04)}px;font-weight:700;line-height:1.25'>{esc(x)}</div>" for x in items)
+        body = (f"<div style='margin:auto 0'><div class='anton' style='font-size:{int(w * .085)}px;line-height:1'>{esc(m.get('titulo') or 'Starter pack')}</div>"
+                f"<div style='display:grid;grid-template-columns:1fr 1fr;gap:22px;margin-top:40px'>{tiles}</div></div>")
+    else:  # no_si
+        row = lambda e, txt, c: (f"<div style='display:flex;align-items:center;gap:34px;padding:40px 0;border-top:2px solid #2a261f'>"
+                                 f"<div style='font-size:{int(w * .13)}px'>{e}</div><div style='font-size:{int(w * .058)}px;font-weight:800;"
+                                 f"line-height:1.2;color:{c}'>{esc(txt)}</div></div>")
+        body = f"<div style='margin:auto 0'>{row('🙅‍♀️', m.get('no') or '', '#9a9384')}{row('💅', m.get('si') or '', '#f3ecdc')}</div>"
+    return base(f"{top_bar('Meme EGG')}{body}{FOOT}", w, h, watermark="meme")
+
+
+def meme_lines(fmt: str, m: dict) -> list[tuple[str, str]]:
+    """The same meme as reel beats: [(big, small)]."""
+    m = m if isinstance(m, dict) else {}
+    if fmt == "nadie":
+        return [("NADIE:", ""), ("LITERALMENTE NADIE:", ""), (m.get("remate") or "", "")]
+    if fmt == "expectativa":
+        return [("EXPECTATIVA", m.get("expectativa") or ""), ("REALIDAD", m.get("realidad") or "")]
+    if fmt == "pov":
+        return [("POV:", ""), (m.get("texto") or "", m.get("emoji") or "")]
+    if fmt == "starter":
+        return [(m.get("titulo") or "STARTER PACK", "")] + [(str(x), "") for x in (m.get("items") or [])[:5]]
+    if fmt == "no_si":
+        return [("🙅‍♀️", m.get("no") or ""), ("💅", m.get("si") or "")]
+    return [(m.get("texto") or "", "— EGG")]
+
+
 def cta(w: int, h: int) -> str:
     return base(f"""{top_bar("Gratis")}
       <div style='margin:auto 0'>
@@ -411,6 +464,11 @@ def reel_script(kind: str, rows: list[dict], tx: dict, when_fn, record: dict | N
         f.append((reel_frame(f"{won}/{len(rows)}", "picks de 75%+ jugados en las últimas horas", color="#d4af37", kicker="Balance"), 1.4, "punch"))
         if rate:
             f.append((reel_frame(f"{rate[2]}%", f"de acierto histórico ({rate[0]}/{rate[1]})", color="#d4af37", kicker="Historial público"), 1.3, "slide"))
+    elif kind == "meme":
+        for i, (big, small) in enumerate(l for l in meme_lines(tx.get("meme_formato") or "", tx.get("meme") or {}) if l[0] or l[1]):
+            f.append((reel_frame(big, small, glitch=i % 2 == 0, kicker="Meme EGG" if i == 0 else "", tilt=6), 1.4 if i else 1.1,
+                      ("punch", "shake", "slide", "flash")[i % 4]))
+        f.append((reel_frame("MANDÁSELO 📲", "a ese amigo que necesita verlo 😂", color="#d4af37"), 1.2, "punch"))
     else:
         f.append((reel_frame(tx.get("edu_title") or tx.get("cover_title") or "DATO", "espera al final 👀", kicker="Dato"), 1.5, "punch"))
         for line in [x for x in (tx.get("edu_body") or tx.get("cover_subtitle") or "").split("\n") if x.strip()][:5]:

@@ -55,8 +55,18 @@ POST_TYPES = {
     "educativo": "Pieza educativa de una imagen sobre probabilidad o cómo leer los datos.",
     "pregunta": "Pregunta a la comunidad para generar comentarios y compartidos (imagen con la pregunta).",
     "mito_dato": "Mito vs dato sobre probabilidad o estadística deportiva (imagen).",
+    "meme": "Meme ORIGINAL de fútbol y datos en la voz de EGG (plantillas propias: tuit de EGG, 'Nadie / Literalmente "
+            "nadie', expectativa vs realidad, POV, starter pack, no/sí) — imagen + reel corto. Lo más compartible.",
 }
-TEXT_TYPES = {"educativo", "pregunta", "mito_dato"}   # one text card (+ CTA in the vertical version)
+TEXT_TYPES = {"educativo", "pregunta", "mito_dato"}
+MEME_FORMATS = {
+    "tweet": '{"texto": "el tuit (máx. 180 caracteres)"}',
+    "nadie": '{"remate": "lo que viene después de Nadie: / Literalmente nadie: (máx. 90 caracteres)"}',
+    "expectativa": '{"expectativa": "máx. 70 caracteres", "realidad": "máx. 70 caracteres"}',
+    "pov": '{"texto": "situación en primera persona, empieza sin \'POV:\' (máx. 90 caracteres)", "emoji": "1 emoji"}',
+    "starter": '{"titulo": "Starter pack de… (máx. 40)", "items": ["emoji + cosa (máx. 28)", "… 4 a 6 ítems"]}',
+    "no_si": '{"no": "lo que EGG no hace (máx. 60)", "si": "lo que EGG sí hace (máx. 60)"}',
+}   # one text card (+ CTA in the vertical version)
 
 
 class Agents:
@@ -155,8 +165,12 @@ Entrega:
   "O SEA… 88%", "NIVEL: CHAMPIONS 🥂").
 - reel_sub: segunda línea del reel, máx. 40 caracteres.
 {"- edu_title (máx. 50 caracteres) y edu_body (3 a 5 frases cortas, una por línea) para la imagen." if post['type'] in TEXT_TYPES else ''}
+{self._meme_ask(post) if post['type'] == 'meme' else ''}
+{self._seo_ask(post)}
+No escribas hashtags dentro de ig, fb ni tiktok (van aparte) y no uses "#" para numerar: escribe "Nº1" o "el 1".
 Formato JSON con esas claves.""", max_tokens=2000)
                 texts = [out.get(k, "") for k in ("cover_title", "cover_subtitle", "ig", "fb", "tiktok", "edu_title", "edu_body")]
+                texts.append(json.dumps(out.get("meme") or {}, ensure_ascii=False))
                 if all(self.clean(t) is not None for t in texts) and out.get("ig") and out.get("fb"):
                     out["hashtags"] = [h.strip("#").replace(" ", "") for h in out.get("hashtags", []) if self.clean(h)][:30]
                     for k, v in list(out.items()):      # house rule: no "mor"
@@ -167,6 +181,25 @@ Formato JSON con esas claves.""", max_tokens=2000)
             except Exception:
                 continue
         return fallback
+
+    @staticmethod
+    def _meme_ask(post: dict) -> str:
+        fmt = post.get("meme_formato") if post.get("meme_formato") in MEME_FORMATS else ""
+        opts = "\n".join(f"  {k}: {v}" for k, v in MEME_FORMATS.items())
+        return ("- meme_formato: " + (f'"{fmt}" (lo pidió el comité)' if fmt else "elige uno de: " + ", ".join(MEME_FORMATS)) +
+                f"\n- meme: objeto según el formato:\n{opts}\n  Humor de fútbol que cualquier hincha entiende (el amigo "
+                "que 'sabe de fútbol', el VAR, el minuto 90, el que dice que su equipo ganaba fijo…), con el giro EGG de "
+                "datos y lujo con clase. Original: nada de personajes, marcas ni imágenes de memes famosos. Nunca te burles "
+                "de un grupo de personas; sí del fútbol y de nosotros mismos.")
+
+    @staticmethod
+    def _seo_ask(post: dict) -> str:
+        seo = post.get("seo") or {}
+        if not (seo.get("hashtags") or seo.get("palabras")):
+            return ""
+        return (f"Banco SEO de hoy (Daniela): hashtags prioritarios {', '.join(seo.get('hashtags') or [])}; palabras clave "
+                f"{', '.join(seo.get('palabras') or [])}. Usa 1 o 2 palabras clave de forma natural en la PRIMERA línea de "
+                "ig y tiktok (las redes indexan el texto) y pon los hashtags prioritarios primero en tu lista.")
 
     @staticmethod
     def _fallback(post: dict, data: dict) -> dict:
@@ -191,6 +224,14 @@ Formato JSON con esas claves.""", max_tokens=2000)
             return {"cover_title": "Lo más probable hoy", "cover_subtitle": "Los picks del modelo con 80% o más.",
                     "ig": body, "fb": body.replace("en el enlace de la bio", "en https://easygoldglitch.com"),
                     "tiktok": "Lo más probable hoy según el modelo. Probabilidad, no certeza.", "hashtags": tags}
+        if post["type"] == "meme":
+            body = ("Nadie:\nLiteralmente nadie:\nEl amigo del club explicando por qué su equipo 'ya ganó' 🙄\n\n"
+                    "Nosotros: probabilidades con datos y el historial público de aciertos y fallos 🥂\n"
+                    "Mandáselo a ese amigo 👇\n\nTodo gratis en el enlace de la bio. +18")
+            return {"cover_title": "Literalmente nadie:", "cover_subtitle": "Datos > corazonadas.",
+                    "meme_formato": "nadie", "meme": {"remate": "Tu amigo explicando por qué su equipo 'ya ganó' 🙄"},
+                    "ig": body, "fb": body.replace("en el enlace de la bio", "en https://easygoldglitch.com"),
+                    "tiktok": "Todos tenemos ese amigo 🙄 ¿Cuál es el tuyo?", "hashtags": ["memesdefutbol", "futbolmemes", "humorfutbolero"] + tags}
         body = ("¿Qué significa que algo tenga 80% de probabilidad?\n\nQue de cada 10 veces, unas 8 sale y 2 no. "
                 "Por eso medimos el modelo con cientos de partidos, no con uno.\n\nMás en el enlace de la bio. +18")
         return {"cover_title": "¿Qué es un 80%?", "cover_subtitle": "Probabilidad, no certeza.",

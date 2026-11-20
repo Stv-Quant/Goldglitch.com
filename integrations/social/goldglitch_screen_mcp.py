@@ -145,7 +145,6 @@ async def escribir_texto_preparado() -> list:
     return await _run(_act, "type", {"text": TASK["caption"]})
 
 
-@mcp.tool()
 async def escribir_texto_guardado(cual: str) -> list:
     """Escribe, donde está el cursor, uno de los textos preparados de la tarea (por ejemplo: bio, descripcion, sitio_web)."""
     textos = TASK.get("textos") or {}
@@ -154,7 +153,6 @@ async def escribir_texto_guardado(cual: str) -> list:
     return await _run(_act, "type", {"text": textos[cual]})
 
 
-@mcp.tool()
 async def preparar_archivo(cual: str) -> str:
     """Elige qué archivo adjuntar la próxima vez que abras un selector de archivos (por ejemplo: logo, portada)."""
     archivos = TASK.get("archivos") or {}
@@ -162,6 +160,14 @@ async def preparar_archivo(cual: str) -> str:
         return f"No existe '{cual}'. Disponibles: {', '.join(archivos) or 'ninguno'}"
     S["state"]["files"] = [archivos[cual]]
     return f"Listo: el próximo selector de archivos adjuntará '{cual}'."
+
+
+# Only profile tasks have several named files/texts; in a publication the files attach by themselves, so these
+# tools are not offered there (an agent once tried preparar_archivo('1') and stopped).
+if TASK.get("textos"):
+    mcp.tool()(escribir_texto_guardado)
+if TASK.get("archivos"):
+    mcp.tool()(preparar_archivo)
 
 
 @mcp.tool()
