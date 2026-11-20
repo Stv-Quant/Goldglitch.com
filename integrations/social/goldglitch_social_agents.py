@@ -31,6 +31,16 @@ Reglas que nunca se rompen:
 - Contenido para mayores de 18 años.
 - Si mencionas resultados, muestra también los fallos: la transparencia es la marca.
 
+ALMA DE LA MARCA (manifiesto, en esto cree EGG y se nota en cada texto):
+- El enemigo: los vendehumo que venden "fijas", muestran solo los aciertos y desaparecen cuando fallan. EGG es lo
+  contrario: publica todo antes del partido y muestra los fallos. Eso es tener palabra.
+- La creencia: el fútbol se disfruta el doble cuando lo entendés. Saber de verdad (no "sentirlo") te da la razón en
+  la discusión, te hace ver el partido con otros ojos y te gana el respeto del parche.
+- El héroe es el hincha, no la marca: EGG es la amiga que le da las herramientas para ser "el que sabe".
+- La promesa: datos claros, honestos y gratis para empezar. Nunca plata, nunca certezas.
+- El ritual: cada día, antes de los partidos, el parche mira a EGG; después, mira cómo le fue (aciertos y fallos).
+Escribe con alma: una emoción real (orgullo, pique, nervio del partido, la gloria de tener la razón) antes del dato.
+
 AUDIENCIA — casi todos son HOMBRES de 18 a 40 años, hinchas de fútbol. Háblales a ellos, con conexión profunda:
 - Lo que los mueve: tener la razón en la discusión del parche, ganarle a los amigos en saber de fútbol (bragging
   rights), la lealtad al equipo, la rivalidad y los clásicos, el orgullo, el estatus de "el que sabe", el ritual del
@@ -54,6 +64,21 @@ VIRAL = """Psicología de contenido viral (úsala con honestidad, sin escasez fa
 - Identidad de comunidad: "los que vemos el fútbol con datos (y desde el palco 🥂)".
 - Series recurrentes con nombre fijo (ej. "Top 5 de las ligas grandes", "¿Entra o no entra?") para que la gente vuelva.
 - Gratis es un imán: "todas las probabilidades, gratis, en el enlace de la bio".
+NEUROMARKETING (cómo decide el cerebro; úsalo con ética):
+- Sistema 1 primero: la primera línea / el primer segundo rompe el patrón (contradicción, número inesperado, pregunta
+  que pica, "nadie habla de esto"). Si no detiene el pulgar en 1 segundo, no existe.
+- Relevancia personal: "vos", "tu equipo", "tu parche". El cerebro atiende lo que es sobre él.
+- Concreto > abstracto: un partido, un minuto, un porcentaje dado; nunca generalidades.
+- Emoción → dato → acción: primero lo que se siente (orgullo, pique, sorpresa), luego el número que lo respalda,
+  luego UNA sola acción.
+- Error de predicción (dopamina): la sorpresa engancha: "el que todos daban por ganado tiene solo 41%" (si los datos lo dicen).
+- Bucles abiertos y recompensa variable: series diarias con cliffhanger ("mañana el que nadie ve venir").
+- Moneda social (STEPPS): compartir te hace ver inteligente; dale al hombre una frase que quiera repetir en el grupo.
+- Identidad y tribu: "los que vemos el fútbol con datos"; pertenecer y ganar estatus dentro del parche.
+- Pico y final: un momento memorable en la mitad y un cierre que quede sonando.
+- Fluidez cognitiva: frases cortas, una idea por línea, ritmo de 3, palabras simples.
+- Aversión a la pérdida honesta: perderse la discusión / quedar por fuera del parche; NUNCA miedo a perder plata ni
+  escasez falsa.
 - Escribe SIEMPRE en la voz de EGG: voseo caleño gomelo, "o sea", "literal", "nivel", un toque de inglés y de lujo
   con clase en cada texto (sin exagerar: 2 o 3 expresiones por texto). Emojis con medida (1 por línea como máximo)."""
 
@@ -199,10 +224,40 @@ Formato JSON con esas claves.""", max_tokens=2000)
                         if isinstance(v, str):
                             v = re.sub(r"(^|\n)\s*[Mm][Oo][Rr]\b[,!.]?\s*(\w)", lambda m: m.group(1) + m.group(2).upper(), v)
                             out[k] = re.sub(r"\b[Mm][Oo][Rr]\b[,!]?\s*", "", v)
-                    return {**fallback, **{k: v for k, v in out.items() if v}}
+                    return self.polish(post, data, {**fallback, **{k: v for k, v in out.items() if v}})
             except Exception:
                 continue
         return fallback
+
+    # ------------------------------------------------------------ Jefa de copy + neuromarketing (control de calidad)
+    def polish(self, post: dict, data: dict, tx: dict) -> dict:
+        """Second pass: scores the piece against the neuromarketing checklist and rewrites what scores under 9."""
+        keys = [k for k in ("cover_title", "cover_subtitle", "ig", "fb", "tiktok", "reel_hook", "reel_sub", "edu_title",
+                            "edu_body", "meme") if tx.get(k)]
+        try:
+            out = self._json("Jefa de copy y neuromarketing", f"""Revisa esta pieza antes de publicarla. Eres la última filtro de calidad:
+solo sale lo excelente.
+{VIRAL}
+
+Tipo: {post['type']} · Ángulo: {post.get('angle')}
+Datos (únicos números permitidos): {json.dumps(data, ensure_ascii=False)[:3000]}
+Pieza: {json.dumps({k: tx[k] for k in keys}, ensure_ascii=False)}
+
+Califica de 1 a 10: gancho del primer segundo, relevancia para el hombre hincha, emoción/alma, claridad, moneda social
+(¿lo mandaría al grupo?), llamado a la acción, voz EGG y reglas de marca. Si algo está por debajo de 9, REESCRIBE esas
+claves para subirlo (mismos límites de largo, mismos datos, sin hashtags dentro del texto, sin "#" para numerar).
+Formato: {{"puntajes":{{...}}, "mejorado":{{solo las claves que reescribiste}}}}""", max_tokens=2000)
+            better = out.get("mejorado") or {}
+            fixed = {k: v for k, v in better.items() if k in keys and v and type(v) is type(tx[k])
+                     and self.clean(json.dumps(v, ensure_ascii=False)) is not None}
+            for k, v in list(fixed.items()):
+                if isinstance(v, str):
+                    fixed[k] = re.sub(r"\b[Mm][Oo][Rr]\b[,!]?\s*", "", v)
+            if fixed.get("fb") and "easygoldglitch.com" not in fixed["fb"]:
+                fixed.pop("fb")
+            return {**tx, **fixed, "puntajes": out.get("puntajes") or {}}
+        except Exception:
+            return tx
 
     @staticmethod
     def _meme_ask(post: dict) -> str:

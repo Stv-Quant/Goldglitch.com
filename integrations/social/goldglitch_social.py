@@ -436,6 +436,18 @@ def publish_now(posts: list[dict]) -> None:
         drop_lock()
 
 
+def week_of(now: datetime) -> str:
+    return now.strftime("%G-W%V")
+
+
+def office() -> None:
+    try:
+        import goldglitch_oficina as O
+        O.build()
+    except Exception as e:
+        log(f"Oficina: no se pudo actualizar ({e})")
+
+
 def tick(dry: bool) -> None:
     if os.environ.get("REDES_PAUSA") == "1":
         log("En pausa (REDES_PAUSA=1).")
@@ -447,6 +459,7 @@ def tick(dry: bool) -> None:
         _tick(dry)
     finally:
         drop_lock()
+        office()
 
 
 def _tick(dry: bool) -> None:
@@ -536,7 +549,16 @@ def _tick(dry: bool) -> None:
         st["community_at"] = time.time()
         save_json(STATE, st)
 
-    # 4) weekly report (Mondays from 09:00)
+    # 4) weekly study session in the office library (Sundays from 15:00)
+    if now.weekday() == 6 and now.hour >= 15 and st.get("study_week") != week_of(now) and not ag.offline:
+        try:
+            G.study(os.environ.get("ANTHROPIC_API_KEY"), signed, st, signed("/api/social/feed", {}), log)
+        except Exception as e:
+            log(f"Sesión de estudio: {e}")
+        st["study_week"] = week_of(now)
+        save_json(STATE, st)
+
+    # 5) weekly report (Mondays from 09:00)
     week = now.strftime("%G-W%V")
     if now.weekday() == 0 and now.hour >= 9 and st.get("report_week") != week:
         report(st, meta, ag)

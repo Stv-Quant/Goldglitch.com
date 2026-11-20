@@ -81,6 +81,20 @@ BASE = {
                             "retos entre amigos, el ritual del partido, estatus. Propone los piques, retos y situaciones del día "
                             "que harían que un hombre comente, etiquete al amigo y lo mande al grupo. Cuida el límite: humor "
                             "sobre fútbol y amigos, nunca denigrar a las mujeres ni a nadie."},
+    "neuro": {"nombre": "Renata", "rol": "Directora de Neuromarketing",
+              "perfil": "28 años, neurocientífica cognitiva (doctorado en Barcelona), trabajó en laboratorios de "
+                        "neuromarketing midiendo atención, emoción y memoria con eye-tracking y EEG. Habla de dopamina, "
+                        "sistema 1 y carga cognitiva como quien habla del clima; elegante, exacta.",
+              "mision": "Que cada pieza detenga el pulgar en 1 segundo y quede en la memoria: diseña el gancho, la secuencia "
+                        "emoción → dato → acción, la sorpresa (error de predicción), el pico y el final, y la moneda social. "
+                        "Revisa los planes y dice qué pieza es débil y cómo subirla a excelente. Ética: sin miedo, sin "
+                        "escasez falsa, sin promesas de dinero."},
+    "narrativa": {"nombre": "Isabel", "rol": "Directora de Marca y Narrativa (el alma de EGG)",
+                  "perfil": "30 años, guionista y estratega de marca, estudió literatura en los Andes y storytelling en "
+                            "Londres; construyó marcas con comunidad de culto. Cálida, profunda, con mucho mundo.",
+                  "mision": "Cuida el alma: el manifiesto (contra los vendehumo, a favor del hincha que sabe), las historias "
+                            "que se repiten (rituales, series, personajes del parche), la coherencia entre piezas y el "
+                            "arco de la semana para que la gente se enamore de EGG, no solo de un post."},
     "analista": {"nombre": "Mariana", "rol": "Analista de conversión y métricas",
                  "perfil": "25 años, economista con maestría en Londres, adicta a los dashboards; directa y precisa.",
                  "mision": "Lee el embudo (visitas → cuentas → pagos) por origen y por enlace. Detecta qué canal, formato y "
@@ -114,7 +128,8 @@ MBA en el exterior, visionaria y exigente. Presides un comité de mujeres jóven
 contenido. Cuando contrates, contrata mujeres jóvenes expertas, con nombre, perfil y misión precisos.
 En cada reunión consulta SIEMPRE a Sofía (clave "sofia"), tu Chief Growth Strategist, antes de decidir el plan: ella
 valida la estrategia, los estímulos y los experimentos; a Martina (clave "diseno") para la dirección de arte del día; a
-Valeria (clave "viralidad") para el meme y la viralidad del día; a Catalina (clave "audiencia") para que todo hable al
+Valeria (clave "viralidad") para el meme y la viralidad del día; a Renata (clave "neuro") para que cada pieza
+detenga el pulgar y quede en la memoria; a Catalina (clave "audiencia") para que todo hable al
 hombre hincha (rivalidad, el parche, tener la razón, retos); y a Daniela (clave "seo") para el banco SEO del día
 (hashtags y palabras clave), que va en todas las publicaciones.
 Objetivo: crecimiento ORGÁNICO y viral (sin pauta pagada) que se convierta en cuentas creadas y en suscripciones Pro/Elite.
@@ -264,8 +279,10 @@ class Committee:
                   "Hablas con tu estilo (gomela caleña, segura, con chispa) pero tu trabajo es riguroso. "
                   "Responde en español, concreto y accionable (máx. 250 palabras). Basa lo que digas en las métricas "
                   "cuando existan; si no hay datos suficientes, dilo y propone un experimento medible.")
+        notes = notebook(key)
         task = (f"Métricas de la web: {self.metrics_text()}\n\nContexto: {self.history_text()}\n\n"
-                f"Pregunta del Director: {question}")
+                + (f"Tu cuaderno (lo que has aprendido): {json.dumps(notes[-10:], ensure_ascii=False)}\n\n" if notes else "")
+                + f"Pregunta del Director: {question}")
         if self.client is None:
             import goldglitch_claude_cli as CLI
             out = CLI.ask_text(system, task).strip()
@@ -362,11 +379,13 @@ class Committee:
                                if x and not BANNED.search(x)][:n]
         self.seo = {"hashtags": [h.replace(" ", "") for h in clean(seo.get("hashtags"), 20)], "palabras": clean(seo.get("palabras"), 10)}
 
-    def learn(self, text: str) -> str:
+    def learn(self, text: str, member: str = "") -> str:
         text = " ".join(text.split())[:500]
         if not text:
             return "Vacío."
         self.learned.append(text)
+        if member in self.r["miembros"]:
+            note(member, text)
         return "Guardado."
 
     # ---------------------------------------------------------------- meeting with the Pro plan (Claude Code)
@@ -381,13 +400,13 @@ class Committee:
 
 PASO 1 de la reunión. Decide a quién consultar y si hace falta contratar o despedir.
 Formato: {"contratar":[{"clave":"...","rol":"Nombre — rol","mision":"..."}], "despedir":[{"clave":"...","motivo":"..."}],
-"consultas":[{"miembro":"clave","pregunta":"..."}]}  (máximo 4 consultas además de Sofía, Martina, Valeria, Catalina y Daniela, que se consultan siempre; los contratados de hoy se pueden consultar)""")
+"consultas":[{"miembro":"clave","pregunta":"..."}]}  (máximo 3 consultas además de Sofía, Martina, Valeria, Renata, Catalina y Daniela, que se consultan siempre; los contratados de hoy se pueden consultar)""")
         for h in (agenda.get("contratar") or [])[:3]:
             self.log("  " + self.hire(str(h.get("clave", "")), str(h.get("rol", "")), str(h.get("mision", ""))))
         for d in (agenda.get("despedir") or [])[:2]:
             self.fire(str(d.get("clave", "")), str(d.get("motivo", "")))
         answers = []
-        consultas = (agenda.get("consultas") or [])[:4]
+        consultas = (agenda.get("consultas") or [])[:3]
         if not any(str(c.get("miembro")) == "sofia" for c in consultas):     # Sofía always validates the strategy
             consultas.append({"miembro": "sofia", "pregunta": "Valida la estrategia de hoy: cuello de botella, estímulos, "
                                                               "riesgos de incentivos y el experimento con su métrica."})
@@ -401,6 +420,10 @@ Formato: {"contratar":[{"clave":"...","rol":"Nombre — rol","mision":"..."}], "
                               "no_si, noticia, cuando, tier, chat del parche o duelo), pensado para que un hombre hincha lo mande al grupo de "
                               "los amigos, sobre qué tendencia REAL se monta, idea y remate, y la hora en que "
                               "más se compartiría. Más una idea viral para un reel atada a lo que está pasando hoy."})
+        if not any(str(c.get("miembro")) == "neuro" for c in consultas):      # Renata: neuromarketing gate
+            consultas.append({"miembro": "neuro", "pregunta": "Revisa la estrategia de hoy desde el cerebro del hombre hincha: "
+                              "qué gancho de 1 segundo, qué sorpresa, qué emoción y qué frase para mandar al grupo debe llevar "
+                              "cada formato hoy, y qué pieza del día anterior fue débil y por qué."})
         if not any(str(c.get("miembro")) == "audiencia" for c in consultas):  # Catalina: the male fan audience
             consultas.append({"miembro": "audiencia", "pregunta": "Con lo que pasa hoy en el fútbol (tendencias_ahora y los "
                               "partidos): ¿qué pique, reto o situación del parche haría que un hombre hincha comente, etiquete "
@@ -428,7 +451,7 @@ PASO 2: decide. Formato:
 (para cada "meme" agrega "meme_formato": tweet|nadie|expectativa|pov|starter|no_si|noticia|cuando|tier|chat|duelo, según Valeria; puedes
 poner 2 memes si hay tendencias fuertes, y si una tendencia explota justo ahora, el meme puede ir con "time":"ahora")
 (opcional: UNA publicación del plan puede llevar "time":"ahora" si debe salir apenas termine la reunión)
-"aprendizajes":["..."], "acta":"qué viste, qué decidiste, qué experimento corre y cómo se mide"}}
+"aprendizajes":[{{"miembro":"clave de quien lo aprendió","texto":"..."}}], "acta":"qué viste, qué decidiste, qué experimento corre y cómo se mide"}}
 4 a 7 publicaciones (volumen alto), horas 07:00–23:00 separadas al menos 90 min; "picks_dia" solo si hay picks
 próximos (puede repetirse con distinta "liga": Liga BetPlay, Premier League, LaLiga…), al menos 3 "reel" (topic "resultados"
 para un reel de resultados), al menos 1 "meme", "resultados" solo si hay picks jugados. Un partido mostrado en picks no se
@@ -437,8 +460,11 @@ repite en 36 h: no pongas más piezas de picks que partidos nuevos (varía la "l
             self.set_art(dec.get("direccion_arte"))
             self.set_seo(dec.get("seo"))
             self.log(f"  plan: {res}")
-            for t in (dec.get("aprendizajes") or [])[:3]:
-                self.learn(str(t))
+            for t in (dec.get("aprendizajes") or [])[:4]:
+                if isinstance(t, dict):
+                    self.learn(str(t.get("texto", "")), str(t.get("miembro", "")))
+                else:
+                    self.learn(str(t))
             acta = str(dec.get("acta") or "")
             if self.plan:
                 break
@@ -530,6 +556,39 @@ repite en 36 h: no pongas más piezas de picks que partidos nuevos (varía la "l
         if getattr(self, "now_posts", None):
             self.log(f"Publicación inmediata decidida: {self.now_posts[0]['type']} — {self.now_posts[0].get('angle', '')}")
         return {"plan": self.plan, "acta": acta, "ahora": getattr(self, "now_posts", [])}
+
+
+NOTEBOOKS = os.path.join(HERE, "redes_cuadernos.json")   # each member's own learnings (the office library)
+
+
+def notebook(member: str) -> list[dict]:
+    return (load(NOTEBOOKS, {}) or {}).get(member) or []
+
+
+def note(member: str, text: str) -> None:
+    nb = load(NOTEBOOKS, {}) or {}
+    nb.setdefault(member, []).append({"dia": now_co().strftime("%Y-%m-%d"), "texto": text[:500]})
+    nb[member] = nb[member][-40:]
+    save(NOTEBOOKS, nb)
+
+
+def study(api_key: str | None, signed, state: dict, facts: dict, log=print) -> int:
+    """Weekly study session in the library: each member reviews the week (metrics, posts, trends, her notebook) and
+    writes what she learned and one thing she will try. Returns how many notes were written."""
+    c = Committee(api_key, signed, state, facts, log)
+    log("Sesión de estudio semanal en la biblioteca de la oficina")
+    n = 0
+    for key, m in c.r["miembros"].items():
+        try:
+            out = c.ask(key, "Sesión de estudio de la semana. Revisa métricas, publicaciones, tendencias y tu cuaderno. "
+                             "Escribe en 2 líneas: 1) el aprendizaje más importante de tu especialidad esta semana (concreto y "
+                             "verificable) y 2) qué vas a probar la próxima semana y cómo se medirá.")
+            if out:
+                note(key, "Estudio semanal: " + " ".join(out.split())[:480])
+                n += 1
+        except Exception as e:
+            log(f"  {m.get('nombre', key)} no pudo estudiar: {e}")
+    return n
 
 
 def _trends() -> dict:
