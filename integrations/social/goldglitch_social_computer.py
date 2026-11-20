@@ -330,7 +330,12 @@ class AgentMeta:
         return self.agent.run(task, self.fb_page or "https://www.facebook.com/", paths[:10], caption, self.rehearsal, "facebook")
 
     def fb_video(self, path: str, caption: str, title: str = "") -> str:
-        return self.fb_photos([path], caption)
+        task = ("Publica en la PÁGINA de Facebook 'Easy gold glitch' (no en un perfil personal) este VIDEO vertical (reel) "
+                "con el texto preparado. En la página: '¿Qué estás pensando?' > 'Foto/video' o 'Agregar fotos o videos' (el "
+                "video se adjunta solo; si Facebook lo abre como 'Crear reel', está bien: sigue ese flujo) > texto con "
+                "escribir_texto_preparado > Siguiente (si aparece) > Publicar / Compartir reel. Si ves 'Cambiar ahora' para "
+                "actuar como la página, úsalo primero. Confirma que el autor sea 'Easy gold glitch'.")
+        return self.agent.run(task, self.fb_page or "https://www.facebook.com/", [path], caption, self.rehearsal, "facebook")
 
     def ig_recent_comments(self, media_limit: int = 12) -> list[dict]:
         return []

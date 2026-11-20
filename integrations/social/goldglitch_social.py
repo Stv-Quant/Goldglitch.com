@@ -131,14 +131,37 @@ def when(ms: int, now: datetime) -> str:
 
 
 # ------------------------------------------------------------------ pieces
-def build(post: dict, facts: dict, ag: Agents, now: datetime, tag: str) -> dict:
+SHOWN_HOURS = 36          # a match already shown in picks (feed or reel) is not shown again for 36 h
+IG_HASHTAGS = int(os.environ.get("REDES_IG_HASHTAGS", "30") or 30)   # Instagram drops the whole text above 30
+
+
+def match_key(r: dict) -> str:
+    return f"{r.get('home', '')}|{r.get('away', '')}".lower()
+
+
+def shown_recent(st: dict) -> set[str]:
+    cut = time.time() - SHOWN_HOURS * 3600
+    return {k for k, t in (st.get("shown") or {}).items() if t >= cut}
+
+
+def remember_shown(st: dict, piece: dict) -> None:
+    keep = {k: t for k, t in (st.get("shown") or {}).items() if t >= time.time() - 72 * 3600}
+    for k in piece.get("shown") or []:
+        keep[k] = time.time()
+    st["shown"] = keep
+
+
+def build(post: dict, facts: dict, ag: Agents, now: datetime, tag: str, shown: set[str] | None = None) -> dict:
     """Texts + images + video for one planned post. Returns {feed:[jpg], story:None, video:mp4, reel:bool, texts}.
 
     Picks come only from top first-division leagues of LATAM and Europe (and their continental cups)."""
     t = post["type"]
     V.set_style(G.art_for(now.strftime("%Y-%m-%d")))       # Martina's art direction for today
     focus = (post.get("liga") or "").strip()
-    picks = V.top_picks(facts.get("upcoming") or [], 5, focus) or V.top_picks(facts.get("upcoming") or [], 5)
+    seo = G.seo_for(now.strftime("%Y-%m-%d"))
+    post = {**post, "seo": seo}
+    fresh = [r for r in facts.get("upcoming") or [] if match_key(r) not in (shown or set())]
+    picks = V.top_picks(fresh, 5, focus) or V.top_picks(fresh, 5)
     res = sorted([r for r in facts.get("results") or [] if V.top_league(r.get("league"))],
                  key=lambda r: (r["status"] != "won", -r["p"])) or sorted(facts.get("results") or [], key=lambda r: (r["status"] != "won", -r["p"]))
     for r in res:
@@ -158,11 +181,14 @@ def build(post: dict, facts: dict, ag: Agents, now: datetime, tag: str) -> dict:
         rows, data = [], {"historial": facts["record"]}
     if t in ("picks_dia", "resultados") or (t == "reel" and reel_of != "texto"):
         if not rows:
-            raise SkipPiece("no hay partidos de ligas top para esta pieza")
+            raise SkipPiece("no hay partidos nuevos de ligas top (los de las últimas 36 h ya se mostraron)"
+                            if reel_of == "picks_dia" else "no hay partidos de ligas top para esta pieza")
     tx = ag.write(post, data)
-    # Hashtags: the writer's + leagues and teams of the real picks (no duplicates, Instagram allows 30).
+    # Hashtags: Daniela's SEO bank first, then leagues/teams of the real picks, then the writer's (Instagram allows 30).
     seen, tags = set(), []
-    for h in V.hashtags_for(rows) + list(tx.get("hashtags") or []):
+    base_tags = ["memesdefutbol", "futbolmemes", "humorfutbolero"] if t == "meme" else []
+    for h in list(seo.get("hashtags") or [])[:10] + base_tags + V.hashtags_for(rows) + list(tx.get("hashtags") or []) + DEFAULT_TAGS:
+        h = re.sub(r"[^\wñÑáéíóúÁÉÍÓÚüÜ]", "", str(h))
         k = h.lower()
         if h and k not in seen:
             seen.add(k)
@@ -175,9 +201,14 @@ def build(post: dict, facts: dict, ag: Agents, now: datetime, tag: str) -> dict:
         tx["fb"] += f"\n\nhttps://easygoldglitch.com/?ref=fb_{tag}"
 
     wfn = lambda r: when(r["kickoffAt"], now) if r.get("kickoffAt") else ""
+    shown_keys = [match_key(r) for r in rows] if reel_of == "picks_dia" else []
     if t == "reel":
         video = V.reel_video(V.reel_script(reel_of, rows, tx, wfn, facts.get("record")), f"{tag}_reel")
-        return {"feed": [], "story": None, "video": video, "reel": True, "texts": tx}
+        return {"feed": [], "story": None, "video": video, "reel": True, "texts": tx, "shown": shown_keys}
+    if t == "meme":
+        feed = R.render([V.meme(tx.get("meme_formato") or "", tx.get("meme") or {}, 1080, 1350)], 1080, 1350, f"{tag}_feed")
+        video = V.reel_video(V.reel_script("meme", [], tx, wfn), f"{tag}_reel")
+        return {"feed": feed, "story": None, "video": video, "reel": False, "texts": tx, "shown": []}
 
     def slides(w: int, h: int) -> list[str]:
         if t == "resultados":
@@ -197,21 +228,35 @@ def build(post: dict, facts: dict, ag: Agents, now: datetime, tag: str) -> dict:
     feed = R.render(slides(1080, 1350), 1080, 1350, f"{tag}_feed")
     # TikTok gets the same piece as a fast reel
     video = V.reel_video(V.reel_script(reel_of if reel_of in ("picks_dia", "resultados") else "texto", rows, tx, wfn, facts.get("record")), f"{tag}_reel")
-    return {"feed": feed, "story": None, "video": video, "reel": False, "texts": tx}
+    return {"feed": feed, "story": None, "video": video, "reel": False, "texts": tx, "shown": shown_keys}
 
 
 class SkipPiece(RuntimeError):
     pass
 
 
+DEFAULT_TAGS = ["futbol", "football", "soccer", "fyp", "parati", "viral", "futbolcolombiano", "futbollatino", "datosdefutbol",
+                "estadistica", "probabilidad", "analisisdeportivo", "goldglitch", "goldglitchstats"]
+
+
 def caption(tx: dict, key: str) -> str:
-    """Instagram: 30 hashtags (its limit); TikTok: 10 (big + topic); Facebook: 8."""
-    tags = list(tx.get("hashtags", []))
+    """Text + hashtags. Every '#' counts: Instagram drops the WHOLE caption when a post has more than 30, so numbering
+    like '#1' in the text becomes 'Nº1' and hashtags written inside the text move to the hashtag block.
+    Instagram: REDES_IG_HASHTAGS (30); TikTok: 10 (big + topic); Facebook: 8. Never empty."""
+    body = re.sub(r"#(\d)", r"Nº\1", str(tx.get(key) or ""))
+    inline = re.findall(r"(?<![\w&])#([^\W\d][\w]*)", body)
+    body = re.sub(r"[ \t]*(?<![\w&])#[^\W\d][\w]*", "", body).rstrip()
+    seen, tags = set(), []
+    for h in inline + list(tx.get("hashtags") or []) + DEFAULT_TAGS:
+        h = re.sub(r"[^\wñÑáéíóúÁÉÍÓÚüÜ]", "", str(h))
+        if h and h.lower() not in seen:
+            seen.add(h.lower())
+            tags.append(h)
     if key == "tiktok":   # TikTok rewards a few broad tags first
         big = [t for t in tags if t.lower() in ("fyp", "parati", "viral", "futbol", "football", "soccer")]
         tags = big + [t for t in tags if t not in big]
-    n = {"ig": 30, "tiktok": 10, "fb": 8}.get(key, 10)
-    return f"{tx[key]}\n\n{' '.join('#' + h for h in tags[:n])}".strip()
+    n = {"ig": max(3, min(IG_HASHTAGS, 30)), "tiktok": 10, "fb": 8}.get(key, 10)
+    return f"{body}\n\n{' '.join('#' + h for h in tags[:n])}".strip()
 
 
 def publish(post: dict, piece: dict, meta: Meta | None, tt: TikTok | None, dry: bool) -> None:
@@ -363,8 +408,10 @@ def publish_now(posts: list[dict]) -> None:
             log(f"Publicación inmediata del comité: {post['type']} — {post.get('angle', '')}")
             try:
                 facts = signed("/api/social/feed", {})
-                piece = build(post, facts, ag, now, f"{today}_ya{now:%H%M}_{post['type']}")
+                piece = build(post, facts, ag, now, f"{today}_ya{now:%H%M}_{post['type']}", shown_recent(st))
                 publish(post, piece, meta, tt, False)
+                if post.get("done"):
+                    remember_shown(st, piece)
             except SkipPiece as e:
                 log(f"  se omite: {e}")
                 continue
@@ -448,12 +495,14 @@ def _tick(dry: bool) -> None:
                 log("  sin datos para esta pieza: se omite")
                 continue
             try:
-                piece = build(post, facts, ag, now, f"{today}_{i}_{post['type']}")
+                piece = build(post, facts, ag, now, f"{today}_{i}_{post['type']}", shown_recent(st))
             except SkipPiece as e:
                 post["status"] = "skipped"
                 log(f"  se omite: {e}")
                 continue
             publish(post, piece, meta, tt, dry)
+            if post.get("done") and not dry:
+                remember_shown(st, piece)
             nets = {"instagram"} if meta and meta.ig else set()
             nets |= {"facebook"} if meta and getattr(meta, "fb", True) else set()
             nets |= {"tiktok"} if tt else set()

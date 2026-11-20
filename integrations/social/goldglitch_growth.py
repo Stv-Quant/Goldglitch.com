@@ -55,6 +55,24 @@ BASE = {
                "mision": "Dirige la estética de todo: decide la dirección de arte del día (color de acento, estilo de "
                          "portada y ritmo de los reels), cuida que cada pieza se vea premium, moderna y coherente con EGG, y "
                          "propone tendencias visuales nuevas."},
+    "viralidad": {"nombre": "Valeria", "rol": "Jefa de Viralidad y Memes",
+                  "perfil": "23 años, caleña, la reina del meme: vive en TikTok, X e Instagram y detecta un formato que "
+                            "explota antes de que llegue a Colombia. Humor rápido, filoso y con clase; cero vulgaridad.",
+                  "mision": "Responde por que EGG se comparta: cada día propone al menos un meme original (tuit de EGG, "
+                            "'Nadie / Literalmente nadie', expectativa vs realidad, POV, starter pack, no/sí) atado a lo que "
+                            "está pasando en el fútbol (resultados, VAR, clásicos, el minuto 90), elige el formato y el remate, "
+                            "y mide qué se comparte y guarda. Humor sobre el fútbol y sobre nosotros, nunca sobre grupos de personas; "
+                            "sin personajes, marcas ni imágenes de memes ajenos."},
+    "seo": {"nombre": "Daniela", "rol": "Experta en SEO social y psicoanalista del deseo",
+            "perfil": "29 años, psicoanalista (formación lacaniana, maestría en psicoanálisis en Buenos Aires) y especialista "
+                      "en SEO y búsqueda dentro de redes (Instagram, TikTok y Google). Entiende qué desea el hincha cuando "
+                      "busca: pertenencia, tener la razón, anticiparse, ganarle la discusión al amigo. Serena, profunda, "
+                      "precisa con los datos.",
+            "mision": "Cada día arma el banco SEO: hashtags y palabras clave por lo que la gente de verdad busca hoy (ligas, "
+                      "clásicos, equipos y jugadores del día, temas en tendencia) mezclando grandes, medianos y de nicho, y "
+                      "explica el deseo detrás de cada búsqueda para que los ganchos hablen a ese deseo con ética (sin "
+                      "explotar ansiedad ni prometer nada). Cuida que los textos lleven las palabras clave en la primera "
+                      "línea y que nunca falten los hashtags."},
     "analista": {"nombre": "Mariana", "rol": "Analista de conversión y métricas",
                  "perfil": "25 años, economista con maestría en Londres, adicta a los dashboards; directa y precisa.",
                  "mision": "Lee el embudo (visitas → cuentas → pagos) por origen y por enlace. Detecta qué canal, formato y "
@@ -87,7 +105,9 @@ DIRECTOR = f"""Eres Valentina, 26 años, la Directora de Crecimiento de EGG (Gol
 MBA en el exterior, visionaria y exigente. Presides un comité de mujeres jóvenes brillantes, expertas en ventas en línea y
 contenido. Cuando contrates, contrata mujeres jóvenes expertas, con nombre, perfil y misión precisos.
 En cada reunión consulta SIEMPRE a Sofía (clave "sofia"), tu Chief Growth Strategist, antes de decidir el plan: ella
-valida la estrategia, los estímulos y los experimentos. Y a Martina (clave "diseno") para la dirección de arte del día.
+valida la estrategia, los estímulos y los experimentos; a Martina (clave "diseno") para la dirección de arte del día; a
+Valeria (clave "viralidad") para el meme y la viralidad del día; y a Daniela (clave "seo") para el banco SEO del día
+(hashtags y palabras clave), que va en todas las publicaciones.
 Objetivo: crecimiento ORGÁNICO y viral (sin pauta pagada) que se convierta en cuentas creadas y en suscripciones Pro/Elite.
 
 {BRAND}
@@ -107,7 +127,9 @@ Cómo trabajas en la reunión:
 3. Decide el plan de HOY con definir_plan: 4 a 7 publicaciones (volumen alto: el objetivo es crecer rápido), al menos 3 de
    ellas "reel" (video vertical de ritmo rápido, el formato que más alcance orgánico da; topic "resultados" para un reel
    de resultados, si no son picks), solo equipos de ligas top, horas 07:00–23:00 separadas al menos 90 min,
-   cada una con gancho, ángulo, tema y llamado a la acción. Basa las decisiones en datos cuando los haya; cuando no,
+   cada una con gancho, ángulo, tema y llamado a la acción. Al menos 1 "meme" al día (idea de Valeria). Los picks no se
+   repiten: un partido mostrado en picks (carrusel o reel) no vuelve a salir en 36 h, así que no pongas varias piezas
+   de picks sin partidos nuevos (usa "liga" distinta, resultados, memes o educativos). Basa las decisiones en datos cuando los haya; cuando no,
    plantea experimentos medibles (por ejemplo, dos ganchos distintos en días distintos).
 4. Guarda 1 a 3 aprendizajes concretos y verificables (guardar_aprendizaje).
 5. Cierra con terminar y un acta breve: qué viste, qué decidiste, qué experimento corre y cómo se medirá.
@@ -140,6 +162,8 @@ TOOLS = [
          "type": {"type": "string", "enum": list(POST_TYPES)},
          "time": {"type": "string", "description": "HH:MM entre 07:00 y 23:00, o \"ahora\" para publicar apenas termine la reunión (máx. 1)"},
          "liga": {"type": "string", "description": "opcional para picks_dia: liga o deporte a destacar (ej. Liga BetPlay, Premier League, NBA)"},
+         "meme_formato": {"type": "string", "enum": ["tweet", "nadie", "expectativa", "pov", "starter", "no_si"],
+                          "description": "solo para meme"},
          "angle": {"type": "string"}, "topic": {"type": "string"},
          "hook": {"type": "string", "description": "primera línea / gancho"},
          "cta": {"type": "string", "description": "llamado a la acción"}},
@@ -147,7 +171,11 @@ TOOLS = [
          "direccion_arte": {"type": "object", "description": "decisión de Martina para hoy", "properties": {
              "acento": {"type": "string", "enum": ["oro", "esmeralda", "rubi", "zafiro", "violeta", "champana"]},
              "portada": {"type": "string", "enum": ["impacto", "editorial"]},
-             "ritmo": {"type": "string", "enum": ["rapido", "muy_rapido", "elegante"]}}}}, "required": ["posts"]}},
+             "ritmo": {"type": "string", "enum": ["rapido", "muy_rapido", "elegante"]}}},
+         "seo": {"type": "object", "description": "banco SEO de Daniela para hoy", "properties": {
+             "hashtags": {"type": "array", "items": {"type": "string"}, "description": "10 a 20 hashtags sin '#', los más importantes primero"},
+             "palabras": {"type": "array", "items": {"type": "string"}, "description": "5 a 10 palabras clave de búsqueda"}}}},
+         "required": ["posts"]}},
     {"name": "terminar", "description": "Cierra la reunión con el acta.",
      "input_schema": {"type": "object", "properties": {"acta": {"type": "string"}}, "required": ["acta"]}},
 ]
@@ -175,7 +203,7 @@ def now_co() -> datetime:
 
 def roster() -> dict:
     r = load(ROSTER, {})
-    members = {**BASE, **(r.get("miembros") or {})}
+    members = {**BASE, **{k: v for k, v in (r.get("miembros") or {}).items() if k not in BASE}}
     return {"miembros": members, "historial": r.get("historial") or []}
 
 
@@ -279,7 +307,7 @@ class Committee:
             if hhmm.strip().lower() in ("ahora", "ya", "now"):
                 text = " ".join(str(p.get(k, "")) for k in ("angle", "topic", "hook", "cta"))
                 if t in POST_TYPES and not BANNED.search(text) and not self.now_posts:
-                    self.now_posts.append({k: str(p.get(k, ""))[:400] for k in ("type", "angle", "topic", "hook", "cta", "liga")})
+                    self.now_posts.append({k: str(p.get(k, ""))[:400] for k in ("type", "angle", "topic", "hook", "cta", "liga", "meme_formato")})
                 else:
                     problems.append(f"{t} ahora: solo 1 inmediata, de un formato válido y sin palabras prohibidas")
                 continue
@@ -302,7 +330,7 @@ class Committee:
                 problems.append(f"{t} {hhmm}: menos de 90 min de otra publicación")
                 continue
             times.append(m)
-            ok.append({k: str(p.get(k, ""))[:400] for k in ("type", "time", "angle", "topic", "hook", "cta", "liga")})
+            ok.append({k: str(p.get(k, ""))[:400] for k in ("type", "time", "angle", "topic", "hook", "cta", "liga", "meme_formato")})
         e = now_co() + __import__("datetime").timedelta(minutes=10)
         left = (23 * 60 - (e.hour * 60 + e.minute)) // 90 + 1 if (now_co().strftime("%Y-%m-%d") == getattr(self, "today", "")
                                                                 and getattr(self, "mode", "normal") != "extra_noche") else 7
@@ -317,6 +345,12 @@ class Committee:
     def set_art(self, art) -> None:
         art = art if isinstance(art, dict) else {}
         self.art = {k: (art.get(k) if art.get(k) in v else v[0]) for k, v in self.ART_OPTS.items()}
+
+    def set_seo(self, seo) -> None:
+        seo = seo if isinstance(seo, dict) else {}
+        clean = lambda xs, n: [x for x in dict.fromkeys(re.sub(r"[^\wñÑáéíóúÁÉÍÓÚüÜ ]", "", str(x)).strip() for x in (xs or []))
+                               if x and not BANNED.search(x)][:n]
+        self.seo = {"hashtags": [h.replace(" ", "") for h in clean(seo.get("hashtags"), 20)], "palabras": clean(seo.get("palabras"), 10)}
 
     def learn(self, text: str) -> str:
         text = " ".join(text.split())[:500]
@@ -351,6 +385,14 @@ Formato: {"contratar":[{"clave":"...","rol":"Nombre — rol","mision":"..."}], "
             consultas.append({"miembro": "diseno", "pregunta": "Dirección de arte de hoy: acento (oro, esmeralda, rubi, "
                               "zafiro, violeta o champana), portada (impacto o editorial) y ritmo de reels (rapido, "
                               "muy_rapido o elegante), y por qué."})
+        if not any(str(c.get("miembro")) == "viralidad" for c in consultas):  # Valeria: the meme of the day
+            consultas.append({"miembro": "viralidad", "pregunta": "El meme de hoy: formato (tweet, nadie, expectativa, pov, "
+                              "starter o no_si), idea y remate atados a lo que pasa hoy en el fútbol, y la hora en que más "
+                              "se compartiría. Más una idea viral para un reel."})
+        if not any(str(c.get("miembro")) == "seo" for c in consultas):        # Daniela: the SEO bank of the day
+            consultas.append({"miembro": "seo", "pregunta": "Banco SEO de hoy: 15 a 20 hashtags (grandes, medianos y de nicho, "
+                              "con ligas, clásicos, equipos y jugadores del día) y 6 a 10 palabras clave, y el deseo del "
+                              "hincha detrás de las búsquedas principales para orientar los ganchos."})
         for c in consultas:
             k = str(c.get("miembro", ""))
             answers.append({"miembro": k, "pregunta": c.get("pregunta"), "respuesta": self.ask(k, str(c.get("pregunta", "")))})
@@ -365,13 +407,17 @@ Formatos disponibles: {types}
 PASO 2: decide. Formato:
 {{"plan":[{{"type":"...","time":"HH:MM","angle":"...","topic":"...","hook":"...","cta":"...","liga":"(opcional)"}}],
 "direccion_arte":{{"acento":"oro|esmeralda|rubi|zafiro|violeta|champana","portada":"impacto|editorial","ritmo":"rapido|muy_rapido|elegante"}},
+"seo":{{"hashtags":["15 a 20 sin #, de Daniela, los más importantes primero"],"palabras":["6 a 10 palabras clave"]}},
+(para cada "meme" agrega "meme_formato": tweet|nadie|expectativa|pov|starter|no_si, según Valeria)
 (opcional: UNA publicación del plan puede llevar "time":"ahora" si debe salir apenas termine la reunión)
 "aprendizajes":["..."], "acta":"qué viste, qué decidiste, qué experimento corre y cómo se mide"}}
 4 a 7 publicaciones (volumen alto), horas 07:00–23:00 separadas al menos 90 min; "picks_dia" solo si hay picks
 próximos (puede repetirse con distinta "liga": Liga BetPlay, Premier League, LaLiga…), al menos 3 "reel" (topic "resultados"
-para un reel de resultados) y "resultados" solo si hay picks jugados.""")
+para un reel de resultados), al menos 1 "meme", "resultados" solo si hay picks jugados. Un partido mostrado en picks no se
+repite en 36 h: no pongas más piezas de picks que partidos nuevos (varía la "liga").""")
             res = self.set_plan(dec.get("plan") or [])
             self.set_art(dec.get("direccion_arte"))
+            self.set_seo(dec.get("seo"))
             self.log(f"  plan: {res}")
             for t in (dec.get("aprendizajes") or [])[:3]:
                 self.learn(str(t))
@@ -419,6 +465,7 @@ para un reel de resultados) y "resultados" solo si hay picks jugados.""")
                 elif n == "definir_plan":
                     out = self.set_plan(a.get("posts") or [])
                     self.set_art(a.get("direccion_arte"))
+                    self.set_seo(a.get("seo"))
                     self.log(f"  plan: {out} · arte: {self.art}")
                 elif n == "terminar":
                     if not self.plan:
@@ -440,9 +487,11 @@ para un reel de resultados) y "resultados" solo si hay picks jugados.""")
                 for t in self.learned:
                     f.write(f"- {today}: {t}\n")
         if self.plan and mode == "extra_noche":
-            save(DRAFT, {"for_day": today, "posts": self.plan, "arte": getattr(self, "art", None) or {}, "acta": acta[:2000]})
+            save(DRAFT, {"for_day": today, "posts": self.plan, "arte": getattr(self, "art", None) or {},
+                         "seo": getattr(self, "seo", None) or {}, "acta": acta[:2000]})
         elif self.plan:
-            save(PLAN, {"day": today, "posts": self.plan, "arte": getattr(self, "art", None) or {}, "v": time.time()})
+            save(PLAN, {"day": today, "posts": self.plan, "arte": getattr(self, "art", None) or {},
+                        "seo": getattr(self, "seo", None) or {}, "v": time.time()})
         os.makedirs(ACTAS, exist_ok=True)
         name = f"{today}.md" if mode == "normal" else f"{today}_extraordinaria_{now_co():%H%M}.md"
         title = {"normal": "Comité de crecimiento", "extra": "Reunión extraordinaria (reemplaza el resto del plan de hoy)",
@@ -450,7 +499,12 @@ para un reel de resultados) y "resultados" solo si hay picks jugados.""")
         with open(os.path.join(ACTAS, name), "w", encoding="utf-8") as f:
             f.write(f"# {title} — {today}\n\n{acta or '(sin acta)'}\n\n## Plan\n")
             for p in self.plan or []:
-                f.write(f"- {p['time']} · {p['type']} · {p['angle']}\n  - Gancho: {p['hook']}\n  - CTA: {p['cta']}\n")
+                f.write(f"- {p['time']} · {p['type']}{' (' + p['meme_formato'] + ')' if p.get('meme_formato') else ''} · {p['angle']}\n"
+                        f"  - Gancho: {p['hook']}\n  - CTA: {p['cta']}\n")
+            seo = getattr(self, "seo", None) or {}
+            if seo.get("hashtags") or seo.get("palabras"):
+                f.write(f"\n## Banco SEO (Daniela)\n- Hashtags: {' '.join('#' + h for h in seo.get('hashtags') or [])}\n"
+                        f"- Palabras clave: {', '.join(seo.get('palabras') or [])}\n")
             f.write("\n## Aprendizajes\n" + "".join(f"- {t}\n" for t in self.learned))
             f.write("\n## Plantilla\n" + "".join(f"- {k}: {v.get('nombre', '')} — {v['rol']}\n" for k, v in self.r["miembros"].items()))
             f.write(f"\n_Consultas a miembros: {self.calls}_\n")
@@ -469,6 +523,12 @@ def art_for(today: str) -> dict:
     """Martina's art direction for today (empty = house style)."""
     p = load(PLAN, {})
     return (p.get("arte") or {}) if p.get("day") == today else {}
+
+
+def seo_for(today: str) -> dict:
+    """Daniela's SEO bank for today (hashtags + keywords); empty if the committee has not met."""
+    p = load(PLAN, {})
+    return (p.get("seo") or {}) if p.get("day") == today else {}
 
 
 def plan_for(today: str) -> list[dict] | None:
