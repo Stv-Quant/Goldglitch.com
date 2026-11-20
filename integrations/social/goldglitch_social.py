@@ -315,10 +315,86 @@ def clients(rehearsal: bool = False) -> tuple[Meta | B.BrowserMeta | None, TikTo
     return meta, tt
 
 
+LOCK = os.path.join(HERE, "redes.lock")
+
+
+def take_lock(wait_s: int = 0) -> bool:
+    """One worker at a time (the browser profile can only be open once). Stale locks (>45 min) are ignored."""
+    end = time.time() + wait_s
+    while True:
+        try:
+            fd = os.open(LOCK, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+            os.write(fd, str(os.getpid()).encode())
+            os.close(fd)
+            return True
+        except FileExistsError:
+            try:
+                if time.time() - os.path.getmtime(LOCK) > 45 * 60:
+                    os.remove(LOCK)
+                    continue
+            except OSError:
+                continue
+            if time.time() >= end:
+                return False
+            time.sleep(15)
+
+
+def drop_lock() -> None:
+    try:
+        os.remove(LOCK)
+    except OSError:
+        pass
+
+
+def publish_now(posts: list[dict]) -> None:
+    """Publish the committee's immediate post(s) right away (after an extraordinary meeting)."""
+    if not take_lock(wait_s=20 * 60):
+        log("Publicación inmediata: los agentes siguen ocupados; queda para la próxima vuelta")
+        return
+    global BROWSER
+    try:
+        now = datetime.now(TZ)
+        today = now.strftime("%Y-%m-%d")
+        st = load_json(STATE, {})
+        ag = Agents(os.environ.get("ANTHROPIC_API_KEY"))
+        meta, tt = clients()
+        for i, post in enumerate(posts[:1]):
+            post = {**post, "time": now.strftime("%H:%M"), "inmediata": True}
+            log(f"Publicación inmediata del comité: {post['type']} — {post.get('angle', '')}")
+            try:
+                facts = signed("/api/social/feed", {})
+                piece = build(post, facts, ag, now, f"{today}_ya{now:%H%M}_{post['type']}")
+                publish(post, piece, meta, tt, False)
+            except SkipPiece as e:
+                log(f"  se omite: {e}")
+                continue
+            except Exception as e:
+                log(f"  ERROR en la publicación inmediata: {e}")
+                continue
+            st.setdefault("history", []).append({"day": today, "type": post["type"], "time": post["time"], "angle": post.get("angle"),
+                                                "inmediata": True, "done": list(post.get("done", {})), "errors": post.get("errors", {})})
+        save_json(STATE, st)
+    finally:
+        if BROWSER:
+            BROWSER.close()
+            BROWSER = None
+        drop_lock()
+
+
 def tick(dry: bool) -> None:
     if os.environ.get("REDES_PAUSA") == "1":
         log("En pausa (REDES_PAUSA=1).")
         return
+    if not take_lock():
+        log("Otra tarea de redes está trabajando (reunión o publicación inmediata); esta vuelta se salta.")
+        return
+    try:
+        _tick(dry)
+    finally:
+        drop_lock()
+
+
+def _tick(dry: bool) -> None:
     now = datetime.now(TZ)
     st = load_json(STATE, {})
     ag = Agents(os.environ.get("ANTHROPIC_API_KEY"))
@@ -336,8 +412,10 @@ def tick(dry: bool) -> None:
         plan = G.plan_for(today)
         if plan is None and not ag.offline and os.environ.get("REDES_COMITE", "1") != "0":
             try:
-                G.Committee(os.environ.get("ANTHROPIC_API_KEY"), signed, st, facts, log).meet(today)
+                res = G.Committee(os.environ.get("ANTHROPIC_API_KEY"), signed, st, facts, log).meet(today)
                 plan = G.plan_for(today)
+                if plan is not None and res.get("ahora"):
+                    plan = [{**res["ahora"][0], "time": datetime.now(TZ).strftime("%H:%M"), "inmediata": True}] + plan
             except Exception as e:
                 log(f"El comité no pudo reunirse ({e}); planea el Estratega")
         plan = plan or ag.plan(f"{now:%A %d/%m/%Y}", facts, memory)
