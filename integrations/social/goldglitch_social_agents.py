@@ -240,6 +240,8 @@ Entrega:
 {self._seo_ask(post)}
 No escribas hashtags dentro de ig, fb ni tiktok (van aparte) y no uses "#" para numerar: escribe "Nº1" o "el 1".
 - concepto: el concepto elegido en máx. 7 palabras.
+- audio_vibe: la vibra del audio en tendencia que debe sonar en el reel (ej. "épico de estadio", "comedia", "tensión",
+  "lujo chill", "phonk", "dramático"), en máx. 4 palabras; el audio lo elige el agente en la biblioteca de la red.
 Formato JSON con esas claves.""", max_tokens=2000)
                 texts = [out.get(k, "") for k in ("cover_title", "cover_subtitle", "ig", "fb", "tiktok", "edu_title", "edu_body")]
                 texts.append(json.dumps(out.get("meme") or {}, ensure_ascii=False))

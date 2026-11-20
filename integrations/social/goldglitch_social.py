@@ -274,6 +274,12 @@ def publish(post: dict, piece: dict, meta: Meta | None, tt: TikTok | None, dry: 
     jobs = []
     local = getattr(meta, "local", False)          # browser mode takes files; the API needs public URLs
     src = (lambda p: p) if local else upload
+    for net in (meta, tt):                         # mood for the platform's trending audio (screen agents)
+        if net is not None:
+            try:
+                net.audio_vibe = str(tx.get("audio_vibe") or "")[:60]
+            except AttributeError:
+                pass
     if meta and meta.ig and piece.get("reel"):
         jobs.append(("instagram", lambda: meta.ig_reel(src(piece["video"]), caption(tx, "ig"))))
     elif meta and meta.ig:

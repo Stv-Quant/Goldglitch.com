@@ -293,9 +293,24 @@ class ScreenAgent:
             return ""
 
 
+
+def trending_audio_step(app: str, library: str, vibe: str) -> str:
+    """Instructions for using the platform's own trending audio (licensed by the platform) instead of our beat."""
+    return (f" AUDIO EN TENDENCIA (antes de publicar): busca en el editor la opción de audio/música de {app} ('Audio', "
+            "'Música', 'Agregar audio', 'Sonidos', ícono de nota musical). Abre la pestaña 'En tendencia' / 'Tendencias' / "
+            f"'Para ti' (o el ícono ↗ de audio en tendencia) y elige un audio en tendencia que encaje con el video"
+            f"{' (vibra: ' + vibe + ')' if vibe else ''}, preferiblemente con muchos reels usándolo. Ponlo como audio "
+            "principal y baja el 'audio original' / 'sonido original' a 0 (el del video es solo un ritmo de relleno). "
+            f"Usa SOLO audios de la biblioteca de {library}; nunca subas ni busques música por fuera. Si la opción de audio "
+            "no existe en la versión web, o el audio dice que no está disponible para esta cuenta, publica sin cambiarlo "
+            "y dilo en el detalle de terminar (qué audio pusiste o por qué no).")
+
+
 # ------------------------------------------------------------------ same contract as the API / script classes
 class AgentMeta:
     local = True
+
+    audio_vibe = ""      # set by the pipeline before a reel: mood for the trending audio
 
     def __init__(self, agent: ScreenAgent, fb_page: str | None, instagram: bool, rehearsal: bool):
         self.agent, self.fb_page, self.rehearsal = agent, fb_page, rehearsal
@@ -307,6 +322,9 @@ class AgentMeta:
                 "Normalmente: botón Crear (+) o 'Nueva publicación' en la barra lateral (si solo hay íconos, el del signo +; "
                 "también puede estar en el menú ☰ 'Más'), 'Publicación', 'Seleccionar del ordenador', Siguiente, Siguiente, "
                 "descripción, Compartir. Si pregunta por el recorte deja el original o 4:5.")
+        if "video" in kind:
+            task += (" Es un reel: si pregunta, elige formato 9:16 / original." +
+                     trending_audio_step("Instagram", "Instagram", self.audio_vibe))
         return self.agent.run(task, "https://www.instagram.com/", paths, caption, self.rehearsal, "instagram")
 
     def ig_image(self, path: str, caption: str) -> str:
@@ -335,6 +353,7 @@ class AgentMeta:
                 "video se adjunta solo; si Facebook lo abre como 'Crear reel', está bien: sigue ese flujo) > texto con "
                 "escribir_texto_preparado > Siguiente (si aparece) > Publicar / Compartir reel. Si ves 'Cambiar ahora' para "
                 "actuar como la página, úsalo primero. Confirma que el autor sea 'Easy gold glitch'.")
+        task += trending_audio_step("Facebook", "Facebook/Meta", self.audio_vibe)
         return self.agent.run(task, self.fb_page or "https://www.facebook.com/", [path], caption, self.rehearsal, "facebook")
 
     def ig_recent_comments(self, media_limit: int = 12) -> list[dict]:
@@ -359,14 +378,13 @@ class AgentTikTok:
     def __init__(self, agent: ScreenAgent, rehearsal: bool):
         self.agent, self.rehearsal = agent, rehearsal
 
+    audio_vibe = ""
+
     def video(self, path: str, title: str) -> str:
         task = ("Publica este video en TikTok con la descripción preparada. En TikTok Studio (Cargar): 'Seleccionar video' "
                 "(el archivo se adjunta solo), espera a que termine de subir, borra el texto que aparezca en la descripción "
                 "(clic en el cuadro, ctrl+a, Delete), usa escribir_texto_preparado, deja la privacidad en 'Todos', y Publicar. "
-                "Opcional, antes de publicar: si TikTok Studio ofrece 'Sonidos' / 'Agregar sonido' / 'Editar video' con la "
-                "biblioteca de sonidos de TikTok, elige uno de los sonidos en tendencia de esa biblioteca (licenciados por "
-                "TikTok), con el volumen del sonido nuevo bajo para que se escuche el audio original del video. No subas ni "
-                "busques música fuera de la biblioteca de TikTok. Si no aparece la opción, sigue sin ella.")
+                + trending_audio_step("TikTok Studio ('Editar video' > 'Sonidos')", "TikTok", self.audio_vibe))
         return self.agent.run(task, "https://www.tiktok.com/tiktokstudio/upload?from=webapp", [path], title, self.rehearsal, "tiktok")
 
 
