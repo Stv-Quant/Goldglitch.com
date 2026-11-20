@@ -111,6 +111,8 @@ Cómo trabajas en la reunión:
    plantea experimentos medibles (por ejemplo, dos ganchos distintos en días distintos).
 4. Guarda 1 a 3 aprendizajes concretos y verificables (guardar_aprendizaje).
 5. Cierra con terminar y un acta breve: qué viste, qué decidiste, qué experimento corre y cómo se medirá.
+6. Si algo merece salir YA (un resultado fresco, una tendencia del momento, una oportunidad que se pierde si se espera),
+   pon UNA publicación con time "ahora": se publica apenas termine la reunión. Úsalo solo cuando de verdad valga la pena.
 Sé eficiente: pocas consultas bien hechas. Responde siempre en español."""
 
 TOOLS = [
@@ -136,7 +138,7 @@ TOOLS = [
     {"name": "definir_plan", "description": "Plan de publicaciones de HOY.",
      "input_schema": {"type": "object", "properties": {"posts": {"type": "array", "items": {"type": "object", "properties": {
          "type": {"type": "string", "enum": list(POST_TYPES)},
-         "time": {"type": "string", "description": "HH:MM entre 07:00 y 23:00"},
+         "time": {"type": "string", "description": "HH:MM entre 07:00 y 23:00, o \"ahora\" para publicar apenas termine la reunión (máx. 1)"},
          "liga": {"type": "string", "description": "opcional para picks_dia: liga o deporte a destacar (ej. Liga BetPlay, Premier League, NBA)"},
          "angle": {"type": "string"}, "topic": {"type": "string"},
          "hook": {"type": "string", "description": "primera línea / gancho"},
@@ -271,8 +273,16 @@ class Committee:
         ok, problems, times = [], [], []
         f = self.facts or {}
         earliest = (now_co() + __import__("datetime").timedelta(minutes=10)).strftime("%H:%M")
-        for p in posts[:7]:
+        self.now_posts = []
+        for p in posts[:8]:
             t, hhmm = p.get("type"), str(p.get("time", ""))
+            if hhmm.strip().lower() in ("ahora", "ya", "now"):
+                text = " ".join(str(p.get(k, "")) for k in ("angle", "topic", "hook", "cta"))
+                if t in POST_TYPES and not BANNED.search(text) and not self.now_posts:
+                    self.now_posts.append({k: str(p.get(k, ""))[:400] for k in ("type", "angle", "topic", "hook", "cta", "liga")})
+                else:
+                    problems.append(f"{t} ahora: solo 1 inmediata, de un formato válido y sin palabras prohibidas")
+                continue
             if hhmm and hhmm < earliest and now_co().strftime("%Y-%m-%d") == getattr(self, "today", "") \
                     and getattr(self, "mode", "normal") != "extra_noche":
                 problems.append(f"{t} {hhmm}: esa hora ya pasó (ahora son {now_co():%H:%M})")
@@ -355,6 +365,7 @@ Formatos disponibles: {types}
 PASO 2: decide. Formato:
 {{"plan":[{{"type":"...","time":"HH:MM","angle":"...","topic":"...","hook":"...","cta":"...","liga":"(opcional)"}}],
 "direccion_arte":{{"acento":"oro|esmeralda|rubi|zafiro|violeta|champana","portada":"impacto|editorial","ritmo":"rapido|muy_rapido|elegante"}},
+(opcional: UNA publicación del plan puede llevar "time":"ahora" si debe salir apenas termine la reunión)
 "aprendizajes":["..."], "acta":"qué viste, qué decidiste, qué experimento corre y cómo se mide"}}
 4 a 7 publicaciones (volumen alto), horas 07:00–23:00 separadas al menos 90 min; "picks_dia" solo si hay picks
 próximos (puede repetirse con distinta "liga": Liga BetPlay, Premier League, LaLiga…), al menos 3 "reel" (topic "resultados"
@@ -444,7 +455,9 @@ para un reel de resultados) y "resultados" solo si hay picks jugados.""")
             f.write("\n## Plantilla\n" + "".join(f"- {k}: {v.get('nombre', '')} — {v['rol']}\n" for k, v in self.r["miembros"].items()))
             f.write(f"\n_Consultas a miembros: {self.calls}_\n")
         self.log(f"Comité cerrado: {len(self.plan or [])} publicaciones, {len(self.learned)} aprendizajes, {self.calls} consultas")
-        return {"plan": self.plan, "acta": acta}
+        if getattr(self, "now_posts", None):
+            self.log(f"Publicación inmediata decidida: {self.now_posts[0]['type']} — {self.now_posts[0].get('angle', '')}")
+        return {"plan": self.plan, "acta": acta, "ahora": getattr(self, "now_posts", [])}
 
 
 def plan_version(today: str) -> float:
@@ -487,11 +500,13 @@ def main() -> int:
     if extra and not (7 <= now.hour < 22):
         day = today if now.hour < 7 else (now + timedelta(days=1)).strftime("%Y-%m-%d")
         S.log(f"Reunión extraordinaria de noche: deja un borrador para la reunión de la mañana del {day}")
-        c.meet(day, "extra_noche")
+        res = c.meet(day, "extra_noche")
     else:
-        c.meet(today, "extra" if extra else "normal")
+        res = c.meet(today, "extra" if extra else "normal")
         if extra:
             S.log("Reunión extraordinaria: el resto del plan de hoy se actualiza en la próxima vuelta de los agentes")
+    if res.get("ahora"):
+        S.publish_now(res["ahora"])
     return 0
 
 
