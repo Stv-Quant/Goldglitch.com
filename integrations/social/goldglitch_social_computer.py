@@ -357,7 +357,11 @@ class AgentTikTok:
     def video(self, path: str, title: str) -> str:
         task = ("Publica este video en TikTok con la descripción preparada. En TikTok Studio (Cargar): 'Seleccionar video' "
                 "(el archivo se adjunta solo), espera a que termine de subir, borra el texto que aparezca en la descripción "
-                "(clic en el cuadro, ctrl+a, Delete), usa escribir_texto_preparado, deja la privacidad en 'Todos', y Publicar.")
+                "(clic en el cuadro, ctrl+a, Delete), usa escribir_texto_preparado, deja la privacidad en 'Todos', y Publicar. "
+                "Opcional, antes de publicar: si TikTok Studio ofrece 'Sonidos' / 'Agregar sonido' / 'Editar video' con la "
+                "biblioteca de sonidos de TikTok, elige uno de los sonidos en tendencia de esa biblioteca (licenciados por "
+                "TikTok), con el volumen del sonido nuevo bajo para que se escuche el audio original del video. No subas ni "
+                "busques música fuera de la biblioteca de TikTok. Si no aparece la opción, sigue sin ella.")
         return self.agent.run(task, "https://www.tiktok.com/tiktokstudio/upload?from=webapp", [path], title, self.rehearsal, "tiktok")
 
 
