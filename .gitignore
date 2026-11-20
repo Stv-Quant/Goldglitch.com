@@ -35,3 +35,4 @@ __pycache__/
 # social pipeline runtime files (generated on the PC)
 integrations/social/redes_*.json
 integrations/social/redes_salida/
+integrations/social/oficina.html
