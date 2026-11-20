@@ -66,6 +66,10 @@ MEME_FORMATS = {
     "pov": '{"texto": "situación en primera persona, empieza sin \'POV:\' (máx. 90 caracteres)", "emoji": "1 emoji"}',
     "starter": '{"titulo": "Starter pack de… (máx. 40)", "items": ["emoji + cosa (máx. 28)", "… 4 a 6 ítems"]}',
     "no_si": '{"no": "lo que EGG no hace (máx. 60)", "si": "lo que EGG sí hace (máx. 60)"}',
+    "noticia": '{"titular": "titular REAL de tendencias_del_momento, resumido sin cambiar los hechos (máx. 90)", '
+               '"reaccion": "la reacción de EGG (máx. 110)"}',
+    "cuando": '{"cuando": "Cuando… (situación del momento, máx. 90)", "reaccion": "Yo / EGG: … (máx. 90)"}',
+    "tier": '{"titulo": "Tier list de… (máx. 40)", "S": ["1 a 3 ítems cortos"], "A": ["…"], "B": ["…"]}',
 }   # one text card (+ CTA in the vertical version)
 
 
@@ -166,6 +170,7 @@ Entrega:
 - reel_sub: segunda línea del reel, máx. 40 caracteres.
 {"- edu_title (máx. 50 caracteres) y edu_body (3 a 5 frases cortas, una por línea) para la imagen." if post['type'] in TEXT_TYPES else ''}
 {self._meme_ask(post) if post['type'] == 'meme' else ''}
+{"Si en los datos hay tendencias_del_momento, monta el gancho y el texto sobre la que más pegue con esta pieza (sin inventar hechos)." if data.get("tendencias_del_momento") and post['type'] != 'meme' else ''}
 {self._seo_ask(post)}
 No escribas hashtags dentro de ig, fb ni tiktok (van aparte) y no uses "#" para numerar: escribe "Nº1" o "el 1".
 Formato JSON con esas claves.""", max_tokens=2000)
@@ -187,7 +192,12 @@ Formato JSON con esas claves.""", max_tokens=2000)
         fmt = post.get("meme_formato") if post.get("meme_formato") in MEME_FORMATS else ""
         opts = "\n".join(f"  {k}: {v}" for k, v in MEME_FORMATS.items())
         return ("- meme_formato: " + (f'"{fmt}" (lo pidió el comité)' if fmt else "elige uno de: " + ", ".join(MEME_FORMATS)) +
-                f"\n- meme: objeto según el formato:\n{opts}\n  Humor de fútbol que cualquier hincha entiende (el amigo "
+                f"\n- meme: objeto según el formato:\n{opts}\n"
+                "- tendencia_usada: qué tendencia de tendencias_del_momento usaste (titular, búsqueda o hashtag), tal cual.\n"
+                "  El meme TIENE que montarse en algo que esté pasando HOY (un titular de fútbol, una búsqueda en tendencia, "
+                "un hashtag de TikTok) y conectarlo con el fútbol y los datos. Nunca inventes una noticia, un resultado ni una "
+                "frase de una persona real; nada de tragedias, política ni burlas a personas. Si no hay tendencias, no uses "
+                "'noticia'.\n  Humor de fútbol que cualquier hincha entiende (el amigo "
                 "que 'sabe de fútbol', el VAR, el minuto 90, el que dice que su equipo ganaba fijo…), con el giro EGG de "
                 "datos y lujo con clase. Original: nada de personajes, marcas ni imágenes de memes famosos. Nunca te burles "
                 "de un grupo de personas; sí del fútbol y de nosotros mismos.")

@@ -350,6 +350,24 @@ def meme(fmt: str, m: dict, w: int, h: int) -> str:
                         f"font-size:{int(w * .04)}px;font-weight:700;line-height:1.25'>{esc(x)}</div>" for x in items)
         body = (f"<div style='margin:auto 0'><div class='anton' style='font-size:{int(w * .085)}px;line-height:1'>{esc(m.get('titulo') or 'Starter pack')}</div>"
                 f"<div style='display:grid;grid-template-columns:1fr 1fr;gap:22px;margin-top:40px'>{tiles}</div></div>")
+    elif fmt == "noticia":
+        body = (f"<div style='margin:auto 0'><div class='anton' style='display:inline-block;background:#ff2d55;color:#fff;font-size:40px;"
+                f"padding:12px 26px;border-radius:12px;letter-spacing:.06em'>● ÚLTIMO MOMENTO</div>"
+                f"<div style='font-size:{int(w * .062)}px;font-weight:800;line-height:1.2;margin-top:34px'>{esc(m.get('titular') or '')}</div>"
+                f"<div style='margin-top:46px;background:#0e0c09;border:2px solid #2a261f;border-radius:36px;padding:38px 40px;display:flex;gap:22px'>"
+                f"{MARK.format(s=72)}<div style='font-size:{int(w * .05)}px;line-height:1.3;font-weight:600'>{esc(m.get('reaccion') or '')}</div></div></div>")
+    elif fmt == "cuando":
+        body = (f"<div style='margin:auto 0'><div style='font-size:{int(w * .066)}px;font-weight:800;line-height:1.25'>{esc(m.get('cuando') or '')}</div>"
+                f"<div class='anton gold' style='font-size:{int(w * .09)}px;line-height:1.05;margin-top:56px'>{esc(m.get('reaccion') or '')}</div></div>")
+    elif fmt == "tier":
+        colors = {"S": "#ff4d6d", "A": "#d4af37", "B": "#00e5ff"}
+        rows = "".join(f"<div style='display:flex;gap:20px;align-items:stretch;margin-top:20px'><div class='anton' style='width:120px;"
+                       f"flex:none;display:grid;place-items:center;font-size:76px;background:{c};color:#050403;border-radius:22px'>{k}</div>"
+                       f"<div style='flex:1;display:flex;flex-wrap:wrap;gap:14px;align-items:center;background:#0e0c09;border:2px solid #2a261f;"
+                       f"border-radius:22px;padding:20px'>" + "".join(
+                           f"<div style='font-size:{int(w * .036)}px;font-weight:700;background:#1b1813;border-radius:14px;padding:10px 18px'>{esc(x)}</div>"
+                           for x in (m.get(k) or [])[:3]) + "</div></div>" for k, c in colors.items())
+        body = f"<div style='margin:auto 0'><div class='anton' style='font-size:{int(w * .08)}px;line-height:1'>{esc(m.get('titulo') or 'Tier list')}</div>{rows}</div>"
     else:  # no_si
         row = lambda e, txt, c: (f"<div style='display:flex;align-items:center;gap:34px;padding:40px 0;border-top:2px solid #2a261f'>"
                                  f"<div style='font-size:{int(w * .13)}px'>{e}</div><div style='font-size:{int(w * .058)}px;font-weight:800;"
@@ -371,6 +389,12 @@ def meme_lines(fmt: str, m: dict) -> list[tuple[str, str]]:
         return [(m.get("titulo") or "STARTER PACK", "")] + [(str(x), "") for x in (m.get("items") or [])[:5]]
     if fmt == "no_si":
         return [("🙅‍♀️", m.get("no") or ""), ("💅", m.get("si") or "")]
+    if fmt == "noticia":
+        return [("ÚLTIMO MOMENTO 🚨", m.get("titular") or ""), (m.get("reaccion") or "", "— EGG")]
+    if fmt == "cuando":
+        return [(m.get("cuando") or "", ""), (m.get("reaccion") or "", "")]
+    if fmt == "tier":
+        return [(m.get("titulo") or "TIER LIST", "")] + [(f"{k}: " + ", ".join(m.get(k) or []), "") for k in ("B", "A", "S") if m.get(k)]
     return [(m.get("texto") or "", "— EGG")]
 
 
@@ -465,8 +489,10 @@ def reel_script(kind: str, rows: list[dict], tx: dict, when_fn, record: dict | N
         if rate:
             f.append((reel_frame(f"{rate[2]}%", f"de acierto histórico ({rate[0]}/{rate[1]})", color="#d4af37", kicker="Historial público"), 1.3, "slide"))
     elif kind == "meme":
+        trend = str(tx.get("tendencia_usada") or "")[:40]
         for i, (big, small) in enumerate(l for l in meme_lines(tx.get("meme_formato") or "", tx.get("meme") or {}) if l[0] or l[1]):
-            f.append((reel_frame(big, small, glitch=i % 2 == 0, kicker="Meme EGG" if i == 0 else "", tilt=6), 1.4 if i else 1.1,
+            f.append((reel_frame(big, small, glitch=i % 2 == 0, kicker=(f"🔥 {trend}" if trend else "Meme EGG") if i == 0 else "",
+                                 tilt=6), 1.4 if i else 1.1,
                       ("punch", "shake", "slide", "flash")[i % 4]))
         f.append((reel_frame("MANDÁSELO 📲", "a ese amigo que necesita verlo 😂", color="#d4af37"), 1.2, "punch"))
     else:
