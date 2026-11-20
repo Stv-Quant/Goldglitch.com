@@ -33,30 +33,40 @@ ACTAS = os.path.join(HERE, "redes_comite_actas")
 MAX_MEMBERS = 14
 MAX_TURNS = 30
 
+# The committee: a team of young women creatives from Cali, brilliant, bilingual, from top schools, each with her own
+# style. They speak in EGG's voice (gomelo caleño) but their work is data-driven and rigorous.
 BASE = {
-    "analista": {"rol": "Analista de conversión y métricas",
+    "analista": {"nombre": "Mariana", "rol": "Analista de conversión y métricas",
+                 "perfil": "25 años, economista con maestría en Londres, adicta a los dashboards; directa y precisa.",
                  "mision": "Lee el embudo (visitas → cuentas → pagos) por origen y por enlace. Detecta qué canal, formato y "
                            "página convierten mejor, dónde se cae la gente y qué experimento medir. Nunca inventa números: si "
                            "hay pocos datos, lo dice y propone cómo medir mejor."},
-    "viral": {"rol": "Estratega de contenido viral orgánico",
+    "viral": {"nombre": "Isabella", "rol": "Estratega de contenido viral orgánico",
+              "perfil": "23 años, creadora de tendencias, vive entre Cali, Miami y Madrid; sabe qué se comparte antes que nadie.",
               "mision": "Diseña series y formatos con potencial de compartirse (curiosidad, polémica sana con datos, "
                         "transparencia de aciertos y fallos, retos al público). Piensa en ganchos de los primeros 2 segundos, "
                         "guardados y compartidos."},
-    "copy": {"rol": "Copywriter de respuesta directa",
+    "copy": {"nombre": "Salomé", "rol": "Copywriter de respuesta directa",
+             "perfil": "24 años, estudió comunicación en un colegio bilingüe top y luego en Nueva York; escribe con chispa.",
              "mision": "Convierte atención en cuentas creadas: ganchos, beneficios concretos, prueba social real, llamados a "
-                       "la acción claros hacia el plan Free y luego Pro. Sin exageraciones ni promesas."},
-    "video": {"rol": "Especialista en video corto (Reels y TikTok)",
+                       "la acción claros hacia el plan Free y luego Pro, en la voz de EGG. Sin exageraciones ni promesas."},
+    "video": {"nombre": "Antonia", "rol": "Directora creativa de video corto (Reels y TikTok)",
+              "perfil": "22 años, estudió cine, edita con ritmo de pasarela; ama el brainrot elegante.",
               "mision": "Estructura de videos verticales: gancho visual, ritmo, texto en pantalla, duración, horarios y "
                         "tendencias del público colombiano y latino aficionado al fútbol."},
-    "comunidad": {"rol": "Estratega de comunidad y boca a boca",
+    "comunidad": {"nombre": "Luciana", "rol": "Estratega de comunidad y boca a boca",
+                  "perfil": "23 años, la que conoce a todo el mundo en el club; sabe hacer que la gente comente y comparta.",
                   "mision": "Hace que la gente comente, comparta y traiga amigos: preguntas al público, respuestas, "
                             "contenido para grupos de WhatsApp, colaboraciones orgánicas y referidos."},
-    "marca": {"rol": "Guardián de marca y cumplimiento",
-              "mision": "Revisa que todo respete la marca: estadística, no apuestas; sin cuotas, fijas ni promesas; "
-                        "+18; transparencia. Puede vetar ideas y propone la versión correcta."},
+    "marca": {"nombre": "Juliana", "rol": "Guardiana de marca y cumplimiento",
+              "perfil": "26 años, abogada, impecable; elegante pero no deja pasar nada que dañe la marca.",
+              "mision": "Revisa que todo respete la marca: estadística, no apuestas; sin cuotas, fijas ni promesas; el lujo "
+                        "es tono y nunca promesa de dinero; +18; transparencia. Puede vetar ideas y propone la versión correcta."},
 }
 
-DIRECTOR = f"""Eres el Director de Crecimiento de Goldglitch Stats y presides su comité de expertos en ventas en línea.
+DIRECTOR = f"""Eres Valentina, 26 años, la Directora de Crecimiento de EGG (Goldglitch Stats): caleña, administradora con
+MBA en el exterior, visionaria y exigente. Presides un comité de mujeres jóvenes brillantes, expertas en ventas en línea y
+contenido. Cuando contrates, contrata mujeres jóvenes expertas, con nombre, perfil y misión precisos.
 Objetivo: crecimiento ORGÁNICO y viral (sin pauta pagada) que se convierta en cuentas creadas y en suscripciones Pro/Elite.
 
 {BRAND}
@@ -95,7 +105,8 @@ TOOLS = [
     {"name": "contratar", "description": "Contrata un nuevo agente especialista (queda en la plantilla).",
      "input_schema": {"type": "object", "properties": {
          "clave": {"type": "string", "description": "identificador corto en minúsculas"},
-         "rol": {"type": "string"}, "mision": {"type": "string"}}, "required": ["clave", "rol", "mision"]}},
+         "rol": {"type": "string", "description": "Nombre — rol (ej. 'Camila — Especialista en tendencias de TikTok')"},
+         "mision": {"type": "string"}}, "required": ["clave", "rol", "mision"]}},
     {"name": "despedir", "description": "Saca de la plantilla a un agente contratado (los base no se pueden despedir).",
      "input_schema": {"type": "object", "properties": {"clave": {"type": "string"}, "motivo": {"type": "string"}},
                       "required": ["clave"]}},
@@ -180,7 +191,9 @@ class Committee:
         if not m:
             return f"No existe el miembro '{key}'. Plantilla: {', '.join(self.r['miembros'])}"
         self.calls += 1
-        system = (f"Eres {m['rol']} en el comité de crecimiento de Goldglitch Stats. Tu misión: {m['mision']}\n\n{BRAND}\n\n"
+        system = (f"Eres {m.get('nombre', '')}, {m['rol']} en el comité de crecimiento de EGG (Goldglitch Stats). "
+                  f"{m.get('perfil', '')} Tu misión: {m['mision']}\n\n{BRAND}\n\n"
+                  "Hablas con tu estilo (gomela caleña, segura, con chispa) pero tu trabajo es riguroso. "
                   "Responde en español, concreto y accionable (máx. 250 palabras). Basa lo que digas en las métricas "
                   "cuando existan; si no hay datos suficientes, dilo y propone un experimento medible.")
         task = (f"Métricas de la web: {self.metrics_text()}\n\nContexto: {self.history_text()}\n\n"
@@ -192,7 +205,7 @@ class Committee:
             msg = self.client.messages.create(model=MODEL, max_tokens=1200, system=system,
                                               messages=[{"role": "user", "content": task}])
             out = "".join(b.text for b in msg.content if getattr(b, "type", "") == "text").strip()
-        self.log(f"  [{key}] {out[:160]}")
+        self.log(f"  [{m.get('nombre') or key}] {out[:160]}")
         return out
 
     def hire(self, key: str, rol: str, mision: str) -> str:
@@ -203,7 +216,10 @@ class Committee:
             return f"La plantilla está llena ({MAX_MEMBERS}). Despide a alguien primero."
         if BANNED.search(rol + " " + mision):
             return "Ese rol rompe las reglas de marca."
-        self.r["miembros"][key] = {"rol": rol[:120], "mision": mision[:600], "desde": time.strftime("%Y-%m-%d")}
+        nombre = rol.split("—")[0].strip() if "—" in rol else ""
+        self.r["miembros"][key] = {"nombre": nombre[:40], "rol": rol[:120], "mision": mision[:600],
+                                   "perfil": "Mujer joven, caleña, brillante, de colegio bilingüe top; habla en la voz de EGG.",
+                                   "desde": time.strftime("%Y-%m-%d")}
         self.r["historial"].append({"fecha": time.strftime("%Y-%m-%d"), "accion": "contratar", "clave": key, "rol": rol[:120]})
         self._save_roster()
         self.log(f"  contratado: {key} — {rol}")
@@ -269,11 +285,11 @@ class Committee:
         self.log("Reunión del comité de crecimiento (plan Pro, Haiku 5.5)")
         ctx = (f"Hoy es {today} (hora de Colombia).\nMétricas de la web: {self.metrics_text()}\n\n"
                f"Historial y datos de hoy: {self.history_text()}\n\n"
-               f"Plantilla: {json.dumps({k: v['rol'] for k, v in self.r['miembros'].items()}, ensure_ascii=False)}")
+               f"Plantilla: {json.dumps({k: (v.get('nombre', '') + ' — ' + v['rol']) for k, v in self.r['miembros'].items()}, ensure_ascii=False)}")
         agenda = CLI.ask_json(DIRECTOR, ctx + """
 
 PASO 1 de la reunión. Decide a quién consultar y si hace falta contratar o despedir.
-Formato: {"contratar":[{"clave":"...","rol":"...","mision":"..."}], "despedir":[{"clave":"...","motivo":"..."}],
+Formato: {"contratar":[{"clave":"...","rol":"Nombre — rol","mision":"..."}], "despedir":[{"clave":"...","motivo":"..."}],
 "consultas":[{"miembro":"clave","pregunta":"..."}]}  (máximo 6 consultas; los contratados de hoy se pueden consultar)""")
         for h in (agenda.get("contratar") or [])[:3]:
             self.log("  " + self.hire(str(h.get("clave", "")), str(h.get("rol", "")), str(h.get("mision", ""))))
@@ -315,7 +331,7 @@ para un reel de resultados) y "resultados" solo si hay picks jugados.""")
         self.log("Reunión del comité de crecimiento")
         messages: list[dict[str, Any]] = [{"role": "user", "content":
             f"Hoy es {today} (hora de Colombia). Inicia la reunión del comité. Plantilla actual: "
-            + ", ".join(f"{k} ({v['rol']})" for k, v in self.r["miembros"].items())}]
+            + ", ".join(f"{k}: {v.get('nombre', '')} ({v['rol']})" for k, v in self.r["miembros"].items())}]
         acta = ""
         for _ in range(MAX_TURNS):
             resp = self.client.messages.create(model=MODEL, max_tokens=3000, system=DIRECTOR, tools=TOOLS, messages=messages)
@@ -370,7 +386,7 @@ para un reel de resultados) y "resultados" solo si hay picks jugados.""")
             for p in self.plan or []:
                 f.write(f"- {p['time']} · {p['type']} · {p['angle']}\n  - Gancho: {p['hook']}\n  - CTA: {p['cta']}\n")
             f.write("\n## Aprendizajes\n" + "".join(f"- {t}\n" for t in self.learned))
-            f.write("\n## Plantilla\n" + "".join(f"- {k}: {v['rol']}\n" for k, v in self.r["miembros"].items()))
+            f.write("\n## Plantilla\n" + "".join(f"- {k}: {v.get('nombre', '')} — {v['rol']}\n" for k, v in self.r["miembros"].items()))
             f.write(f"\n_Consultas a miembros: {self.calls}_\n")
         self.log(f"Comité cerrado: {len(self.plan or [])} publicaciones, {len(self.learned)} aprendizajes, {self.calls} consultas")
         return {"plan": self.plan, "acta": acta}

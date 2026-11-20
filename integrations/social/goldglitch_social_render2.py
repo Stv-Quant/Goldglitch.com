@@ -360,7 +360,7 @@ def reel_script(kind: str, rows: list[dict], tx: dict, when_fn, record: dict | N
     f: list[tuple[str, float, str]] = []
     rate = _rate(record)
     if kind in ("picks_dia", "reel") and rows:
-        f.append((reel_frame(tx.get("reel_hook") or "EL MODELO VIO ALGO 👀", tx.get("reel_sub") or "quédate hasta el #1",
+        f.append((reel_frame(tx.get("reel_hook") or "MOR, MIRÁ ESTO 👀", tx.get("reel_sub") or "o sea… quédate hasta el #1",
                              kicker=f"Top {len(rows)} · ligas grandes"), 1.3, "punch"))
         if rate:
             f.append((reel_frame(f"{rate[0]}/{rate[1]}", f"picks de 75%+ acertados ({rate[2]}%) · fallos incluidos",
@@ -374,12 +374,12 @@ def reel_script(kind: str, rows: list[dict], tx: dict, when_fn, record: dict | N
                                  top=r["league"], tilt=10), 1.3, "punch"))
             f.append((reel_frame(f"{round(p * 100)}%", r["label"], color=pcolor(p), accent=acc, top=r["league"],
                                  kicker=r.get("group") or "Probabilidad"), 1.0, "shake"))
-            f.append((reel_frame(f"1 DE CADA {fail}", "veces que algo así NO pasa. Eso también es estadística.", color="#cfc6b2",
+            f.append((reel_frame(f"1 DE CADA {fail}", "veces NO pasa. Literal, eso también es estadística.", color="#cfc6b2",
                                  accent=acc, top=r["league"], glitch=False, tilt=4), 0.95, "slide"))
         f.append((reel_frame("EL MÁS FUERTE", "de hoy", kicker="Ranking", bars=[(f"{r['home']}–{r['away']}"[:30], float(r["p"]), pcolor(float(r["p"])))
                                                                             for r in rows[:4]]), 1.9, "punch"))
-        f.append((reel_frame("¿ENTRA O NO ENTRA?", "comenta 1 (entra) o 2 (no entra) 👇", color="#d4af37"), 1.3, "shake"))
-        f.append((reel_frame("GUÁRDALO", "para revisarlo cuando juegue · mándaselo a tu parcero que 'sabe de fútbol'",
+        f.append((reel_frame("¿ENTRA O NO ENTRA?", "decime en comentarios: 1 entra · 2 no entra 👇", color="#d4af37"), 1.3, "shake"))
+        f.append((reel_frame("GUARDALO 📌", "y mandáselo a tu amigo del club que 'sabe de fútbol' 🥂",
                              color="#f3ecdc", kicker="📌"), 1.2, "punch"))
     elif kind == "resultados" and rows:
         won = sum(r["status"] == "won" for r in rows)
@@ -395,7 +395,7 @@ def reel_script(kind: str, rows: list[dict], tx: dict, when_fn, record: dict | N
         f.append((reel_frame(tx.get("edu_title") or tx.get("cover_title") or "DATO", "espera al final 👀", kicker="Dato"), 1.5, "punch"))
         for line in [x for x in (tx.get("edu_body") or tx.get("cover_subtitle") or "").split("\n") if x.strip()][:5]:
             f.append((reel_frame(line, "", glitch=False, tilt=4), 1.6, "slide"))
-    f.append((reel_frame("LINK EN LA BIO", "todas las probabilidades, GRATIS", color="#d4af37", kicker="Goldglitch Stats"), 1.8, "punch"))
+    f.append((reel_frame("LINK EN LA BIO", "todas las probabilidades, gratis. Next level 🥂", color="#d4af37", kicker="EGG · Goldglitch Stats"), 1.8, "punch"))
     return f
 
 
