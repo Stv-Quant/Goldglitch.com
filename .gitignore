@@ -31,3 +31,7 @@ next/.dev.vars
 # Python
 __pycache__/
 *.pyc
+
+# social pipeline runtime files (generated on the PC)
+integrations/social/redes_*.json
+integrations/social/redes_salida/
