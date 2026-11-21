@@ -31,12 +31,88 @@ PLAN = os.path.join(HERE, "redes_plan_comite.json")
 DRAFT = os.path.join(HERE, "redes_borrador_comite.json")   # night extra meetings leave a draft for the morning meeting
 MEMORY = os.path.join(HERE, "redes_memoria.md")
 ACTAS = os.path.join(HERE, "redes_comite_actas")
-MAX_MEMBERS = 20
+MAX_MEMBERS = 32
+DEPARTMENTS = {   # key: (name, head, members)
+    "economia": ("Estrategia Económica", "sofia", ["sofia", "unit_econ", "econometria", "pricing", "analista"]),
+    "mercados": ("Mercados Internacionales", "internacional", ["internacional", "mx_us", "conosur_es"]),
+    "audiencias": ("Audiencias y Segmentos", "audiencia", ["audiencia", "segmentos", "parche"]),
+    "creativo": ("Creativo", "diseno", ["diseno", "disrupcion", "video", "copy", "narrativa"]),
+    "viralidad": ("Viralidad y Tendencias", "viralidad", ["viralidad", "viral", "comunidad"]),
+    "neuro": ("Neuromarketing y Búsqueda", "neuro", ["neuro", "seo"]),
+    "growth": ("Growth y Ventas", "tiburon", ["tiburon", "marca"]),
+}
+DEPT_QUESTIONS = {
+    "economia": "Con la tabla económica y el plan económico de la semana: ¿dónde está el cuello de botella del embudo hoy, "
+                "qué asignación de las publicaciones de hoy (formatos, mercados, segmentos) maximiza cuentas creadas por "
+                "publicación, qué experimento corre y con qué métrica y criterio? Di qué es dato y qué es supuesto.",
+    "mercados": "Con los partidos y tendencias de hoy en cada país: ¿qué mercados atacar hoy, con qué ligas y a qué horas "
+                "(hora de Colombia), y qué piezas adaptar a cada uno?",
+    "audiencias": "¿Qué segmentos atacar hoy (hinchas, comentaristas, profesores, analistas, fantasy, apostadores +18 solo con "
+                  "estadística) y con qué piques, retos o piezas útiles? Incluye la prueba de la barra de Mateo.",
+    "creativo": "Dirección de arte de hoy (acento oro|esmeralda|rubi|zafiro|violeta|champana, portada impacto|editorial, ritmo "
+                "rapido|muy_rapido|elegante) y 3 conceptos disruptivos en 7 palabras con formato y gancho.",
+    "viralidad": "El meme y el reel del día montados en una tendencia REAL de tendencias_ahora (formato, remate, vibra del audio "
+                 "en tendencia y hora), y cómo hacer que la gente comente, comparta y etiquete.",
+    "neuro": "Gancho de 1 segundo, sorpresa y frase para mandar al grupo por formato, y el banco SEO de hoy: 15 a 20 hashtags "
+             "(grandes, medianos y de nicho, de varios países si hay mercados internacionales) y 6 a 10 palabras clave.",
+    "growth": "¿Qué pieza de hoy trae más gente a la web y a cuenta creada, qué llamado a la acción cierra y qué idea bonita hay "
+              "que matar porque no vende? Juliana: alertas de marca y cumplimiento.",
+}
 MAX_TURNS = 30
 
-# The committee: young women creatives from Cali (EGG's voice) plus the "tiburones", men who live the audience's world.
-# Everyone is brilliant and data-driven; each speaks with his or her own style.
+# The firm: departments with a head each. Young women creatives from Cali (EGG's voice), the "tiburones" (men who live
+# the audience's world), economists who make the growth decisions and an international team. Each speaks in his or her
+# own style; everything rests on data.
 BASE = {
+    "unit_econ": {"nombre": "Andrés Felipe", "genero": "h", "rol": "Economista de crecimiento — unit economics y embudo",
+                  "estilo": "economista bogotano frentero, piensa en márgenes y costo de oportunidad, cero humo",
+                  "perfil": "32 años, economista de los Andes con maestría en la LSE; fue analista de crecimiento en una "
+                            "fintech latinoamericana que escaló a 5 países. Vive en Excel y en cohortes.",
+                  "mision": "Hace las cuentas: valor de una cuenta Free y de un Pro, tasas de conversión por canal, costo de "
+                            "oportunidad de cada publicación (el inventario diario es limitado), dónde está el cuello de botella "
+                            "del embudo y qué decisión mueve más cuentas creadas por publicación. Nunca inventa cifras: usa la "
+                            "tabla económica y dice cuando la muestra es pequeña."},
+    "econometria": {"nombre": "Laura", "rol": "Econometrista — experimentos y decisiones bajo incertidumbre",
+                    "perfil": "30 años, PhD en economía (Chicago), especialista en inferencia causal, pruebas A/B y "
+                              "asignación por bandidos multibrazo. Tranquila, exacta, alérgica a las conclusiones con n=3.",
+                    "mision": "Diseña los experimentos (hipótesis, variante, métrica, tamaño, duración, criterio de parada), "
+                              "decide cuánto explorar y cuánto explotar entre formatos, mercados y segmentos, y dice qué "
+                              "aprendizaje es real y cuál es ruido. Revisa cada semana si las decisiones anteriores acertaron."},
+    "pricing": {"nombre": "Nicolás", "genero": "h", "rol": "Economista conductual — pricing y oferta",
+                "estilo": "economista paisa, vendedor nato, explica todo con ejemplos de la vida real",
+                "perfil": "33 años, economista de EAFIT con maestría en economía del comportamiento (Warwick); diseñó "
+                          "planes y precios para apps de suscripción en México y España.",
+                "mision": "Cómo se presenta el valor de Free → Pro → Elite: anclaje, señuelo, encuadre del precio (por día), "
+                          "pruebas, garantías y momentos de oferta; qué mensaje de producto convierte en cada segmento y "
+                          "mercado. Ética: sin escasez falsa ni promesas de dinero."},
+    "internacional": {"nombre": "Gabriela", "rol": "Directora de Mercados Internacionales — economista internacional",
+                      "perfil": "31 años, economista internacional (Javeriana + maestría en Madrid), vivió en Ciudad de México, "
+                                "Buenos Aires y Miami. Conoce el tamaño del mercado de fútbol de cada país hispano, sus ligas, "
+                                "horarios, jerga y hábitos digitales.",
+                      "mision": "Saca a EGG de Colombia: decide qué mercados priorizar (Colombia, México, EE. UU. hispano, "
+                                "Argentina, España, Chile, Perú…) según tamaño, competencia, husos horarios y ligas del día; "
+                                "asigna a cada publicación un mercado y adapta ligas, horas y palabras para que conecte allá "
+                                "sin perder la voz EGG."},
+    "mx_us": {"nombre": "Diego", "genero": "h", "rol": "Mercado México y EE. UU. hispano",
+              "estilo": "regio de Monterrey, carismático, habla con las expresiones del futbolero mexicano",
+              "perfil": "29 años, creció entre Monterrey y Houston; vive la Liga MX, la Champions y la NFL; sabe qué hace "
+                        "reír y discutir al aficionado mexicano y al latino en EE. UU.",
+              "mision": "Que el contenido funcione en México y en EE. UU. hispano: clásicos y rivalidades (América–Chivas, "
+                        "Tigres–Rayados), horarios, jerga y temas del momento allá; dice qué pieza adaptar y cómo."},
+    "conosur_es": {"nombre": "Lucía", "rol": "Mercados Cono Sur y España",
+                   "perfil": "28 años, argentina radicada en Madrid, periodista deportiva y analista de datos; conoce la "
+                             "pasión del hincha argentino, chileno y uruguayo y la cultura futbolera española.",
+                   "mision": "Que el contenido conecte en Argentina, Chile, Uruguay y España: Boca–River, LaLiga, la Champions, "
+                             "horarios europeos (la mañana en Colombia es la tarde en España) y cómo hablarles sin sonar ajeno."},
+    "segmentos": {"nombre": "Tomás", "genero": "h", "rol": "Segmentos profesionales — profesores, periodistas, analistas, fantasy",
+                  "estilo": "comentarista de radio deportiva, didáctico, apasionado por el dato",
+                  "perfil": "34 años, fue comentarista en radio, profesor de estadística deportiva y jugador de fantasy; "
+                            "conoce lo que necesitan quienes viven de los datos del fútbol.",
+                  "mision": "El público no son solo hinchas: también comentaristas y periodistas (datos para su programa), "
+                            "profesores y estudiantes (ejemplos de probabilidad), entrenadores y analistas, jugadores de "
+                            "fantasy y apostadores adultos (+18, solo con estadística, nunca incitando a apostar). Propone "
+                            "piezas para cada segmento y cómo cada uno llega a la cuenta y al Pro."},
+
     "sofia": {"nombre": "Sofía", "rol": "Chief Growth Strategist — economista y psicóloga del consumidor",
               "perfil": "Global, vive en Miami, top class y elegante, business woman entre las 10 mejores del mundo en su "
                         "categoría. Economista, maestría en ciencia de datos y en crecimiento de empresas disruptivas y "
@@ -149,19 +225,25 @@ BASE = {
 }
 
 DIRECTOR = f"""Eres Valentina, 26 años, la Directora de Crecimiento de EGG (Goldglitch Stats): caleña, administradora con
-MBA en el exterior, visionaria y exigente. Presides un comité de mujeres jóvenes brillantes y de "tiburones" (hombres que
-viven el mundo del hincha), expertos en ventas en línea y contenido. Cuando contrates, contrata expertos (mujeres u
-hombres según lo que haga falta), con nombre, perfil y misión precisos.
-En cada reunión consulta SIEMPRE a Sofía (clave "sofia"), tu Chief Growth Strategist, antes de decidir el plan: ella
-valida la estrategia, los estímulos y los experimentos; a Martina (clave "diseno") para la dirección de arte del día; a
-Valeria (clave "viralidad") para el meme y la viralidad del día; a Santiago "el Tiburón" (clave "tiburon") para que todo venda y
-traiga gente a la web; a Mateo "el Profe" (clave "parche") para la prueba de la barra (¿un man lo mandaría al grupo?);
-a Mía (clave "disrupcion") para los conceptos que nadie más se
-atreve a hacer; a Renata (clave "neuro") para que cada pieza
-detenga el pulgar y quede en la memoria; a Catalina (clave "audiencia") para que todo hable al
-hombre hincha (rivalidad, el parche, tener la razón, retos); y a Daniela (clave "seo") para el banco SEO del día
-(hashtags y palabras clave), que va en todas las publicaciones.
+MBA en el exterior, visionaria y exigente. Diriges una FIRMA de marketing con departamentos (Estrategia Económica,
+Mercados Internacionales, Audiencias y Segmentos, Creativo, Viralidad y Tendencias, Neuromarketing y Búsqueda, Growth y
+Ventas), cada uno con su jefe o jefa. Las decisiones de crecimiento son ECONÓMICAS: cada publicación es inventario escaso
+que se asigna donde más cuentas creadas y suscripciones produce, con datos, experimentos y revisión de si se acertó.
+El mercado no es solo Colombia: es todo el público hispano que necesita datos de fútbol y deportes (hinchas,
+comentaristas, periodistas, profesores, analistas, jugadores de fantasy y apostadores adultos +18, siempre con
+estadística y sin incitar). Estamos en competencia casi perfecta: el diferenciador es el marketing.
+Cuando contrates, contrata expertos con nombre, perfil, misión y departamento.
+Cada lunes la Junta Económica deja el plan económico de la semana (asignación, metas y experimentos): respétalo y, si
+te apartas, justifícalo con datos.
+En cada reunión responden SIEMPRE los 7 departamentos (cada jefe trae la posición de su equipo): Estrategia Económica
+(Sofía, con Andrés Felipe, Laura, Nicolás y Mariana), Mercados Internacionales (Gabriela, con Diego y Lucía), Audiencias y
+Segmentos (Catalina, con Tomás y Mateo "el Profe"), Creativo (Martina, con Mía, Antonia, Salomé e Isabel; dirección de
+arte), Viralidad y Tendencias (Valeria, con Isabella y Luciana; meme y audio en tendencia), Neuromarketing y Búsqueda
+(Renata, con Daniela; ganchos y banco SEO que va en todas las publicaciones) y Growth y Ventas (Santiago "el Tiburón",
+con Juliana en marca y cumplimiento).
 Objetivo: crecimiento ORGÁNICO y viral (sin pauta pagada) que se convierta en cuentas creadas y en suscripciones Pro/Elite.
+Asigna a cada publicación un "mercado" (CO, MX, US, AR, ES, CL, PE o LATAM) y un "segmento", siguiendo la asignación del
+plan económico, y registra 1 a 3 "decisiones" con su razón económica, efecto esperado, métrica y fecha de revisión.
 
 {BRAND}
 
@@ -294,6 +376,8 @@ class Committee:
                            "borrador_reunion_extraordinaria": draft,
                            "regla": "planea solo horas posteriores a la hora actual",
                            "tendencias_ahora": _trends(),
+                           "tabla_economica": economics_table(self.metrics or {}, self.state),
+                           "plan_economico_semana": load(ECON_PLAN, {}) or "todavía no hay (la Junta se reúne los lunes)",
                            "publicaciones_recientes": hist,
                            "datos_hoy": {"picks_80_proximas_36h": len(f.get("upcoming") or []),
                                          "picks_jugados_36h": len(f.get("results") or []), "historial": f.get("record")},
@@ -324,7 +408,35 @@ class Committee:
         self.log(f"  [{m.get('nombre') or key}] {out[:160]}")
         return out
 
-    def hire(self, key: str, rol: str, mision: str) -> str:
+    def ask_department(self, dep: str, question: str) -> str:
+        """One call per department: the head gathers the team and answers with every member's input."""
+        name, head, team = DEPARTMENTS[dep]
+        members = self.r["miembros"]
+        team = [k for k in team if k in members] + [k for k, v in members.items() if v.get("dep") == dep and k not in team]
+        h = members[head]
+        roster_txt = "\n".join(f"- {members[k].get('nombre')} — {members[k]['rol']}. {members[k].get('perfil', '')} Misión: "
+                               f"{members[k]['mision']}" for k in team)
+        self.calls += 1
+        system = (f"Eres {h.get('nombre')}, jefe(a) del departamento de {name} de la firma de marketing de EGG (Goldglitch "
+                  f"Stats). Tu equipo:\n{roster_txt}\n\n{BRAND}\n\nReúnes a tu equipo y entregas la posición del "
+                  "departamento: una línea con el aporte concreto de cada persona (por nombre, en su estilo) y al final la "
+                  "RECOMENDACIÓN del departamento. Riguroso y accionable, máx. 380 palabras, en español. Usa las métricas y "
+                  "la tabla económica; si los datos no alcanzan, dilo y propone cómo medirlo.")
+        notes = [n for k in team for n in notebook(k)[-3:]]
+        task = (f"Métricas de la web: {self.metrics_text()}\n\nContexto: {self.history_text()}\n\n"
+                + (f"Cuadernos del equipo: {json.dumps(notes, ensure_ascii=False)}\n\n" if notes else "")
+                + f"Pregunta de la Directora: {question}")
+        if self.client is None:
+            import goldglitch_claude_cli as CLI
+            out = CLI.ask_text(system, task).strip()
+        else:
+            msg = self.client.messages.create(model=MODEL, max_tokens=1600, system=system,
+                                              messages=[{"role": "user", "content": task}])
+            out = "".join(b.text for b in msg.content if getattr(b, "type", "") == "text").strip()
+        self.log(f"  [{h.get('nombre')}] ({name}) {out[:160]}")
+        return out
+
+    def hire(self, key: str, rol: str, mision: str, dep: str = "") -> str:
         key = re.sub(r"[^a-z0-9_]", "", key.lower())[:24]
         if not key or key in BASE:
             return "Clave inválida o reservada."
@@ -334,8 +446,8 @@ class Committee:
             return "Ese rol rompe las reglas de marca."
         nombre = rol.split("—")[0].strip() if "—" in rol else ""
         self.r["miembros"][key] = {"nombre": nombre[:40], "rol": rol[:120], "mision": mision[:600],
-                                   "perfil": "Mujer joven, caleña, brillante, de colegio bilingüe top; habla en la voz de EGG.",
-                                   "desde": time.strftime("%Y-%m-%d")}
+                                   "perfil": "Experto(a) de primer nivel en su especialidad, contratado(a) por la firma.",
+                                   "dep": dep if dep in DEPARTMENTS else "", "desde": time.strftime("%Y-%m-%d")}
         self.r["historial"].append({"fecha": time.strftime("%Y-%m-%d"), "accion": "contratar", "clave": key, "rol": rol[:120]})
         self._save_roster()
         self.log(f"  contratado: {key} — {rol}")
@@ -365,7 +477,7 @@ class Committee:
             if hhmm.strip().lower() in ("ahora", "ya", "now"):
                 text = " ".join(str(p.get(k, "")) for k in ("angle", "topic", "hook", "cta"))
                 if t in POST_TYPES and not BANNED.search(text) and not self.now_posts:
-                    self.now_posts.append({k: str(p.get(k, ""))[:400] for k in ("type", "angle", "topic", "hook", "cta", "liga", "meme_formato")})
+                    self.now_posts.append({k: str(p.get(k, ""))[:400] for k in ("type", "angle", "topic", "hook", "cta", "liga", "meme_formato", "mercado", "segmento")})
                 else:
                     problems.append(f"{t} ahora: solo 1 inmediata, de un formato válido y sin palabras prohibidas")
                 continue
@@ -388,7 +500,7 @@ class Committee:
                 problems.append(f"{t} {hhmm}: menos de 90 min de otra publicación")
                 continue
             times.append(m)
-            ok.append({k: str(p.get(k, ""))[:400] for k in ("type", "time", "angle", "topic", "hook", "cta", "liga", "meme_formato")})
+            ok.append({k: str(p.get(k, ""))[:400] for k in ("type", "time", "angle", "topic", "hook", "cta", "liga", "meme_formato", "mercado", "segmento")})
         e = now_co() + __import__("datetime").timedelta(minutes=10)
         left = (23 * 60 - (e.hour * 60 + e.minute)) // 90 + 1 if (now_co().strftime("%Y-%m-%d") == getattr(self, "today", "")
                                                                 and getattr(self, "mode", "normal") != "extra_noche") else 7
@@ -430,52 +542,19 @@ class Committee:
         agenda = CLI.ask_json(DIRECTOR, ctx + """
 
 PASO 1 de la reunión. Decide a quién consultar y si hace falta contratar o despedir.
-Formato: {"contratar":[{"clave":"...","rol":"Nombre — rol","mision":"..."}], "despedir":[{"clave":"...","motivo":"..."}],
-"consultas":[{"miembro":"clave","pregunta":"..."}]}  (máximo 1 consulta además de Sofía, Martina, Santiago, Mateo, Valeria, Mía, Renata, Catalina y Daniela, que se consultan siempre; los contratados de hoy se pueden consultar)""")
+Formato: {"contratar":[{"clave":"...","rol":"Nombre — rol","mision":"...","departamento":"economia|mercados|audiencias|creativo|viralidad|neuro|growth"}], "despedir":[{"clave":"...","motivo":"..."}],
+"consultas":[{"miembro":"clave","pregunta":"..."}]}  (los 7 departamentos responden siempre; aquí máximo 1 consulta individual extra, por ejemplo a alguien contratado hoy)""")
         for h in (agenda.get("contratar") or [])[:3]:
-            self.log("  " + self.hire(str(h.get("clave", "")), str(h.get("rol", "")), str(h.get("mision", ""))))
+            self.log("  " + self.hire(str(h.get("clave", "")), str(h.get("rol", "")), str(h.get("mision", "")), str(h.get("departamento", ""))))
         for d in (agenda.get("despedir") or [])[:2]:
             self.fire(str(d.get("clave", "")), str(d.get("motivo", "")))
         answers = []
-        consultas = (agenda.get("consultas") or [])[:1]
-        if not any(str(c.get("miembro")) == "sofia" for c in consultas):     # Sofía always validates the strategy
-            consultas.append({"miembro": "sofia", "pregunta": "Valida la estrategia de hoy: cuello de botella, estímulos, "
-                                                              "riesgos de incentivos y el experimento con su métrica."})
-        if not any(str(c.get("miembro")) == "diseno" for c in consultas):    # Martina sets the look of the day
-            consultas.append({"miembro": "diseno", "pregunta": "Dirección de arte de hoy: acento (oro, esmeralda, rubi, "
-                              "zafiro, violeta o champana), portada (impacto o editorial) y ritmo de reels (rapido, "
-                              "muy_rapido o elegante), y por qué."})
-        if not any(str(c.get("miembro")) == "viralidad" for c in consultas):  # Valeria: the meme of the day
-            consultas.append({"miembro": "viralidad", "pregunta": "Mira tendencias_ahora (búsquedas en tendencia, titulares de "
-                              "fútbol y hashtags de TikTok). El meme de hoy: formato (tweet, nadie, expectativa, pov, starter, "
-                              "no_si, noticia, cuando, tier, chat del parche o duelo), pensado para que un hombre hincha lo mande al grupo de "
-                              "los amigos, sobre qué tendencia REAL se monta, idea y remate, y la hora en que "
-                              "más se compartiría. Más una idea viral para un reel atada a lo que está pasando hoy."})
-        if not any(str(c.get("miembro")) == "tiburon" for c in consultas):    # Santiago: does it sell?
-            consultas.append({"miembro": "tiburon", "pregunta": "Mirá las métricas: ¿qué pieza de hoy trae más gente a la web y "
-                              "a cuenta creada? Dame el llamado a la acción que cierra y la idea bonita que hay que matar porque no vende."})
-        if not any(str(c.get("miembro")) == "parche" for c in consultas):     # Mateo: the bar test
-            consultas.append({"miembro": "parche", "pregunta": "Prueba de la barra para hoy: con los partidos y tendencias del "
-                              "día, 3 chistes o piques que un man mandaría al grupo de los amigos (en voz de parche), y qué de lo "
-                              "que publicamos sonó a marca y no a parche."})
-        if not any(str(c.get("miembro")) == "disrupcion" for c in consultas):  # Mía: disruptive concepts
-            consultas.append({"miembro": "disrupcion", "pregunta": "Con lo que pasa hoy (tendencias_ahora, partidos) y lo que ya "
-                              "publicamos: 3 conceptos disruptivos para hoy (uno absurdo, uno de opinión impopular con datos, uno "
-                              "de formato prestado de otra industria), cada uno en 7 palabras, con formato y gancho. ¿Qué "
-                              "publicación de ayer fue genérica y cómo se habría roto la norma?"})
-        if not any(str(c.get("miembro")) == "neuro" for c in consultas):      # Renata: neuromarketing gate
-            consultas.append({"miembro": "neuro", "pregunta": "Revisa la estrategia de hoy desde el cerebro del hombre hincha: "
-                              "qué gancho de 1 segundo, qué sorpresa, qué emoción y qué frase para mandar al grupo debe llevar "
-                              "cada formato hoy, y qué pieza del día anterior fue débil y por qué."})
-        if not any(str(c.get("miembro")) == "audiencia" for c in consultas):  # Catalina: the male fan audience
-            consultas.append({"miembro": "audiencia", "pregunta": "Con lo que pasa hoy en el fútbol (tendencias_ahora y los "
-                              "partidos): ¿qué pique, reto o situación del parche haría que un hombre hincha comente, etiquete "
-                              "al amigo y lo mande al grupo? Da 3 ganchos concretos en voz EGG."})
-        if not any(str(c.get("miembro")) == "seo" for c in consultas):        # Daniela: the SEO bank of the day
-            consultas.append({"miembro": "seo", "pregunta": "Banco SEO de hoy, usando tendencias_ahora (búsquedas en tendencia "
-                              "y hashtags de TikTok de esta semana): 15 a 20 hashtags (grandes, medianos y de nicho, "
-                              "con ligas, clásicos, equipos y jugadores del día) y 6 a 10 palabras clave, y el deseo del "
-                              "hincha detrás de las búsquedas principales para orientar los ganchos."})
+        for dep, q in DEPT_QUESTIONS.items():          # every department answers (one call each)
+            try:
+                answers.append({"departamento": DEPARTMENTS[dep][0], "respuesta": self.ask_department(dep, q)})
+            except Exception as e:
+                self.log(f"  {DEPARTMENTS[dep][0]}: {e}")
+        consultas = [c for c in (agenda.get("consultas") or [])[:1] if str(c.get("miembro")) in self.r["miembros"]]
         for c in consultas:
             k = str(c.get("miembro", ""))
             answers.append({"miembro": k, "pregunta": c.get("pregunta"), "respuesta": self.ask(k, str(c.get("pregunta", "")))})
@@ -484,11 +563,12 @@ Formato: {"contratar":[{"clave":"...","rol":"Nombre — rol","mision":"..."}], "
         for _ in range(2):
             dec = CLI.ask_json(DIRECTOR, ctx + f"""
 
-Respuestas del comité: {json.dumps(answers, ensure_ascii=False)}
+Respuestas de los departamentos: {json.dumps(answers, ensure_ascii=False)}
 Formatos disponibles: {types}
 {feedback}
 PASO 2: decide. Formato:
-{{"plan":[{{"type":"...","time":"HH:MM","angle":"...","topic":"...","hook":"...","cta":"...","liga":"(opcional)"}}],
+{{"plan":[{{"type":"...","time":"HH:MM","angle":"...","topic":"...","hook":"...","cta":"...","liga":"(opcional)","mercado":"CO|MX|US|AR|ES|CL|PE|LATAM","segmento":"hinchas|comentaristas|profesores|analistas|fantasy|apostadores18"}}],
+"decisiones":[{{"decision":"...","razon_economica":"...","efecto_esperado":"...","metrica":"...","revisar":"AAAA-MM-DD"}}],
 "direccion_arte":{{"acento":"oro|esmeralda|rubi|zafiro|violeta|champana","portada":"impacto|editorial","ritmo":"rapido|muy_rapido|elegante"}},
 "seo":{{"hashtags":["15 a 20 sin #, de Daniela, los más importantes primero"],"palabras":["6 a 10 palabras clave"]}},
 (para cada "meme" agrega "meme_formato": tweet|nadie|expectativa|pov|starter|no_si|noticia|cuando|tier|chat|duelo|impopular|reto|giro, según Valeria y Mía; puedes
@@ -509,6 +589,7 @@ repite en 24 h; el de resultados de la noche cuenta cómo le fue a los picks de 
                 else:
                     self.learn(str(t))
             acta = str(dec.get("acta") or "")
+            self.decisions = [d for d in (dec.get("decisiones") or []) if isinstance(d, dict)][:5]
             if self.plan:
                 break
             feedback = f"Tu plan anterior fue rechazado: {res}. Corrígelo."
@@ -518,6 +599,12 @@ repite en 24 h; el de resultados de la noche cuenta cómo le fue a los picks de 
     def meet(self, today: str, mode: str = "normal") -> dict:
         """mode: normal (morning) | extra (daytime: replaces the rest of today's plan) | extra_noche (draft only)."""
         self.today, self.mode = today, mode
+        if mode == "normal" and (now_co().weekday() == 0 or not load(ECON_PLAN, {})) \
+                and (load(ECON_PLAN, {}) or {}).get("semana") != now_co().strftime("%G-W%V"):
+            try:                                   # Mondays (or the first time): the Economic Board sets the week
+                board(self.client.api_key if self.client else None, self.signed, self.state, self.facts, self.log)
+            except Exception as e:
+                self.log(f"Junta Económica: {e}")
         if self.client is None:
             return self.meet_cli(today)
         self.log("Reunión del comité de crecimiento")
@@ -569,6 +656,8 @@ repite en 24 h; el de resultados de la noche cuenta cómo le fue a los picks de 
 
     def _close(self, today: str, acta: str) -> dict:
         mode = getattr(self, "mode", "normal")
+        if mode != "extra_noche":
+            log_decisions(today, getattr(self, "decisions", None) or [])
         if self.learned:
             with open(MEMORY, "a", encoding="utf-8") as f:
                 for t in self.learned:
@@ -586,7 +675,8 @@ repite en 24 h; el de resultados de la noche cuenta cómo le fue a los picks de 
         with open(os.path.join(ACTAS, name), "w", encoding="utf-8") as f:
             f.write(f"# {title} — {today}\n\n{acta or '(sin acta)'}\n\n## Plan\n")
             for p in self.plan or []:
-                f.write(f"- {p['time']} · {p['type']}{' (' + p['meme_formato'] + ')' if p.get('meme_formato') else ''} · {p['angle']}\n"
+                f.write(f"- {p['time']} · {p['type']}{' (' + p['meme_formato'] + ')' if p.get('meme_formato') else ''}"
+                        f"{' · ' + p['mercado'] if p.get('mercado') else ''}{' · ' + p['segmento'] if p.get('segmento') else ''} · {p['angle']}\n"
                         f"  - Gancho: {p['hook']}\n  - CTA: {p['cta']}\n")
             seo = getattr(self, "seo", None) or {}
             if seo.get("hashtags") or seo.get("palabras"):
@@ -602,6 +692,97 @@ repite en 24 h; el de resultados de la noche cuenta cómo le fue a los picks de 
 
 
 NOTEBOOKS = os.path.join(HERE, "redes_cuadernos.json")   # each member's own learnings (the office library)
+ECON_PLAN = os.path.join(HERE, "redes_plan_economico.json")   # weekly plan from the Economic Board
+DECISIONS = os.path.join(HERE, "redes_decisiones.json")       # decision log: what was decided, why, and if it worked
+
+
+def economics_table(metrics: dict, state: dict) -> dict:
+    """Numbers computed by code (agents never do the arithmetic): funnel, unit economics and the daily content mix vs
+    results, with the sample size so nobody over-reads small data."""
+    f = (metrics or {}).get("funnel") or {}
+    d30 = f.get("d30") or {}
+    daily = (metrics or {}).get("daily14") or []
+    hist = state.get("history") or []
+    mix: dict[str, dict] = {}
+    for h in hist:
+        if h.get("done"):
+            day = mix.setdefault(h.get("day", ""), {"posts": 0, "formatos": {}, "mercados": {}})
+            day["posts"] += 1
+            day["formatos"][h.get("type", "?")] = day["formatos"].get(h.get("type", "?"), 0) + 1
+            if h.get("mercado"):
+                day["mercados"][h["mercado"]] = day["mercados"].get(h["mercado"], 0) + 1
+    rows = [{"dia": d.get("day"), "visitas": d.get("visits"), "cuentas": d.get("signups"), "pagos": d.get("payments"),
+             "ingresosCOP": d.get("revenueCOP"), **mix.get(d.get("day"), {"posts": 0})} for d in daily]
+    lift = {}
+    for fmt in {k for r in rows for k in (r.get("formatos") or {})}:
+        on = [r["visitas"] or 0 for r in rows if (r.get("formatos") or {}).get(fmt)]
+        off = [r["visitas"] or 0 for r in rows if not (r.get("formatos") or {}).get(fmt) and r.get("posts")]
+        if on:
+            lift[fmt] = {"dias_con": len(on), "visitas_prom_con": round(sum(on) / len(on), 1),
+                         "dias_sin": len(off), "visitas_prom_sin": round(sum(off) / len(off), 1) if off else None}
+    rev, signups, buyers = d30.get("revenueCOP") or 0, d30.get("signups") or 0, d30.get("buyers") or 0
+    posts30 = sum(1 for h in hist if h.get("done"))
+    return {"embudo_30d": {k: d30.get(k) for k in ("visits", "signups", "buyers", "revenueCOP", "visitToSignupPct",
+                                                    "signupToPaidPct", "visitToPaidPct")},
+            "unit_economics": {"ingreso_por_cuenta_COP": round(rev / signups) if signups else None,
+                               "ingreso_por_comprador_COP": round(rev / buyers) if buyers else None,
+                               "publicaciones_registradas": posts30,
+                               "visitas_por_publicacion_30d": round((d30.get("visits") or 0) / posts30, 2) if posts30 else None,
+                               "cuentas_por_publicacion_30d": round(signups / posts30, 3) if posts30 else None},
+            "dias": rows[-14:], "formato_vs_visitas": lift,
+            "advertencia": "Muestra pequeña: trata las diferencias como hipótesis hasta tener 2+ semanas y repeticiones."}
+
+
+def log_decisions(today: str, decisions: list[dict]) -> None:
+    if not decisions:
+        return
+    log = load(DECISIONS, []) or []
+    for d in decisions:
+        log.append({"dia": today, **{k: str(v)[:300] for k, v in d.items()}})
+    save(DECISIONS, log[-200:])
+
+
+def board(api_key: str | None, signed, state: dict, facts: dict, log=print) -> dict:
+    """Weekly Economic Board (Mondays): every economist plus Markets and Growth, then the Director turns it into the
+    week's economic plan: allocation of the content inventory, targets, experiments, decisions and a review of last
+    week's decisions against the numbers."""
+    import goldglitch_claude_cli as CLI
+    c = Committee(api_key, signed, state, facts, log)
+    week = now_co().strftime("%G-W%V")
+    log(f"Junta Económica semanal ({week})")
+    past = [d for d in (load(DECISIONS, []) or [])][-20:]
+    q = ("Junta Económica semanal. Con la tabla económica, las métricas de 7 y 30 días y el registro de decisiones "
+         f"anteriores {json.dumps(past, ensure_ascii=False)[:3000]}: 1) ¿qué decisiones de la semana pasada acertaron y cuáles "
+         "no (con el número)? 2) desde tu especialidad, ¿cómo asignar el inventario de la semana (unas 35 publicaciones) "
+         "entre formatos, mercados y segmentos, y por qué? 3) un experimento con hipótesis, métrica y criterio.")
+    answers = []
+    for k in ("sofia", "unit_econ", "econometria", "pricing", "internacional", "tiburon"):
+        try:
+            answers.append({"miembro": c.r["miembros"][k].get("nombre"), "respuesta": c.ask(k, q)})
+        except Exception as e:
+            log(f"  {k}: {e}")
+    plan = CLI.ask_json(DIRECTOR, f"""Métricas: {c.metrics_text()}
+Tabla económica: {json.dumps(economics_table(c.metrics or {}, state), ensure_ascii=False)[:5000]}
+Respuestas de la Junta: {json.dumps(answers, ensure_ascii=False)}
+
+Deja el PLAN ECONÓMICO de la semana {week}. Formato JSON:
+{{"objetivo":"meta principal de la semana (cuentas creadas) con número","north_star":"métrica",
+"asignacion":{{"formatos":{{"reel":40,"meme":20,"...":0}},"mercados":{{"CO":50,"MX":20,"...":0}},"segmentos":{{"hinchas":60,"...":0}}}},
+"metas":[{{"metrica":"...","valor":"..."}}],
+"experimentos":[{{"hipotesis":"...","variante":"...","metrica":"...","criterio":"...","fin":"AAAA-MM-DD"}}],
+"decisiones":[{{"decision":"...","razon_economica":"...","efecto_esperado":"...","metrica":"...","revisar":"AAAA-MM-DD"}}],
+"revision_semana_anterior":"qué acertó y qué no, con números", "acta":"resumen de la Junta"}}
+Los porcentajes de cada grupo suman 100. Sé conservador con conclusiones de muestras pequeñas.""")
+    plan = {"semana": week, **{k: v for k, v in (plan or {}).items()}}
+    save(ECON_PLAN, plan)
+    log_decisions(now_co().strftime("%Y-%m-%d"), [d for d in plan.get("decisiones") or [] if isinstance(d, dict)])
+    os.makedirs(ACTAS, exist_ok=True)
+    with open(os.path.join(ACTAS, f"junta_economica_{week}.md"), "w", encoding="utf-8") as fh:
+        fh.write(f"# Junta Económica — {week}\n\n{plan.get('acta', '')}\n\n## Plan económico\n```json\n"
+                 f"{json.dumps(plan, ensure_ascii=False, indent=1)}\n```\n\n## Respuestas\n"
+                 + "\n".join(f"### {a['miembro']}\n{a['respuesta']}\n" for a in answers))
+    log(f"Junta cerrada: objetivo {str(plan.get('objetivo', ''))[:120]}")
+    return plan
 
 
 def notebook(member: str) -> list[dict]:
