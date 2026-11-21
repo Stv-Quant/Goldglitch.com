@@ -1,4 +1,4 @@
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { getDB } from "./env";
 
 /** First-touch attribution cookie: "source|ref" (30 days). Written by /api/t, read when an account is created. */
@@ -45,8 +45,12 @@ export async function tagSignupSource(userId: string): Promise<void> {
   const raw = (await cookies()).get(SOURCE_COOKIE)?.value ?? "";
   const [src, ref] = raw.split("|");
   const source = cleanTag(src) ?? "desconocido";
+  const h = await headers();
+  const country = (h.get("cf-ipcountry") || "XX").toUpperCase().slice(0, 2);
+  const ua = h.get("user-agent") ?? "";
+  const device = /ipad|tablet/i.test(ua) ? "tablet" : /mobi|android|iphone/i.test(ua) ? "mobile" : "desktop";
   await (await getDB())
-    .prepare("UPDATE users SET signup_source = ?, signup_ref = ? WHERE id = ? AND signup_source IS NULL")
-    .bind(source, cleanTag(ref), userId)
+    .prepare("UPDATE users SET signup_source = ?, signup_ref = ?, signup_country = ?, signup_device = ? WHERE id = ? AND signup_source IS NULL")
+    .bind(source, cleanTag(ref), country, device, userId)
     .run();
 }

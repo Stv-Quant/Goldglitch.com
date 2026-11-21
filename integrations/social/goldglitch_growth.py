@@ -730,6 +730,11 @@ def economics_table(metrics: dict, state: dict) -> dict:
                                "visitas_por_publicacion_30d": round((d30.get("visits") or 0) / posts30, 2) if posts30 else None,
                                "cuentas_por_publicacion_30d": round(signups / posts30, 3) if posts30 else None},
             "dias": rows[-14:], "formato_vs_visitas": lift,
+            "paises_30d": ((metrics or {}).get("analytics30") or {}).get("countries", [])[:12],
+            "dispositivos_30d": ((metrics or {}).get("analytics30") or {}).get("devices", []),
+            "canal_por_pais_30d": ((metrics or {}).get("analytics30") or {}).get("sourceByCountry", [])[:15],
+            "paginas_30d": ((metrics or {}).get("analytics30") or {}).get("pages", [])[:10],
+            "botones_mas_clicados_30d": ((metrics or {}).get("analytics30") or {}).get("ctas", [])[:10],
             "advertencia": "Muestra pequeña: trata las diferencias como hipótesis hasta tener 2+ semanas y repeticiones."}
 
 

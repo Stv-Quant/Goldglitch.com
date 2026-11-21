@@ -1,5 +1,6 @@
 import { getDB } from "@/lib/env";
 import { readSigned } from "@/lib/signed";
+import { analyticsReport } from "@/lib/analyticsReport";
 
 export const dynamic = "force-dynamic";
 
@@ -84,6 +85,7 @@ export async function POST(req: Request) {
     daily14: series.results,
     refs30: refs.results,
     landings7: landings.results,
+    analytics30: await analyticsReport(30).catch(() => null),
     notes: "Visitas = sesiones de navegación (una cada 30 min). Origen = primer contacto. Pagos de prueba excluidos.",
   });
 }
