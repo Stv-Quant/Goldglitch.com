@@ -289,7 +289,8 @@ def caption(tx: dict, key: str) -> str:
     """Text + hashtags. Every '#' counts: Instagram drops the WHOLE caption when a post has more than 30, so numbering
     like '#1' in the text becomes 'Nº1' and hashtags written inside the text move to the hashtag block.
     Instagram: REDES_IG_HASHTAGS (30); TikTok: 10 (big + topic); Facebook: 8. Never empty."""
-    body = re.sub(r"#(\d)", r"Nº\1", str(tx.get(key) or ""))
+    text = tx.get(key) or ((tx.get("fb") or "").replace("ref=fb", "ref=yt") if key == "yt" else "")
+    body = re.sub(r"#(\d)", r"Nº\1", str(text or ""))
     inline = re.findall(r"(?<![\w&])#([^\W\d][\w]*)", body)
     body = re.sub(r"[ \t]*(?<![\w&])#[^\W\d][\w]*", "", body).rstrip()
     seen, tags = set(), []
@@ -301,7 +302,9 @@ def caption(tx: dict, key: str) -> str:
     if key == "tiktok":   # TikTok rewards a few broad tags first
         big = [t for t in tags if t.lower() in ("fyp", "parati", "viral", "futbol", "football", "soccer")]
         tags = big + [t for t in tags if t not in big]
-    n = {"ig": max(3, min(IG_HASHTAGS, 30)), "tiktok": 10, "fb": 8}.get(key, 10)
+    if key == "yt":       # YouTube: the first 3 hashtags show above the title; more than 15 and it ignores them all
+        tags = ["Shorts"] + [t for t in tags if t.lower() != "shorts"]
+    n = {"ig": max(3, min(IG_HASHTAGS, 30)), "tiktok": 10, "fb": 8, "yt": 12}.get(key, 10)
     return f"{body}\n\n{' '.join('#' + h for h in tags[:n])}".strip()
 
 
@@ -331,6 +334,10 @@ def publish(post: dict, piece: dict, meta: Meta | None, tt: TikTok | None, dry: 
         jobs.append(("facebook", lambda: meta.fb_photos(piece["feed"], caption(tx, "fb"))))
     if tt:
         jobs.append(("tiktok", lambda: tt.video(piece["video"], caption(tx, "tiktok"))))
+    if YT is not None and piece.get("video"):
+        YT.audio_vibe = str(tx.get("audio_vibe") or "")[:60]
+        title = str(tx.get("yt_title") or tx.get("reel_hook") or tx.get("cover_title") or "Datos de fútbol")[:90]
+        jobs.append(("youtube", lambda: YT.short(piece["video"], f"{title} #Shorts"[:100], caption(tx, "yt"))))
     for net, fn in jobs:
         if net in done:
             continue
@@ -360,6 +367,10 @@ def browser_mode() -> bool:
     return not (os.environ.get("META_PAGE_TOKEN") or os.environ.get("TIKTOK_CLIENT_KEY"))
 
 
+YT = None        # YouTube Shorts agent (screen agent with your Claude plan), set by clients()
+AGENT = None
+
+
 def clients(rehearsal: bool = False) -> tuple[Meta | B.BrowserMeta | None, TikTok | B.BrowserTikTok | None]:
     global BROWSER
     meta = tt = None
@@ -387,6 +398,9 @@ def clients(rehearsal: bool = False) -> tuple[Meta | B.BrowserMeta | None, TikTo
             import goldglitch_social_computer as C
             BROWSER = None
             ag = C.CliScreenAgent(log)
+            global YT, AGENT
+            AGENT = ag
+            YT = C.AgentYouTube(ag, rehearsal) if sess.get("youtube") else None
             if sess.get("instagram", True) or sess.get("facebook", True):
                 meta = C.AgentMeta(ag, cfg.get("facebook_page") if sess.get("facebook", True) else None,
                                    sess.get("instagram", True), rehearsal)
@@ -593,6 +607,19 @@ def _tick(dry: bool) -> None:
         st["community_at"] = time.time()
         save_json(STATE, st)
 
+    # 3c) community management: replies and likes on every network, every REDES_COMUNIDAD_HORAS between 10:00 and 22:00
+    every = float(os.environ.get("REDES_COMUNIDAD_HORAS", "4") or 4)
+    if AGENT is not None and not dry and 10 <= now.hour < 22 and time.time() - float(st.get("community_at") or 0) > every * 3600:
+        import goldglitch_social_computer as C
+        sess = B.load_config().get("sessions") or {}
+        nets = [n for n in ("youtube", "instagram", "facebook", "tiktok") if sess.get(n, n != "youtube")]
+        res = C.community_round(AGENT, nets, B.load_config().get("facebook_page"), log)
+        st["community_at"] = time.time()
+        st.setdefault("community", []).append({"at": now.strftime("%Y-%m-%d %H:%M"),
+                                               **{k: f"{v[0]}: {v[1][:300]}" for k, v in res.items()}})
+        st["community"] = st["community"][-30:]
+        save_json(STATE, st)
+
     # 4) weekly study session in the office library (Sundays from 15:00)
     if now.weekday() == 6 and now.hour >= 15 and st.get("study_week") != week_of(now) and not ag.offline:
         try:
@@ -722,6 +749,25 @@ def main() -> int:
             ensayo()
         elif cmd == "tiktok-login":
             tiktok_login()
+        elif cmd == "comunidad":            # one community round now (replies + likes on every connected network)
+            clients()
+            if AGENT is None:
+                print("Necesitas Claude Code con tu sesión de Claude (probar_claude_pro.bat).")
+                return 1
+            import goldglitch_social_computer as C
+            if not take_lock(wait_s=20 * 60):
+                log("Comunidad: los agentes están ocupados; inténtalo en unos minutos.")
+                return 1
+            try:
+                sess = B.load_config().get("sessions") or {}
+                nets = [n for n in ("youtube", "instagram", "facebook", "tiktok") if sess.get(n, n != "youtube")]
+                for net, (r, d) in C.community_round(AGENT, nets, B.load_config().get("facebook_page"), log).items():
+                    log(f"Comunidad · {net}: {r} — {d[:400]}")
+                st = load_json(STATE, {})
+                st["community_at"] = time.time()
+                save_json(STATE, st)
+            finally:
+                drop_lock()
         elif cmd == "informe":
             meta, _ = clients()
             st = load_json(STATE, {})

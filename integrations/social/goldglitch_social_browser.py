@@ -32,7 +32,7 @@ TT_UPLOAD = "https://www.tiktok.com/tiktokstudio/upload?from=webapp"
 
 # Cookies that only exist with a signed-in session.
 SESSION_COOKIES = {"instagram": ("instagram.com", "sessionid"), "facebook": ("facebook.com", "c_user"),
-                   "tiktok": ("tiktok.com", "sessionid")}
+                   "tiktok": ("tiktok.com", "sessionid"), "youtube": ("youtube.com", "LOGIN_INFO")}
 
 
 def rx(*words: str) -> re.Pattern:
@@ -479,7 +479,7 @@ def connect() -> None:
     """Visible browser with the three sites; you sign in yourself (passwords never pass through this program)."""
     br = Browser(visible=True)
     ctx = br.context()
-    for url in (IG, FB, "https://www.tiktok.com/"):
+    for url in (IG, FB, "https://www.tiktok.com/", "https://studio.youtube.com/"):
         try:
             ctx.new_page().goto(url, wait_until="domcontentloaded", timeout=60_000)
         except Exception:
@@ -488,17 +488,18 @@ def connect() -> None:
         if p.url in ("about:blank", "chrome://newtab/"):
             p.close()
     print("""
-Se abrió un navegador con tres pestañas: Instagram, Facebook y TikTok.
+Se abrió un navegador con cuatro pestañas: Instagram, Facebook, TikTok y YouTube Studio.
 
   1) Inicia sesión en cada una con las cuentas de Goldglitch (marca "recordar" si aparece).
      Si alguna pestaña se queda en blanco, recárgala (F5) o escribe la dirección (tiktok.com) en esa pestaña.
-     En TikTok usa "Iniciar sesión" arriba a la derecha. Las sesiones que ya iniciaste se conservan.
+     En TikTok usa "Iniciar sesión" arriba a la derecha. En YouTube inicia sesión con la cuenta de Google del canal
+     de EGG y elige ese canal si te pregunta. Las sesiones que ya iniciaste se conservan.
   2) En Facebook, cambia a la PÁGINA de Goldglitch: foto de perfil (arriba a la derecha) > "Cambiar a ..." /
      "Ver todos los perfiles" > la página. Así las publicaciones salen como la página, no como tu perfil.
   3) Abre la página de Goldglitch en esa pestaña y copia su dirección (ej. https://www.facebook.com/goldglitch).
 """)
     page_url = input("Pega aquí la dirección de la página de Facebook (o Enter si no usarás Facebook): ").strip()
-    input("Cuando hayas iniciado sesión en las tres, presiona Enter aquí... ")
+    input("Cuando hayas iniciado sesión en las cuatro, presiona Enter aquí... ")
     status = br.signed_in()
     br.close()
     cfg = load_config()

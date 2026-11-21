@@ -241,6 +241,10 @@ Entrega:
 {self._market_ask(post)}
 No escribas hashtags dentro de ig, fb ni tiktok (van aparte) y no uses "#" para numerar: escribe "Nº1" o "el 1".
 - concepto: el concepto elegido en máx. 7 palabras.
+- yt_title: título del Short de YouTube (máx. 80 caracteres): la palabra clave de búsqueda al inicio (liga, equipo,
+  partido) + gancho; sin hashtags.
+- yt: descripción de YouTube (3 a 5 líneas): la primera con palabras clave de búsqueda, luego el valor, y el enlace
+  https://easygoldglitch.com/?ref=yt_desc ; +18; sin hashtags.
 - audio_vibe: la vibra del audio en tendencia que debe sonar en el reel (ej. "épico de estadio", "comedia", "tensión",
   "lujo chill", "phonk", "dramático"), en máx. 4 palabras; el audio lo elige el agente en la biblioteca de la red.
 Formato JSON con esas claves.""", max_tokens=2000)

@@ -204,6 +204,7 @@ body{{width:{w}px;height:{h}px;overflow:hidden;color:#ede6d6;font-family:Inter,s
 .tag{{margin-top:14px;font-size:30px;color:#cfc6b2;white-space:nowrap}}
 .url{{margin-top:18px;font-family:'JetBrains Mono',monospace;font-size:22px;letter-spacing:.2em;color:#d4af37;text-transform:uppercase}}
 .rule{{position:absolute;left:0;right:0;bottom:0;height:3px;background:linear-gradient(90deg,transparent,#d4af37,transparent)}}
+{'.wrap{zoom:1.45}' if w >= 2000 else ''}
 </style></head><body><div class='grid'></div><div class='wrap'>{MARK.format(s=190)}
 <div><div class='name'>Goldglitch Stats</div><div class='tag'>Probabilidades de cada partido. Datos, no fijas.</div>
 <div class='url'>easygoldglitch.com</div></div></div><div class='rule'></div></body></html>"""
@@ -213,4 +214,5 @@ def profile_assets() -> dict:
     """Renders the logo (1080×1080) and the Facebook cover (1640×624). Returns their paths."""
     logo = render([avatar_page()], 1080, 1080, "perfil_logo")[0]
     cover = render([cover_page()], 1640, 624, "perfil_portada")[0]
-    return {"logo": logo, "portada": cover}
+    banner = render([cover_page(2560, 1440)], 2560, 1440, "perfil_banner_youtube")[0]   # content stays in the safe area
+    return {"logo": logo, "portada": cover, "banner": banner}
