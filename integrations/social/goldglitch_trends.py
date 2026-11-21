@@ -87,8 +87,58 @@ def tiktok_hashtags() -> list[str]:
     return [t for t in dict.fromkeys(tags) if _safe(t)][:25]
 
 
+def spotify_colombia() -> list[str]:
+    """Most-played songs in Colombia today (kworb.net mirrors Spotify's public daily chart)."""
+    r = requests.get("https://kworb.net/spotify/country/co_daily.html", headers=UA, timeout=20)
+    r.raise_for_status()
+    rows = re.findall(r"<td class=\"text mp\"><div>(.*?)</div></td>", r.text, re.S)
+    out = []
+    for cell in rows[:20]:
+        txt = re.sub(r"<[^>]+>", "", cell)
+        txt = html_unescape(" ".join(txt.split()))
+        if txt and _safe(txt):
+            out.append(txt)
+    return out
+
+
+def tiktok_songs() -> list[str]:
+    """Popular songs on TikTok in Colombia (TikTok Creative Center, public page)."""
+    from playwright.sync_api import sync_playwright
+    with sync_playwright() as pw:
+        br = pw.chromium.launch(headless=True)
+        try:
+            pg = br.new_page(user_agent=UA["User-Agent"], locale="es-CO")
+            pg.goto("https://ads.tiktok.com/business/creativecenter/inspiration/popular/music/pc/es?region=CO&period=7",
+                    wait_until="domcontentloaded", timeout=45_000)
+            pg.wait_for_timeout(7000)
+            items = pg.eval_on_selector_all("[class*='music'] [class*='title'], [class*='Music'] [class*='Title']",
+                                            "els => els.map(e => e.innerText.trim())")
+        finally:
+            br.close()
+    return [t for t in dict.fromkeys(i for i in items if 2 < len(i) < 80) if _safe(t)][:15]
+
+
+def html_unescape(s: str) -> str:
+    import html
+    return html.unescape(s)
+
+
+def songs(data: dict | None = None) -> list[str]:
+    """Trending songs/sounds to look up in the platform's own audio library (TikTok first, then Spotify Colombia)."""
+    data = data if data is not None else get()
+    return list(dict.fromkeys((data.get("canciones_tiktok") or [])[:8] + (data.get("canciones") or [])[:10]))
+
+
 def collect(log=print) -> dict:
-    data: dict = {"ts": time.time(), "google": {}, "futbol": [], "tiktok": []}
+    data: dict = {"ts": time.time(), "google": {}, "futbol": [], "tiktok": [], "canciones": [], "canciones_tiktok": []}
+    try:
+        data["canciones"] = spotify_colombia()
+    except Exception as e:
+        log(f"  canciones Spotify Colombia: {e}")
+    try:
+        data["canciones_tiktok"] = tiktok_songs()
+    except Exception as e:
+        log(f"  canciones TikTok: {e}")
     for geo, name in GEOS.items():
         try:
             data["google"][name] = google_trends(geo)
@@ -116,8 +166,9 @@ def get(log=print, force: bool = False) -> dict:
     data = collect(log)
     if not (data["google"] or data["futbol"]) and cached:      # offline: keep the last good snapshot
         return cached
-    if not data["tiktok"] and cached.get("tiktok"):
-        data["tiktok"] = cached["tiktok"]
+    for k in ("tiktok", "canciones", "canciones_tiktok"):
+        if not data.get(k) and cached.get(k):
+            data[k] = cached[k]
     with open(CACHE, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=1)
     return data
@@ -131,7 +182,8 @@ def brief(data: dict | None = None, n: int = 8) -> dict:
             "busquedas_en_tendencia": {k: [f"{t['busqueda']} ({t['trafico']})" + (f" — {t['noticias'][0]}" if t["noticias"] else "")
                                            for t in v[:n]] for k, v in (data.get("google") or {}).items()},
             "titulares_futbol": [f"{a['liga']}: {a['titular']}" for a in (data.get("futbol") or [])[:20]],
-            "hashtags_tiktok_colombia": (data.get("tiktok") or [])[:20]}
+            "hashtags_tiktok_colombia": (data.get("tiktok") or [])[:20],
+            "canciones_en_tendencia": songs(data)[:12]}
 
 
 if __name__ == "__main__":
