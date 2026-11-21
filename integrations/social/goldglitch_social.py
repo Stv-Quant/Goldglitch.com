@@ -224,7 +224,8 @@ def build(post: dict, facts: dict, ag: Agents, now: datetime, tag: str, shown: s
     tx = ag.write(post, data)
     # Hashtags: Daniela's SEO bank first, then leagues/teams of the real picks, then the writer's (Instagram allows 30).
     seen, tags = set(), []
-    base_tags = ["memesdefutbol", "futbolmemes", "humorfutbolero"] if t == "meme" else []
+    base_tags = (["memesdefutbol", "futbolmemes", "humorfutbolero"] if t == "meme" else []) \
+        + MARKET_TAGS.get((post.get("mercado") or "").upper(), [])
     for h in list(seo.get("hashtags") or [])[:10] + base_tags + V.hashtags_for(rows) + list(tx.get("hashtags") or []) + DEFAULT_TAGS:
         h = re.sub(r"[^\wñÑáéíóúÁÉÍÓÚüÜ]", "", str(h))
         k = h.lower()
@@ -277,6 +278,9 @@ class SkipPiece(RuntimeError):
     pass
 
 
+MARKET_TAGS = {"MX": ["ligamx", "futbolmexicano"], "US": ["futbolhispano", "mls"], "AR": ["futbolargentino", "ligaprofesional"],
+               "ES": ["laliga", "futbolespañol"], "CL": ["futbolchileno"], "PE": ["futbolperuano", "liga1"],
+               "CO": ["ligabetplay", "futbolcolombiano"], "LATAM": ["futbollatino", "futbolsudamericano"]}
 DEFAULT_TAGS = ["futbol", "football", "soccer", "fyp", "parati", "viral", "futbolcolombiano", "futbollatino", "datosdefutbol",
                 "estadistica", "probabilidad", "analisisdeportivo", "goldglitch", "goldglitchstats"]
 
@@ -466,7 +470,7 @@ def publish_now(posts: list[dict]) -> None:
             except Exception as e:
                 log(f"  ERROR en la publicación inmediata: {e}")
                 continue
-            st.setdefault("history", []).append({"day": today, "type": post["type"], "time": post["time"], "angle": post.get("angle"),
+            st.setdefault("history", []).append({"day": today, "type": post["type"], "time": post["time"], "angle": post.get("angle"), "mercado": post.get("mercado"), "segmento": post.get("segmento"),
                                                 "inmediata": True, "done": list(post.get("done", {})), "errors": post.get("errors", {})})
         save_json(STATE, st)
     finally:
@@ -573,7 +577,7 @@ def _tick(dry: bool) -> None:
             nets |= {"tiktok"} if tt else set()
             if dry or nets <= set(post.get("done", {})) or post["tries"] >= MAX_TRIES:
                 post["status"] = "done"
-                st.setdefault("history", []).append({"day": today, "type": post["type"], "time": post["time"], "angle": post.get("angle"),
+                st.setdefault("history", []).append({"day": today, "type": post["type"], "time": post["time"], "angle": post.get("angle"), "mercado": post.get("mercado"), "segmento": post.get("segmento"),
                                                     "done": list(post.get("done", {})), "errors": post.get("errors", {})})
         except Exception as e:  # keep the loop alive; the next tick retries
             post.setdefault("errors", {})["build"] = str(e)[:300]

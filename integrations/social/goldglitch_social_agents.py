@@ -238,6 +238,7 @@ Entrega:
 {self._meme_ask(post) if post['type'] == 'meme' else ''}
 {"Si en los datos hay tendencias_del_momento, monta el gancho y el texto sobre la que más pegue con esta pieza (sin inventar hechos)." if data.get("tendencias_del_momento") and post['type'] != 'meme' else ''}
 {self._seo_ask(post)}
+{self._market_ask(post)}
 No escribas hashtags dentro de ig, fb ni tiktok (van aparte) y no uses "#" para numerar: escribe "Nº1" o "el 1".
 - concepto: el concepto elegido en máx. 7 palabras.
 - audio_vibe: la vibra del audio en tendencia que debe sonar en el reel (ej. "épico de estadio", "comedia", "tensión",
@@ -320,6 +321,25 @@ Formato: {{"puntajes":{{...}}, "mejorado":{{solo las claves que reescribiste}}}}
                 "que 'sabe de fútbol', el VAR, el minuto 90, el que dice que su equipo ganaba fijo…), con el giro EGG de "
                 "datos y lujo con clase. Original: nada de personajes, marcas ni imágenes de memes famosos. Nunca te burles "
                 "de un grupo de personas; sí del fútbol y de nosotros mismos.")
+
+    @staticmethod
+    def _market_ask(post: dict) -> str:
+        mk, sg = (post.get("mercado") or "").upper(), (post.get("segmento") or "").lower()
+        names = {"CO": "Colombia", "MX": "México", "US": "EE. UU. hispano", "AR": "Argentina", "ES": "España", "CL": "Chile",
+                 "PE": "Perú", "LATAM": "toda Latinoamérica"}
+        out = []
+        if mk and mk != "CO":
+            out.append(f"Mercado de esta pieza: {names.get(mk, mk)}. EGG sigue siendo la gomela caleña (es su identidad), pero "
+                       "usa ligas, rivalidades, horarios y referencias de ese país y evita jerga que allá no se entienda; "
+                       "nada de \"parce\" ni \"ve\" fuera de Colombia, salvo como guiño.")
+        segs = {"comentaristas": "comentaristas y periodistas: dales el dato listo para decir al aire",
+                "profesores": "profesores y estudiantes: usa el partido como ejemplo claro de probabilidad",
+                "analistas": "analistas y entrenadores: profundidad y método, sin perder el gancho",
+                "fantasy": "jugadores de fantasy: qué jugadores y partidos mirar con datos",
+                "apostadores18": "adultos que apuestan (+18): solo estadística y gestión responsable, nunca incitar ni cuotas"}
+        if sg in segs:
+            out.append("Segmento: " + segs[sg] + ".")
+        return "\n".join(out)
 
     @staticmethod
     def _seo_ask(post: dict) -> str:

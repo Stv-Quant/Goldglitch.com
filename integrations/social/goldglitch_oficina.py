@@ -50,6 +50,10 @@ LOOKS = {  # hair, skin, top, pants
     "marca": ("#1a1a1a", "#e6b896", "#0f766e", "#111827"), "viralidad": ("#b8325a", "#f0c4a2", "#f59e0b", "#1f2937"),
     "seo": ("#2e1b10", "#d29a74", "#6366f1", "#18181b"), "audiencia": ("#4b2e1c", "#c98e66", "#16a34a", "#1c1917"),
     "tiburon": ("#151515", "#c98a62", "#1e3a8a", "#0a0a0a"), "parche": ("#3b2416", "#b97a52", "#16a34a", "#1e293b"),
+    "unit_econ": ("#1f1f1f", "#d6a07a", "#334155", "#0f172a"), "econometria": ("#2a1a10", "#f0c6a4", "#7c3aed", "#18181b"),
+    "pricing": ("#3d2817", "#c88f68", "#0ea5e9", "#1e293b"), "internacional": ("#5b3a1e", "#e9b892", "#dc2626", "#111827"),
+    "mx_us": ("#0f0f0f", "#b8774f", "#15803d", "#1c1917"), "conosur_es": ("#d8b26e", "#f2cdb0", "#2563eb", "#1f2937"),
+    "segmentos": ("#2b2b2b", "#d19a72", "#f97316", "#111827"),
     "neuro": ("#101010", "#e2ad88", "#06b6d4", "#0b1220"), "disrupcion": ("#7c3aed", "#e8b691", "#facc15", "#111111"), "narrativa": ("#8a5a33", "#f2cfb3", "#be185d", "#27272a"),
 }
 
@@ -103,9 +107,10 @@ def roster() -> dict:
         return load("redes_comite.json", {}).get("miembros") or {}
 
 
-ROOMS = {  # where each member sits
-    "direccion": ["sofia", "tiburon"], "datos": ["analista", "seo", "viralidad", "audiencia"],
-    "estudio": ["disrupcion", "diseno", "video", "copy", "neuro", "narrativa"], "juntas": ["parche", "marca", "comunidad", "viral"],
+ROOMS = {  # where each member sits (by department)
+    "direccion": ["tiburon", "marca"], "datos": ["viralidad", "viral", "comunidad", "neuro", "seo"],
+    "estudio": ["disrupcion", "diseno", "video", "copy", "narrativa"], "juntas": ["audiencia", "segmentos", "parche"],
+    "economia": ["sofia", "unit_econ", "econometria", "pricing", "analista"], "mercados": ["internacional", "mx_us", "conosur_es"],
 }
 
 
@@ -257,6 +262,27 @@ h1{{font-family:'Press Start 2P',monospace;font-size:18px;color:var(--gold);lett
   <div class='panel' style='margin-top:40px'>Aquí se ve lo que pasa en vivo en el PC (redes.log):</div>
   <div class='ticker' style='margin-top:8px'>{ticker or 'Sin actividad todavía.'}</div></section>
 </div></body></html>"""
+    econ = load("redes_plan_economico.json", {})
+    alloc = econ.get("asignacion") or {}
+    bars = "".join(
+        f"<div style='margin-top:6px'><b style='color:var(--gold)'>{esc(g.capitalize())}</b>" + "".join(
+            f"<div style='display:flex;align-items:center;gap:8px;font-size:16px'><span style='width:110px'>{esc(k)}</span>"
+            f"<div style='height:10px;width:{max(2, int(float(v or 0) * 2.2))}px;background:#d4af37;border:2px solid #000'></div>{esc(v)}%</div>"
+            for k, v in list((alloc.get(g) or {}).items())[:7]) + "</div>" for g in ("formatos", "mercados", "segmentos") if alloc.get(g))
+    decs = (load("redes_decisiones.json", []) or [])[-4:][::-1]
+    dec_rows = "".join(f"<li><span>{esc(d.get('dia', '')[5:])}</span> {esc(d.get('decision', '')[:90])} → <i>{esc(d.get('metrica', '')[:40])}</i></li>" for d in decs) \
+        or "<li>Las decisiones con su razón económica aparecen aquí después de cada reunión.</li>"
+    extra_rooms = f"""
+ <section class='room tile span2'><h2>📈 ESTRATEGIA ECONÓMICA</h2>
+  <div style='display:flex;gap:6px'>{desk('#7cff9b', 3)}{desk('#38e1ff', 2)}</div>
+  <div class='people'>{people(ROOMS['economia'])}</div>
+  <div style='display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px'>
+   <div class='screen'><b>PLAN ECONÓMICO {esc(econ.get('semana', ''))}</b><div style='color:#ffd36b;margin-top:4px'>{esc(str(econ.get('objetivo') or 'La Junta Económica se reúne los lunes.'))[:160]}</div>{bars}</div>
+   <div class='panel'><b style='color:var(--gold)'>Registro de decisiones</b><ul>{dec_rows}</ul></div></div></section>
+ <section class='room carpet'><h2>🌎 MERCADOS INTERNACIONALES</h2>
+  <div style='font-size:34px;letter-spacing:6px'>🇨🇴🇲🇽🇺🇸🇦🇷🇪🇸🇨🇱🇵🇪</div>
+  <div class='people'>{people(ROOMS['mercados'])}</div></section>"""
+    page = page.replace("</div></body></html>", extra_rooms + "\n</div></body></html>")
     with open(OUT, "w", encoding="utf-8") as f:
         f.write(page)
     return OUT
