@@ -7,7 +7,8 @@
    seguridad, pagos ni administradores, y no publica nada.
 4. Deja un informe en redes_perfil_informe.md.
 
-    python goldglitch_profile.py              # revisa y arregla Instagram y Facebook
+    python goldglitch_profile.py              # revisa y arregla Instagram, Facebook y YouTube
+    python goldglitch_profile.py youtube      # solo el canal de YouTube
     python goldglitch_profile.py --ensayo     # lo mismo, sin pulsar Guardar
     python goldglitch_profile.py instagram    # solo una red
 """
@@ -37,10 +38,11 @@ Herramientas útiles: preparar_archivo('logo' | 'portada') ANTES de abrir el sel
 escribir_texto_guardado('bio' | 'descripcion' | 'sitio_web' | …) para escribir los textos exactos (borra antes el texto
 viejo del campo: clic, ctrl+a, Delete). Revisa con capturas. Si un campo solo se puede cambiar desde la app del celular,
 sáltalo y anótalo.
+En YouTube Studio el botón que guarda los cambios del canal se llama "Publicar": úsalo (no publica ningún video).
 Al final usa terminar con estado "publicado" (si guardaste los cambios) o "listo_para_publicar" (en ensayo) y en
 detalle un informe: qué estaba mal, qué cambiaste y qué quedó pendiente."""
 
-SAVE_BUTTONS = r"^\s*(guardar|save|enviar|submit|listo|done|aplicar|apply|guardar cambios|save changes)\s*$"
+SAVE_BUTTONS = r"^\s*(guardar|save|enviar|submit|listo|done|aplicar|apply|guardar cambios|save changes|publicar|publish)\s*$"
 
 
 def texts() -> dict:
@@ -52,6 +54,11 @@ def texts() -> dict:
         "fb_descripcion": ("Goldglitch Stats es una plataforma colombiana de estadística deportiva. Un modelo calcula la "
                            "probabilidad de cada partido de fútbol, NBA, NHL y eSports: ganador, goles, córners, tarjetas y "
                            "jugadores. Publicamos un historial público con aciertos y fallos. Es estadística, no apuestas. +18."),
+        "yt_descripcion": ("EGG · Goldglitch Stats: probabilidades de fútbol calculadas por un modelo, para hinchas, "
+                           "comentaristas, profesores, analistas y jugadores de fantasy. Premier League, LaLiga, Champions, "
+                           "Liga BetPlay, Liga MX, Libertadores y más.\n\nCada día: picks con datos antes de los partidos, "
+                           "cómo le fue al modelo (aciertos y fallos, historial público), memes y retos para el parche.\n\n"
+                           "Datos, no fijas. Es estadística, no apuestas. +18.\nEstadísticas gratis: https://easygoldglitch.com/?ref=yt_bio"),
     }
     try:
         import goldglitch_claude_cli as CLI
@@ -60,6 +67,9 @@ def texts() -> dict:
                 "termina invitando al enlace de abajo.\n"
                 "- fb_bio: presentación corta de la página de Facebook, máximo 100 caracteres.\n"
                 "- fb_descripcion: descripción de la página de Facebook, máximo 250 caracteres.\n"
+                "- yt_descripcion: descripción del canal de YouTube, 500 a 900 caracteres, con palabras clave de búsqueda "
+                "(ligas, probabilidades, estadísticas de fútbol), para todo el público hispano, y que termine con "
+                "https://easygoldglitch.com/?ref=yt_bio\n"
                 "Nada de apuestas ni promesas; menciona el historial público y +18.")
         key = os.environ.get("ANTHROPIC_API_KEY")
         if CLI.available() and not key:
@@ -67,7 +77,7 @@ def texts() -> dict:
         else:
             from goldglitch_social_agents import Agents
             out = Agents(key)._json("Copywriter", task)
-        limits = {"ig_bio": 150, "fb_bio": 100, "fb_descripcion": 250}
+        limits = {"ig_bio": 150, "fb_bio": 100, "fb_descripcion": 250, "yt_descripcion": 1000}
         for k, n in limits.items():
             v = str(out.get(k) or "").strip()
             if v and len(v) <= n and not BANNED.search(v):
@@ -125,6 +135,19 @@ def run(nets: list[str], rehearsal: bool) -> int:
             {"bio": tx["fb_bio"], "descripcion": tx["fb_descripcion"], "sitio_web": f"{SITE}/?ref=fb_bio"}))
     elif "facebook" in nets:
         S.log("Facebook: falta la dirección de la página (conectar_redes.bat)")
+    if "youtube" in nets:
+        jobs.append(("youtube", "https://studio.youtube.com/", (
+            "Deja completo el canal de YouTube de EGG desde YouTube Studio > 'Personalización' (menú izquierdo).\n"
+            "1. Pestaña 'Imagen de marca' / 'Branding': Imagen (foto de perfil): preparar_archivo('logo') > 'Subir' / 'Cambiar' "
+            "> ajusta y 'Listo'. Imagen del banner: preparar_archivo('banner') > 'Subir' > 'Listo'. Marca de agua del video: "
+            "preparar_archivo('logo') > 'Subir' > 'Listo' > al final del video o todo el video.\n"
+            "2. Pestaña 'Información básica': Descripción: borra lo que haya y escribir_texto_guardado('descripcion'). "
+            "Vínculos > 'Agregar vínculo': título 'Estadísticas gratis', URL escribir_texto_guardado('sitio_web'). No cambies "
+            "el nombre ni el identificador (@) del canal.\n"
+            "3. 'Publicar' (arriba a la derecha) para guardar los cambios.\n"
+            "4. Abre el canal público (ícono del canal > 'Ver canal') y revisa cómo quedó; anota lo pendiente (por ejemplo, "
+            "si pide verificar el teléfono para algo)."),
+            {"descripcion": tx["yt_descripcion"], "sitio_web": f"{SITE}/?ref=yt_bio"}))
     code = 0
     for net, url, task, named_texts in jobs:
         S.log(f"Perfil de {net}: agente revisando…")
@@ -145,4 +168,4 @@ def run(nets: list[str], rehearsal: bool) -> int:
 
 if __name__ == "__main__":
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
-    sys.exit(run(args or ["instagram", "facebook"], "--ensayo" in sys.argv))
+    sys.exit(run(args or ["instagram", "facebook", "youtube"], "--ensayo" in sys.argv))
