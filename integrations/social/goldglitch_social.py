@@ -78,7 +78,11 @@ def load_env() -> None:
 
 def log(msg: str) -> None:
     line = f"[{datetime.now(TZ):%Y-%m-%d %H:%M}] {msg}"
-    print(line)
+    try:
+        print(line)
+    except UnicodeEncodeError:      # Windows console (cp1252) can't print some symbols the agents quote (☰, emoji)
+        enc = getattr(sys.stdout, "encoding", None) or "ascii"
+        print(line.encode(enc, "replace").decode(enc, "replace"))
     with open(LOG, "a", encoding="utf-8") as f:
         f.write(line + "\n")
 
@@ -132,7 +136,7 @@ def when(ms: int, now: datetime) -> str:
 
 
 # ------------------------------------------------------------------ pieces
-SHOWN_HOURS = 36          # a match already shown in picks (feed or reel) is not shown again for 36 h
+SHOWN_HOURS = 24          # a match already shown in picks (feed or reel) is not shown again for 24 h
 IG_HASHTAGS = int(os.environ.get("REDES_IG_HASHTAGS", "30") or 30)   # Instagram drops the whole text above 30
 
 
@@ -150,9 +154,28 @@ def remember_shown(st: dict, piece: dict) -> None:
     for k in piece.get("shown") or []:
         keep[k] = time.time()
     st["shown"] = keep
+    # the exact picks shown, so the results video reports on THOSE picks (same match, same market)
+    rows = [r for r in st.get("shown_picks") or [] if r.get("ts", 0) >= time.time() - 72 * 3600]
+    have = {(r.get("matchId"), r.get("label")) for r in rows}
+    for r in piece.get("shown_rows") or []:
+        if (r.get("matchId"), r.get("label")) not in have:
+            rows.append({**r, "ts": time.time()})
+    st["shown_picks"] = rows[-60:]
 
 
-def build(post: dict, facts: dict, ag: Agents, now: datetime, tag: str, shown: set[str] | None = None) -> dict:
+def shown_results(st: dict | None, results: list[dict]) -> list[dict] | None:
+    """Results of the picks we showed in the last 36 h (None if nothing was shown, [] if none has finished yet)."""
+    shown = [r for r in (st or {}).get("shown_picks") or [] if r.get("ts", 0) >= time.time() - 36 * 3600]
+    if not shown:
+        return None
+    want = {(str(r.get("matchId")), (r.get("label") or "").lower()) for r in shown}
+    keys = {match_key(r) + "|" + (r.get("label") or "").lower() for r in shown}
+    return [r for r in results if (str(r.get("matchId")), (r.get("label") or "").lower()) in want
+            or match_key(r) + "|" + (r.get("label") or "").lower() in keys]
+
+
+def build(post: dict, facts: dict, ag: Agents, now: datetime, tag: str, shown: set[str] | None = None,
+          st: dict | None = None) -> dict:
     """Texts + images + video for one planned post. Returns {feed:[jpg], story:None, video:mp4, reel:bool, texts}.
 
     Picks come only from top first-division leagues of LATAM and Europe (and their continental cups)."""
@@ -171,6 +194,15 @@ def build(post: dict, facts: dict, ag: Agents, now: datetime, tag: str, shown: s
             r["_tag"] = lg[1]
     reel_of = "resultados" if (t == "reel" and (post.get("topic") or "").lower().startswith("result")) else ("picks_dia" if t == "reel" else t)
     if reel_of == "resultados":
+        mine = shown_results(st, facts.get("results") or [])
+        if mine == []:
+            raise SkipPiece("los picks que mostramos todavía no tienen resultado")
+        if mine:            # how the engine did with the SAME picks shown earlier (hits and misses)
+            res = sorted(mine, key=lambda r: (r["status"] != "won", -r["p"]))
+            for r in res:
+                lg = V.top_league(r.get("league"))
+                if lg:
+                    r["_tag"] = lg[1]
         rows = res
         data = {"won": sum(r["status"] == "won" for r in rows), "n": len(rows), "historial": facts["record"],
                 "partidos": [f"{r['home']} vs {r['away']}" for r in rows[:6]]}
@@ -187,7 +219,7 @@ def build(post: dict, facts: dict, ag: Agents, now: datetime, tag: str, shown: s
             pass
     if t in ("picks_dia", "resultados") or (t == "reel" and reel_of != "texto"):
         if not rows:
-            raise SkipPiece("no hay partidos nuevos de ligas top (los de las últimas 36 h ya se mostraron)"
+            raise SkipPiece("no hay partidos nuevos de ligas top (los de las últimas 24 h ya se mostraron)"
                             if reel_of == "picks_dia" else "no hay partidos de ligas top para esta pieza")
     tx = ag.write(post, data)
     # Hashtags: Daniela's SEO bank first, then leagues/teams of the real picks, then the writer's (Instagram allows 30).
@@ -208,9 +240,11 @@ def build(post: dict, facts: dict, ag: Agents, now: datetime, tag: str, shown: s
 
     wfn = lambda r: when(r["kickoffAt"], now) if r.get("kickoffAt") else ""
     shown_keys = [match_key(r) for r in rows] if reel_of == "picks_dia" else []
+    shown_rows = [{k: r.get(k) for k in ("matchId", "league", "home", "away", "label", "p", "kickoffAt")}
+                  for r in rows] if reel_of == "picks_dia" else []
     if t == "reel":
         video = V.reel_video(V.reel_script(reel_of, rows, tx, wfn, facts.get("record")), f"{tag}_reel")
-        return {"feed": [], "story": None, "video": video, "reel": True, "texts": tx, "shown": shown_keys}
+        return {"feed": [], "story": None, "video": video, "reel": True, "texts": tx, "shown": shown_keys, "shown_rows": shown_rows}
     if t == "meme":
         if tx.get("meme_formato") == "noticia" and not data.get("tendencias_del_momento"):   # never a news meme without real news
             tx["meme_formato"], tx["meme"] = "tweet", {"texto": (tx.get("meme") or {}).get("reaccion") or tx.get("cover_title", "")}
@@ -236,7 +270,7 @@ def build(post: dict, facts: dict, ag: Agents, now: datetime, tag: str, shown: s
     feed = R.render(slides(1080, 1350), 1080, 1350, f"{tag}_feed")
     # TikTok gets the same piece as a fast reel
     video = V.reel_video(V.reel_script(reel_of if reel_of in ("picks_dia", "resultados") else "texto", rows, tx, wfn, facts.get("record")), f"{tag}_reel")
-    return {"feed": feed, "story": None, "video": video, "reel": False, "texts": tx, "shown": shown_keys}
+    return {"feed": feed, "story": None, "video": video, "reel": False, "texts": tx, "shown": shown_keys, "shown_rows": shown_rows}
 
 
 class SkipPiece(RuntimeError):
@@ -422,7 +456,7 @@ def publish_now(posts: list[dict]) -> None:
             log(f"Publicación inmediata del comité: {post['type']} — {post.get('angle', '')}")
             try:
                 facts = signed("/api/social/feed", {})
-                piece = build(post, facts, ag, now, f"{today}_ya{now:%H%M}_{post['type']}", shown_recent(st))
+                piece = build(post, facts, ag, now, f"{today}_ya{now:%H%M}_{post['type']}", shown_recent(st), st)
                 publish(post, piece, meta, tt, False)
                 if post.get("done"):
                     remember_shown(st, piece)
@@ -526,7 +560,7 @@ def _tick(dry: bool) -> None:
                 log("  sin datos para esta pieza: se omite")
                 continue
             try:
-                piece = build(post, facts, ag, now, f"{today}_{i}_{post['type']}", shown_recent(st))
+                piece = build(post, facts, ag, now, f"{today}_{i}_{post['type']}", shown_recent(st), st)
             except SkipPiece as e:
                 post["status"] = "skipped"
                 log(f"  se omite: {e}")

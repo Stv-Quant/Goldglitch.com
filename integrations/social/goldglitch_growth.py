@@ -183,7 +183,7 @@ Cómo trabajas en la reunión:
    ellas "reel" (video vertical de ritmo rápido, el formato que más alcance orgánico da; topic "resultados" para un reel
    de resultados, si no son picks), solo equipos de ligas top, horas 07:00–23:00 separadas al menos 90 min,
    cada una con gancho, ángulo, tema y llamado a la acción. Al menos 1 "meme" al día (idea de Valeria). Los picks no se
-   repiten: un partido mostrado en picks (carrusel o reel) no vuelve a salir en 36 h, así que no pongas varias piezas
+   repiten: un partido mostrado en picks (carrusel o reel) no vuelve a salir en 24 h (y el reel o post de resultados de la noche muestra cómo le fue a esos mismos picks), así que no pongas varias piezas
    de picks sin partidos nuevos (usa "liga" distinta, resultados, memes o educativos). Basa las decisiones en datos cuando los haya; cuando no,
    plantea experimentos medibles (por ejemplo, dos ganchos distintos en días distintos).
 4. Guarda 1 a 3 aprendizajes concretos y verificables (guardar_aprendizaje).
@@ -498,7 +498,7 @@ poner 2 memes si hay tendencias fuertes, y si una tendencia explota justo ahora,
 4 a 7 publicaciones (volumen alto), horas 07:00–23:00 separadas al menos 90 min; "picks_dia" solo si hay picks
 próximos (puede repetirse con distinta "liga": Liga BetPlay, Premier League, LaLiga…), al menos 3 "reel" (topic "resultados"
 para un reel de resultados), al menos 1 "meme", al menos 1 concepto disruptivo de Mía (pon su concepto en "angle"), "resultados" solo si hay picks jugados. Un partido mostrado en picks no se
-repite en 36 h: no pongas más piezas de picks que partidos nuevos (varía la "liga").""")
+repite en 24 h; el de resultados de la noche cuenta cómo le fue a los picks de la mañana: no pongas más piezas de picks que partidos nuevos (varía la "liga").""")
             res = self.set_plan(dec.get("plan") or [])
             self.set_art(dec.get("direccion_arte"))
             self.set_seo(dec.get("seo"))

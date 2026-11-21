@@ -243,7 +243,7 @@ class ScreenAgent:
                         continue
                     if name == "terminar":
                         estado, detalle = a.get("estado"), a.get("detalle", "")
-                        self.log(f"    [{net}] terminar: {estado} — {detalle[:200]}")
+                        self.log(f"    [{net}] terminar: {estado} — {detalle[:900]}")
                         if estado == "publicado" and not rehearsal:
                             return "publicado"
                         if rehearsal and estado in ("listo_para_publicar", "publicado"):
@@ -296,11 +296,19 @@ class ScreenAgent:
 
 def trending_audio_step(app: str, library: str, vibe: str) -> str:
     """Instructions for using the platform's own trending audio (licensed by the platform) instead of our beat."""
+    try:
+        import goldglitch_trends as T
+        songs = T.songs()[:10]
+    except Exception:
+        songs = []
+    search = (" Si no hay pestaña de tendencias, usa el BUSCADOR de la biblioteca de audio y prueba, en este orden, estas "
+              f"canciones y sonidos que están en tendencia hoy: {'; '.join(songs)}. Escoge el primero que aparezca y encaje."
+              if songs else "")
     return (f" AUDIO EN TENDENCIA (antes de publicar): busca en el editor la opción de audio/música de {app} ('Audio', "
             "'Música', 'Agregar audio', 'Sonidos', ícono de nota musical). Abre la pestaña 'En tendencia' / 'Tendencias' / "
             f"'Para ti' (o el ícono ↗ de audio en tendencia) y elige un audio en tendencia que encaje con el video"
             f"{' (vibra: ' + vibe + ')' if vibe else ''}, preferiblemente con muchos reels usándolo. Ponlo como audio "
-            "principal y baja el 'audio original' / 'sonido original' a 0 (el del video es solo un ritmo de relleno). "
+            f"principal y baja el 'audio original' / 'sonido original' a 0 (el del video es solo un ritmo de relleno).{search} "
             f"Usa SOLO audios de la biblioteca de {library}; nunca subas ni busques música por fuera. Si la opción de audio "
             "no existe en la versión web, o el audio dice que no está disponible para esta cuenta, publica sin cambiarlo "
             "y dilo en el detalle de terminar (qué audio pusiste o por qué no).")
@@ -432,7 +440,7 @@ class CliScreenAgent:
             raise PlatformError(f"{net}: el agente terminó sin informar el resultado")
         estado, detalle = r.get("estado"), r.get("detalle", "")
         self.last = r
-        self.log(f"    [{net}] terminar: {estado} — {detalle[:200]}")
+        self.log(f"    [{net}] terminar: {estado} — {detalle[:900]}")
         if estado == "publicado" and not rehearsal:
             return "publicado"
         if rehearsal and estado in ("listo_para_publicar", "publicado"):
