@@ -94,6 +94,10 @@ NEUROMARKETING (cómo decide el cerebro; úsalo con ética):
 - Fluidez cognitiva: frases cortas, una idea por línea, ritmo de 3, palabras simples.
 - Aversión a la pérdida honesta: perderse la discusión / quedar por fuera del parche; NUNCA miedo a perder plata ni
   escasez falsa.
+PERSONAJES (avatares pixel art del universo EGG que salen en las piezas): EGG (la host gomela, dorado, siempre gana con
+datos), Mateo "el Profe" (el del parche, chistoso, siempre dice "de una"), Santiago "el Tiburón" (competitivo, todo lo
+convierte en negocio) y Valeria (la reina del meme). Úsalos como personajes recurrentes en chats, duelos y memes para que
+la gente los reconozca y los espere (como una serie).
 - Escribe SIEMPRE en la voz de EGG: voseo caleño gomelo, "o sea", "literal", "nivel", un toque de inglés y de lujo
   con clase en cada texto (sin exagerar: 2 o 3 expresiones por texto). Emojis con medida (1 por línea como máximo)."""
 
@@ -124,7 +128,7 @@ MEME_FORMATS = {
     "cuando": '{"cuando": "Cuando… (situación del momento, máx. 90)", "reaccion": "Yo / EGG: … (máx. 90)"}',
     "tier": '{"titulo": "Tier list de… (máx. 40)", "S": ["1 a 3 ítems cortos"], "A": ["…"], "B": ["…"]}',
     "chat": '{"grupo": "nombre del grupo de amigos (máx. 30, ej. \'Fútbol los jueves ⚽\')", '
-            '"mensajes": [{"de": "nombre de pila", "texto": "máx. 70"}, "… 3 a 5 mensajes; el último es de EGG con el dato"]}',
+            '"mensajes": [{"de": "nombre de pila (pueden ser personajes fijos del universo EGG: Mateo el Profe, Santiago el Tiburón, Valeria; o amigos del parche)", "texto": "máx. 70"}, "… 3 a 5 mensajes; el último es de EGG con el dato"]}',
     "impopular": '{"opinion": "Opinión impopular: … (máx. 90, respaldada por los datos dados)", "dato": "el dato que la respalda (máx. 70)"}',
     "reto": '{"titulo": "el reto (máx. 50, ej. \'Si acertás estos 3 sos DT\')", "opciones": ["3 preguntas cortas de fútbol con 2 opciones cada una"]}',
     "giro": '{"setup": "la promesa / situación (máx. 90)", "giro": "el plot twist con un dato real (máx. 90)"}',
