@@ -322,76 +322,11 @@ def text_card(title: str, body: str, eyebrow: str, w: int, h: int) -> str:
 
 
 
-# ------------------------------------------------------------------ avatars (original pixel-art characters of the EGG universe)
-CHARACTERS = {   # name: (hair, skin, outfit, accent background, long hair?, extra)
-    "egg": ("#2a1710", "#eab48e", "#d4af37", "#3a2c0a", True, "earrings"),
-    "mateo": ("#3b2416", "#b97a52", "#16a34a", "#0c2a17", False, "cap"),
-    "santiago": ("#141414", "#c98a62", "#1e3a8a", "#0b1630", False, "beard"),
-    "valeria": ("#b8325a", "#f0c4a2", "#f59e0b", "#3a1020", True, ""),
-    "sofia": ("#c99a5b", "#f1c9a5", "#f3ecdc", "#2a2420", True, "earrings"),
-    "martina": ("#14100c", "#d9a17d", "#111111", "#26201a", True, ""),
-    "diego": ("#0f0f0f", "#b8774f", "#15803d", "#0d2414", False, ""),
-}
-ALIASES = {"egg": "egg", "eggs": "egg", "mateo": "mateo", "el profe": "mateo", "profe": "mateo", "santiago": "santiago",
-           "el tiburon": "santiago", "tiburón": "santiago", "tiburon": "santiago", "valeria": "valeria", "sofia": "sofia",
-           "sofía": "sofia", "martina": "martina", "diego": "diego"}
-
-
-def _character(who: str) -> tuple:
-    k = ALIASES.get(str(who or "").strip().lower().replace("'", ""), "")
-    if k:
-        return CHARACTERS[k]
-    h = sum(map(ord, str(who or "parce")))       # a stable look for any other name (the friends of the parche)
-    hairs = ["#1b1b1b", "#3b2416", "#6b4226", "#8a5a33", "#0f0f0f"]
-    skins = ["#f1c9a5", "#d9a17d", "#c98a62", "#b8774f", "#8d5a3b"]
-    tops = ["#ef4444", "#3b82f6", "#a855f7", "#f97316", "#14b8a6", "#e11d48", "#22c55e"]
-    return (hairs[h % 5], skins[(h // 5) % 5], tops[(h // 3) % 7], "#1a1d24", h % 3 == 0, "cap" if h % 4 == 1 else "")
-
-
+# ------------------------------------------------------------------ avatars (vector portraits, goldglitch_art.py)
 def avatar(who: str = "egg", size: int = 120, mood: str = "smug") -> str:
-    """Pixel-art bust (20×20) in a gold ring. mood: smug | wink | shock | laugh | neutral."""
-    hair, skin, top, bg, long_hair, extra = _character(who)
-    px: dict[tuple[int, int], str] = {}
-
-    def rect(x0, y0, x1, y1, c):
-        for x in range(x0, x1 + 1):
-            for y in range(y0, y1 + 1):
-                px[(x, y)] = c
-    if long_hair:
-        rect(4, 4, 15, 16, hair)
-    rect(3, 15, 16, 19, top)                         # shoulders
-    rect(8, 13, 11, 15, skin)                        # neck
-    rect(6, 5, 13, 13, skin)                         # face
-    rect(5, 3, 14, 5, hair); rect(5, 5, 6, 8, hair); rect(13, 5, 14, 8, hair); rect(7, 6, 9, 6, hair)   # hair + bangs
-    if extra == "cap":
-        rect(4, 2, 15, 4, top); rect(13, 4, 17, 4, top)
-    if extra == "beard":
-        rect(6, 11, 13, 13, hair); rect(8, 12, 11, 12, skin)
-    if extra == "earrings":
-        px[(5, 11)] = "#d4af37"; px[(14, 11)] = "#d4af37"; rect(8, 16, 11, 16, "#d4af37")
-    eye = "#1b1b1b"
-    if mood == "wink":
-        px[(8, 9)] = eye; rect(10, 9, 12, 9, eye)
-    elif mood == "laugh":
-        rect(7, 9, 9, 9, eye); rect(10, 9, 12, 9, eye)
-    elif mood == "shock":
-        rect(7, 8, 8, 9, "#ffffff"); rect(11, 8, 12, 9, "#ffffff"); px[(8, 9)] = eye; px[(11, 9)] = eye
-    else:
-        px[(8, 9)] = eye; px[(11, 9)] = eye
-    if mood == "smug":
-        rect(7, 7, 9, 7, hair) if not long_hair else None
-        px[(11, 11)] = "#9c3b4b"; rect(9, 12, 11, 12, "#9c3b4b")
-    elif mood == "shock":
-        rect(9, 11, 10, 12, "#5a1a24")
-    elif mood == "laugh":
-        rect(8, 11, 11, 12, "#5a1a24"); rect(9, 11, 10, 11, "#ffffff")
-    else:
-        rect(9, 12, 10, 12, "#9c3b4b")
-    rects = "".join(f"<rect x='{x}' y='{y}' width='1.02' height='1.02' fill='{c}'/>" for (x, y), c in px.items())
-    return (f"<svg width='{size}' height='{size}' viewBox='0 0 20 20' shape-rendering='crispEdges' style='flex:none;border-radius:50%;"
-            f"background:radial-gradient(circle at 50% 35%,{bg},#050403);box-shadow:0 0 0 {max(2, size // 30)}px #d4af37,0 12px 30px #000a'>"
-            f"<clipPath id='c{abs(hash((who, mood, size))) % 99999}'><circle cx='10' cy='10' r='10'/></clipPath>"
-            f"<g clip-path='url(#c{abs(hash((who, mood, size))) % 99999})'>{rects}</g></svg>")
+    """Vector portrait of a character of the EGG universe (crisp at 4K). mood: smug | wink | shock | laugh | neutral."""
+    from goldglitch_art import portrait
+    return portrait(who, size, mood)
 
 
 def meme(fmt: str, m: dict, w: int, h: int) -> str:
@@ -524,6 +459,24 @@ def meme_lines(fmt: str, m: dict) -> list[tuple[str, str]]:
     return [(m.get("texto") or "", "— EGG")]
 
 
+def meme_faces(fmt: str, m: dict) -> list[tuple[str, str] | None]:
+    """Who appears (character, mood) in each reel beat of a meme, aligned with meme_lines."""
+    m = m if isinstance(m, dict) else {}
+    if fmt == "duelo":
+        return [(m.get("izquierda") or "Tu amigo", "shock"), None, ("egg", "smug")]
+    if fmt == "chat":
+        msgs = [x for x in (m.get("mensajes") or []) if isinstance(x, dict)][:5]
+        return [None] + [(("egg", "smug") if i == len(msgs) - 1 else (x.get("de") or "Parce", ("shock", "laugh", "neutral", "wink")[i % 4]))
+                         for i, x in enumerate(msgs)]
+    if fmt in ("cuando", "noticia", "giro"):
+        return [None, ("egg", "wink")] + ([("egg", "smug")] if fmt == "giro" else [])
+    if fmt in ("pov", "expectativa", "nadie"):
+        return [None] * (2 if fmt != "nadie" else 2) + [("egg", "shock" if fmt != "nadie" else "smug")]
+    if fmt == "tweet":
+        return [("egg", "smug")]
+    return []
+
+
 def cta(w: int, h: int) -> str:
     return base(f"""{top_bar("Gratis")}
       <div style='margin:auto 0'>
@@ -537,7 +490,8 @@ def cta(w: int, h: int) -> str:
 # ------------------------------------------------------------------ reel frames (1080×1920)
 def reel_frame(big: str, small: str = "", color: str = "#f3ecdc", accent: str | None = None, glitch: bool = True,
                badge_names: tuple[str, str] | None = None, top: str = "", kicker: str = "", tilt: int = 8,
-               bars: list[tuple[str, float, str]] | None = None, host: str | None = None) -> str:
+               bars: list[tuple[str, float, str]] | None = None, host: str | None = None,
+               face: tuple[str, str] | None = None) -> str:
     """One scene. Depth: blurred giant echo of the text behind, 3D tilt, glow and floating light.
     host: mood of EGG's avatar presenting the scene (bottom-left), e.g. shock | smug | wink | laugh."""
     accent = accent or house()
@@ -561,6 +515,8 @@ def reel_frame(big: str, small: str = "", color: str = "#f3ecdc", accent: str | 
             f"font-size:{size}px;color:{color};opacity:.10;filter:blur(14px)'>{esc(big)}</div>")
     kick = (f"<div class='chip' style='margin:0 auto 40px;border:2px solid {accent};color:{accent};font-size:30px'>{esc(kicker)}</div>"
             if kicker else "")
+    if face:      # the character who speaks in this beat, big and centered
+        kick += f"<div style='display:flex;justify-content:center;margin-bottom:46px'>{avatar(face[0], 420, face[1])}</div>"
     if host:
         kick = (f"<div style='position:absolute;left:-10px;bottom:-470px;display:flex;align-items:center;gap:18px;z-index:3'>"
                 f"{avatar('egg', 190, host)}<div class='chip anton' style='background:#d4af37;color:#050403;font-size:34px'>EGG</div></div>") + kick
@@ -621,9 +577,11 @@ def reel_script(kind: str, rows: list[dict], tx: dict, when_fn, record: dict | N
             f.append((reel_frame(f"{rate[2]}%", f"de acierto histórico ({rate[0]}/{rate[1]})", color="#d4af37", kicker="Historial público"), 1.3, "slide"))
     elif kind == "meme":
         trend = str(tx.get("tendencia_usada") or "")[:40]
-        for i, (big, small) in enumerate(l for l in meme_lines(tx.get("meme_formato") or "", tx.get("meme") or {}) if l[0] or l[1]):
+        fmt, mm = tx.get("meme_formato") or "", tx.get("meme") or {}
+        faces = meme_faces(fmt, mm)
+        for i, (big, small) in enumerate(l for l in meme_lines(fmt, mm) if l[0] or l[1]):
             f.append((reel_frame(big, small, glitch=i % 2 == 0, kicker=(f"🔥 {trend}" if trend else "Meme EGG") if i == 0 else "",
-                                 tilt=6), 1.4 if i else 1.1,
+                                 tilt=6, face=faces[i] if i < len(faces) else None), 1.4 if i else 1.1,
                       ("punch", "shake", "slide", "flash")[i % 4]))
         f.append((reel_frame("MANDÁSELO 📲", "a ese amigo que necesita verlo 😂", color="#d4af37", host="laugh"), 1.2, "punch"))
     else:
@@ -690,12 +648,19 @@ def beat(path: str, seconds: float, bpm: int = 148, cuts: list[tuple[float, str]
 TRANSITIONS = ["zoomin", "slideup", "smoothleft", "circleopen", "fadewhite", "slidedown", "radial", "smoothup"]
 
 
+def R_SCALE() -> float:
+    from goldglitch_social_render import SCALE
+    return SCALE
+
+
 def reel_video(frames: list[tuple[str, float, str]], name: str) -> str:
     """Scenes with punch-in zooms, wobble, RGB-split glitches and a moving gold light, joined with varied quick
-    transitions, over an original beat. 1080×1920, 30 fps, H.264 + AAC."""
+    transitions, over an original beat. 2160×3840 (4K) with REDES_ESCALA=2 (default), 30 fps, H.264 + AAC."""
     import imageio_ffmpeg
     ff = imageio_ffmpeg.get_ffmpeg_exe()
     imgs = render([f[0] for f in frames], 1080, 1920, f"{name}_frames")
+    S = max(1, int(round(R_SCALE())))                      # 2 → 2160×3840 (4K vertical)
+    W, H = 1080 * S, 1920 * S
     T = 0.14                                                # transition length
     inputs, parts, durs = [], [], []
     for i, (img, (_, secs, fx)) in enumerate(zip(imgs, frames)):
@@ -704,20 +669,20 @@ def reel_video(frames: list[tuple[str, float, str]], name: str) -> str:
         durs.append(nfr / 30)
         inputs += ["-framerate", "30", "-loop", "1", "-t", f"{nfr / 30:.3f}", "-i", img]
         if fx == "punch":
-            z = "zoompan=z='max(1.22-0.014*on,1.02)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=1:s=1080x1920:fps=30"
+            z = f"zoompan=z='max(1.22-0.014*on,1.02)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=1:s={W}x{H}:fps=30"
         elif fx == "shake":
-            z = ("zoompan=z='1.10':x='iw/2-(iw/zoom/2)+if(lt(on,12),22*sin(on*2.9),3*sin(on*.5))':"
-                 "y='ih/2-(ih/zoom/2)+if(lt(on,12),16*cos(on*3.3),2*cos(on*.4))':d=1:s=1080x1920:fps=30")
+            z = (f"zoompan=z='1.10':x='iw/2-(iw/zoom/2)+if(lt(on,12),{22 * S}*sin(on*2.9),{3 * S}*sin(on*.5))':"
+                 f"y='ih/2-(ih/zoom/2)+if(lt(on,12),{16 * S}*cos(on*3.3),{2 * S}*cos(on*.4))':d=1:s={W}x{H}:fps=30")
         elif fx == "slide":
-            z = f"zoompan=z='1.06':x='(iw-iw/zoom)*min(on/{nfr},1)':y='ih/2-(ih/zoom/2)':d=1:s=1080x1920:fps=30"
+            z = f"zoompan=z='1.06':x='(iw-iw/zoom)*min(on/{nfr},1)':y='ih/2-(ih/zoom/2)':d=1:s={W}x{H}:fps=30"
         else:
-            z = "zoompan=z='1.04+0.0015*on':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=1:s=1080x1920:fps=30"
+            z = f"zoompan=z='1.04+0.0015*on':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=1:s={W}x{H}:fps=30"
         wob = "rotate='0.012*sin(2*PI*t*0.9)':fillcolor=black@1," if fx in ("punch", "slide") else ""
-        glitch = ",rgbashift=rh=-8:bh=8:enable='lt(t,0.25)'" if fx in ("shake", "flash") else ""
+        glitch = f",rgbashift=rh=-{8 * S}:bh={8 * S}:enable='lt(t,0.25)'" if fx in ("shake", "flash") else ""
         flash = ",fade=t=in:st=0:d=0.10:color=white" if fx == "flash" else ""
         # moving light sweep (depth) on every scene
-        sweep = r",drawbox=x='-400+mod(t*1500\,1900)':y=0:w=150:h=ih:color=0xd4af37@0.045:t=fill"
-        parts.append(f"[{i}:v]scale=1200:2134,{z},{wob}format=yuv420p,setsar=1{glitch}{flash}{sweep},"
+        sweep = rf",drawbox=x='-{400 * S}+mod(t*{1500 * S}\,{1900 * S})':y=0:w={150 * S}:h=ih:color=0xd4af37@0.045:t=fill"
+        parts.append(f"[{i}:v]scale={1200 * S}:{2134 * S},{z},{wob}format=yuv420p,setsar=1{glitch}{flash}{sweep},"
                      f"vignette=PI/5,trim=duration={nfr / 30:.3f},setpts=PTS-STARTPTS[v{i}]")
     chain, last, off = [], "v0", durs[0] - T
     for i in range(1, len(imgs)):
@@ -734,7 +699,7 @@ def reel_video(frames: list[tuple[str, float, str]], name: str) -> str:
     graph = ";".join(parts + chain)
     out = os.path.join(OUT, f"{name}.mp4")
     cmd = [ff, "-y", *inputs, "-i", audio, "-filter_complex", graph, "-map", f"[{last}]", "-map", f"{len(imgs)}:a",
-           "-c:v", "libx264", "-preset", "veryfast", "-crf", "21", "-maxrate", "9M", "-bufsize", "18M", "-pix_fmt", "yuv420p",
+           "-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-maxrate", "28M", "-bufsize", "56M", "-pix_fmt", "yuv420p",
            "-c:a", "aac", "-b:a", "160k", "-shortest", "-r", "30", "-movflags", "+faststart", out]
     r = subprocess.run(cmd, capture_output=True, text=True)
     if r.returncode != 0:

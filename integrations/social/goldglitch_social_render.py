@@ -127,19 +127,22 @@ def cta_slide(w: int, h: int) -> str:
 
 
 # ------------------------------------------------------------------ rendering
-def render(html_pages: list[str], w: int, h: int, name: str) -> list[str]:
-    """HTML → JPEG files (quality 92). Returns their paths."""
+SCALE = float(os.environ.get("REDES_ESCALA", "2") or 2)   # 2 = 2160 px wide images and 2160×3840 (4K) reel frames
+
+
+def render(html_pages: list[str], w: int, h: int, name: str, scale: float | None = None) -> list[str]:
+    """HTML → JPEG files (quality 94) at SCALE× resolution (vector art stays sharp). Returns their paths."""
     from playwright.sync_api import sync_playwright
     Path(OUT).mkdir(exist_ok=True)
     paths = []
     with sync_playwright() as pw:
         b = pw.chromium.launch()
-        pg = b.new_page(viewport={"width": w, "height": h}, device_scale_factor=1)
+        pg = b.new_page(viewport={"width": w, "height": h}, device_scale_factor=scale or SCALE)
         for i, doc in enumerate(html_pages):
             pg.set_content(doc, wait_until="networkidle")
             pg.wait_for_timeout(250)
             path = os.path.join(OUT, f"{name}_{i + 1}.jpg")
-            pg.screenshot(path=path, type="jpeg", quality=92)
+            pg.screenshot(path=path, type="jpeg", quality=94)
             paths.append(path)
         b.close()
     return paths
