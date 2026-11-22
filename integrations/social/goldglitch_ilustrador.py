@@ -3,6 +3,8 @@
 Modelos abiertos, elegidos según tu tarjeta (instalar_ilustrador.bat lo decide y lo descarga una vez):
   - FLUX.1 [schnell] (Black Forest Labs, licencia Apache 2.0): la mejor calidad; tarjeta de 16 GB o más.
   - Stable Diffusion XL 1.0 (Stability AI, licencia abierta CreativeML OpenRAIL++-M): tarjetas de 8 a 15 GB.
+  - SDXL-Lightning 4 pasos (ByteDance, misma licencia abierta) para tarjetas de 4 a 7 GB (portátiles): la misma
+    calidad de SDXL en 4 pasos, cargando el modelo por partes en la tarjeta (más lento, ~1 min por imagen).
 Genera ilustraciones de nivel profesional para cada publicación (fondo de la pieza y escenas del reel) y la galería de
 personajes del universo EGG (EGG, Mateo, Santiago, Valeria…) con sus expresiones. Se escalan a 4K.
 Si no está instalado o falla, las piezas salen con el arte vectorial de siempre.
@@ -88,9 +90,14 @@ def _download(model: str) -> str:
     path = os.path.join(MODELS, model)
     if model == "flux-schnell":
         snapshot_download("black-forest-labs/FLUX.1-schnell", local_dir=path, ignore_patterns=["flux1-schnell.safetensors", "*.md", "*.png"])
-    else:
+    elif model == "sdxl":
         snapshot_download("stabilityai/stable-diffusion-xl-base-1.0", local_dir=path,
                           allow_patterns=["*.json", "*.txt", "unet/*fp16.safetensors", "text_encoder*/*fp16.safetensors", "tokenizer*/*"])
+    else:   # SDXL text encoders/config + the 4-step Lightning UNet (no base UNet: saves 5 GB)
+        from huggingface_hub import hf_hub_download
+        snapshot_download("stabilityai/stable-diffusion-xl-base-1.0", local_dir=path,
+                          allow_patterns=["*.json", "*.txt", "text_encoder*/*fp16.safetensors", "tokenizer*/*"])
+        hf_hub_download("ByteDance/SDXL-Lightning", "sdxl_lightning_4step_unet.safetensors", local_dir=path)
     return path
 
 
@@ -98,12 +105,14 @@ def install() -> int:
     name, vram = gpu()
     ram = ram_gb()
     print(f"Tarjeta gráfica: {name or 'no se encontró una NVIDIA'} · {vram / 1024:.0f} GB · RAM {ram} GB")
-    if vram < 7500:
-        print("Se necesita una tarjeta NVIDIA de 8 GB o más para dibujar en tu PC. Las piezas seguirán con el arte vectorial.")
+    if vram < 3500:
+        print("Se necesita una tarjeta NVIDIA de 4 GB o más para dibujar en tu PC. Las piezas seguirán con el arte vectorial.")
         return 1
-    model = "flux-schnell" if vram >= 15500 and ram >= 30 else "sdxl"
-    repo = {"flux-schnell": "black-forest-labs/FLUX.1-schnell", "sdxl": "stabilityai/stable-diffusion-xl-base-1.0"}[model]
-    size = {"flux-schnell": "unos 34 GB", "sdxl": "unos 7 GB"}[model]
+    model = "flux-schnell" if vram >= 15500 and ram >= 30 else "sdxl" if vram >= 7500 else "sdxl-lightning"
+    repo = {"flux-schnell": "black-forest-labs/FLUX.1-schnell", "sdxl": "stabilityai/stable-diffusion-xl-base-1.0",
+            "sdxl-lightning": ""}[model]
+    repo = repo if model != "sdxl-lightning" else "stabilityai/stable-diffusion-xl-base-1.0 + ByteDance/SDXL-Lightning (4 pasos)"
+    size = {"flux-schnell": "unos 34 GB", "sdxl": "unos 7 GB", "sdxl-lightning": "unos 7,5 GB"}[model]
     print(f"Modelo elegido: {repo} (descarga de {size}, una sola vez).")
     pip = [sys.executable, "-m", "pip", "install", "--upgrade"]
     print("Instalando PyTorch con CUDA (unos 2,5 GB)…")
@@ -122,7 +131,7 @@ def install() -> int:
             print(f"No se pudo descargar: {e}"); return 1
         print(f"FLUX no se pudo descargar ({str(e)[:160]}); uso Stable Diffusion XL.")
         model, path = "sdxl", _download("sdxl")
-    if model == "sdxl":   # VAE that works in half precision (the original one can give black images in fp16)
+    if model.startswith("sdxl"):   # VAE that works in half precision (the original one can give black images in fp16)
         snapshot_download("madebyollin/sdxl-vae-fp16-fix", local_dir=os.path.join(MODELS, "sdxl-vae-fp16-fix"))
     json.dump({"model": model, "path": path, "gpu": name, "vram_mb": vram, "ram_gb": ram, "installed": time.strftime("%Y-%m-%d")},
               open(CFG, "w", encoding="utf-8"), indent=1)
@@ -147,6 +156,17 @@ def _pipe():
             p.to("cuda")
         else:
             p.enable_model_cpu_offload()
+    elif c["model"] == "sdxl-lightning":
+        from diffusers import AutoencoderKL, EulerDiscreteScheduler, StableDiffusionXLPipeline, UNet2DConditionModel
+        from safetensors.torch import load_file
+        unet = UNet2DConditionModel.from_config(os.path.join(c["path"], "unet")).to(torch.float16)
+        unet.load_state_dict(load_file(os.path.join(c["path"], "sdxl_lightning_4step_unet.safetensors"), device="cpu"))
+        vae = AutoencoderKL.from_pretrained(os.path.join(MODELS, "sdxl-vae-fp16-fix"), torch_dtype=torch.float16)
+        p = StableDiffusionXLPipeline.from_pretrained(c["path"], unet=unet, vae=vae, torch_dtype=torch.float16, variant="fp16",
+                                                      use_safetensors=True)
+        p.scheduler = EulerDiscreteScheduler.from_config(p.scheduler.config, timestep_spacing="trailing")
+        p.enable_sequential_cpu_offload()      # 4 GB cards: the model goes to the GPU piece by piece
+        p.enable_vae_tiling()
     else:
         from diffusers import AutoencoderKL, DPMSolverMultistepScheduler, StableDiffusionXLPipeline
         vae = AutoencoderKL.from_pretrained(os.path.join(MODELS, "sdxl-vae-fp16-fix"), torch_dtype=torch.float16)
@@ -177,6 +197,8 @@ def generate(prompt: str, w: int = 896, h: int = 1152, seed: int | None = None, 
     full = f"{prompt}, {STYLE}"
     if c["model"] == "flux-schnell":
         img = p(full, width=w, height=h, num_inference_steps=4, guidance_scale=0.0, max_sequence_length=256, generator=g).images[0]
+    elif c["model"] == "sdxl-lightning":
+        img = p(full, width=w, height=h, num_inference_steps=4, guidance_scale=0.0, generator=g).images[0]
     else:
         img = p(full, negative_prompt=NEGATIVE, width=w, height=h, num_inference_steps=30, guidance_scale=6.5, generator=g).images[0]
     if upscale_to:
