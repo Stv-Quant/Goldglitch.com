@@ -220,6 +220,29 @@ def set_style(art: dict | None) -> None:
             STYLE[k] = art[k]
 
 
+BG: dict = {"feed": None, "reel": None, "_cache": {}}   # AI illustrations behind the current piece (goldglitch_ilustrador)
+
+
+def set_bg(feed: str | None = None, reel: str | None = None) -> None:
+    BG["feed"], BG["reel"] = feed, reel
+
+
+def _data_uri(path: str, max_w: int = 2160) -> str:
+    if path in BG["_cache"]:
+        return BG["_cache"][path]
+    import base64
+    import io
+    from PIL import Image
+    im = Image.open(path).convert("RGB")
+    if im.width > max_w:
+        im = im.resize((max_w, int(im.height * max_w / im.width)), Image.LANCZOS)
+    buf = io.BytesIO()
+    im.save(buf, "JPEG", quality=90)
+    uri = "data:image/jpeg;base64," + base64.b64encode(buf.getvalue()).decode()
+    BG["_cache"] = {path: uri}
+    return uri
+
+
 def house() -> str:
     return ACCENTS.get(STYLE["acento"], "#d4af37")
 
@@ -241,7 +264,17 @@ body{{width:{w}px;height:{h}px;overflow:hidden;position:relative;color:#f3ecdc;f
 .anton{{font-family:Anton,Impact,sans-serif;text-transform:uppercase;letter-spacing:.01em}}
 .gold{{background:linear-gradient(180deg,#fff2c0,#e7c25a 45%,#a77c18);-webkit-background-clip:text;color:transparent}}
 .foot{{margin-top:auto;display:flex;justify-content:space-between;align-items:center;font-size:22px;color:#8e877a}}
-</style></head><body><div class='grain'></div><div class='streak'></div>{wm}<div class='wrap'>{body}</div></body></html>"""
+</style></head><body>{_art_layer(h)}<div class='grain'></div><div class='streak'></div>{wm}<div class='wrap'>{body}</div></body></html>"""
+
+
+def _art_layer(h: int) -> str:
+    """Full-bleed illustration with a dark gradient so the text always reads."""
+    path = BG["reel"] if h >= 1600 else BG["feed"]
+    if not path or not os.path.exists(path):
+        return ""
+    return (f"<div style='position:absolute;inset:0;background:url({_data_uri(path)}) center/cover no-repeat'></div>"
+            "<div style='position:absolute;inset:0;background:linear-gradient(180deg,rgba(5,4,3,.38) 0%,rgba(5,4,3,.42) 40%,"
+            "rgba(5,4,3,.70) 75%,rgba(5,4,3,.9) 100%)'></div><style>.wrap{text-shadow:0 4px 26px rgba(0,0,0,.9)}</style>")
 
 
 def top_bar(right: str, accent: str | None = None) -> str:
@@ -324,8 +357,18 @@ def text_card(title: str, body: str, eyebrow: str, w: int, h: int) -> str:
 
 # ------------------------------------------------------------------ avatars (vector portraits, goldglitch_art.py)
 def avatar(who: str = "egg", size: int = 120, mood: str = "smug") -> str:
-    """Vector portrait of a character of the EGG universe (crisp at 4K). mood: smug | wink | shock | laugh | neutral."""
-    from goldglitch_art import portrait
+    """Portrait of a character of the EGG universe: the AI-painted gallery when it exists (instalar_ilustrador.bat),
+    else the vector version. mood: smug | wink | shock | laugh | neutral."""
+    from goldglitch_art import ALIASES, portrait
+    try:
+        import goldglitch_ilustrador as IL
+        key = ALIASES.get(str(who or "").strip().lower().replace("'", ""), "")
+        painted = IL.character_path(key, mood) if key in IL.CHARACTER_DESC else None
+    except Exception:
+        painted = None
+    if painted:
+        return (f"<img src='{_data_uri(painted, 1024)}' style='flex:none;width:{size}px;height:{size}px;border-radius:50%;object-fit:cover;"
+                f"box-shadow:0 0 0 {max(3, size // 34)}px #d4af37,0 {size // 12}px {size // 5}px #000b'>")
     return portrait(who, size, mood)
 
 
