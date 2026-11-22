@@ -10,6 +10,7 @@ from typing import Any
 
 MAX_ERR = 0.025         # max abs gap vs SQPC's own published line probabilities
 TAIL = 5e-4             # trim mass below this at each tail
+MAX_MEAN = 150.0        # no football/NBA/NHL count stat is near this; anything above is a corrupt report (skipped)
 R_GRID = [0.3 * (5000 / 0.3) ** (i / 59) for i in range(60)]
 
 
@@ -52,7 +53,13 @@ def parse_lines(raw: dict | None, side: str = "over") -> dict[float, float]:
     return out
 
 
+def _sane(x) -> bool:
+    return isinstance(x, (int, float)) and math.isfinite(x) and 0 <= x <= MAX_MEAN
+
+
 def fit_nb(mean: float, lines: dict[float, float]) -> list[float] | None:
+    if not _sane(mean):           # a broken report (huge / NaN mean) once exhausted the PC's memory here
+        return None
     kmax = max(12, int(mean * 4 + 12))
     best = None
     for r in R_GRID:
@@ -66,6 +73,8 @@ def fit_nb(mean: float, lines: dict[float, float]) -> list[float] | None:
 
 
 def fit_normal(mean: float, sd: float | None, lines: dict[float, float]) -> list[float] | None:
+    if not _sane(mean) or (sd is not None and not (isinstance(sd, (int, float)) and math.isfinite(sd) and 0 < sd <= MAX_MEAN)):
+        return None
     kmax = int(mean + 6 * (sd or mean ** 0.5) + 10)
     sds = [sd] if sd else [mean ** 0.5 * f for f in (0.5, 0.7, 1, 1.4, 2)]
     if lines and sd:
