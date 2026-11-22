@@ -29,14 +29,20 @@ CHARS = os.path.join(HERE, "redes_personajes")
 MODELS = os.path.join(HERE, "modelos_ia")
 
 STYLE = ("premium editorial digital illustration by a top concept artist, cinematic lighting, rich detail, painterly "
-         "textures, depth of field, dramatic rim light, luxury black and gold color palette, sharp focus, award-winning")
+         "textures, depth of field, dramatic rim light, luxury black and gold color palette, sharp focus, award-winning, "
+         "completely free of any text, letters, numbers or logos, plain blank fabrics and surfaces")
+# things that make the model paint fake letters: replace them with text-free versions
+TEXTY = [(r"\b(with |showing )?(the )?(numbers?|digits?)( \d+)?\b", ""), (r"\b\d+\b", ""),
+         (r"\b(football |soccer |sports? )?(jersey|kit|shirt)s?\b", "plain blank unbranded shirt without lettering"),
+         (r"\b(scoreboard|billboard|banner|sign|poster|newspaper|screen with text|headline)s?\b", "blurred golden lights"),
+         (r"\b(seen )?from behind\b|\bback view\b", "seen from the side"), (r"\s{2,}", " ")]
 NEGATIVE = ("text, letters, words, watermark, signature, logo, brand, team crest, jersey numbers, real person, celebrity, "
             "blurry, lowres, deformed, extra fingers, bad anatomy, ugly, cartoon for kids, ms paint, pixel art, nsfw")
 CHARACTER_DESC = {
     "egg": "a stylish confident young Colombian woman in her twenties, long dark wavy hair with golden highlights, "
            "gold hoop earrings, delicate gold necklace, elegant gold satin top, glamorous makeup, Cali vibe",
-    "mateo": "a charismatic young Colombian man, short dark hair, light stubble, green sports cap, green football fan "
-             "jersey with white stripes, friendly cheeky grin",
+    "mateo": "a charismatic young Colombian man, short dark hair, light stubble, green sports cap, green sports fan "
+             "shirt with white stripes and no lettering, friendly cheeky grin",
     "santiago": "a sharp ambitious Colombian businessman in his early thirties, groomed black beard, slicked black hair, "
                 "tailored navy blue suit, white shirt, burgundy tie, luxury watch",
     "valeria": "a trendy young Latina woman, long fuchsia pink hair, small pearl earrings, oversized amber yellow "
@@ -221,6 +227,52 @@ def generate(prompt: str, w: int = 896, h: int = 1152, seed: int | None = None, 
     return path
 
 
+def clean_prompt(prompt: str) -> str:
+    import re
+    for pat, rep in TEXTY:
+        prompt = re.sub(pat, rep, prompt, flags=re.I)
+    return prompt
+
+
+def has_fake_text(path: str) -> list[list[float]] | None:
+    """Martina's check (Haiku looks at the image): None if clean, else the zones (percent boxes) with fake lettering."""
+    try:
+        import goldglitch_claude_cli as CLI
+        if not CLI.available():
+            return None
+        from PIL import Image
+        small = os.path.join(OUT, "_revision.jpg")
+        im = Image.open(path).convert("RGB")
+        im.thumbnail((1024, 1024))
+        im.save(small, quality=88)
+        r = CLI.ask_image_json("Eres Martina, directora de arte. Revisas ilustraciones antes de publicarlas.",
+                               "¿La imagen tiene letras, palabras, números, logos o garabatos que parezcan texto (en camisetas, "
+                               "carteles, pantallas, fondo…)? Formato: {\"texto\": true|false, \"zonas\": [[x0,y0,x1,y1], …]} con "
+                               "las zonas en porcentaje del ancho y alto (0-100). Sé estricto: cualquier letra cuenta.", small, timeout=180)
+        if not r.get("texto"):
+            return None
+        return [z for z in (r.get("zonas") or []) if isinstance(z, list) and len(z) == 4] or [[0, 0, 0, 0]]
+    except Exception:
+        return None
+
+
+def _soften(path: str, zones: list[list[float]]) -> None:
+    """Last resort: melt the fake lettering into soft focus so no garbled text is readable."""
+    from PIL import Image, ImageDraw, ImageFilter
+    im = Image.open(path).convert("RGB")
+    W, H = im.size
+    blurred = im.filter(ImageFilter.GaussianBlur(radius=max(W, H) // 90))
+    mask = Image.new("L", im.size, 0)
+    d = ImageDraw.Draw(mask)
+    for x0, y0, x1, y1 in zones:
+        if x1 > x0 and y1 > y0:
+            pad = 2
+            d.rounded_rectangle([(max(0, x0 - pad) * W / 100, max(0, y0 - pad) * H / 100),
+                                 (min(100, x1 + pad) * W / 100, min(100, y1 + pad) * H / 100)], radius=W // 60, fill=255)
+    im.paste(blurred, (0, 0), mask.filter(ImageFilter.GaussianBlur(radius=W // 150)))
+    im.save(path)
+
+
 def scene(post_type: str, prompt: str, vertical: bool, name: str) -> str | None:
     """Background illustration for a piece: 4:5 for the feed, 9:16 for reels (upscaled to 4K)."""
     w, h = (768, 1344) if vertical else (896, 1152)
@@ -228,7 +280,18 @@ def scene(post_type: str, prompt: str, vertical: bool, name: str) -> str | None:
     composition = ("empty dark negative space in the upper and middle area for headline text, subject in the lower third"
                    if not vertical else "vertical composition, empty dark space in the center for big text")
     try:
-        return generate(f"{prompt}, {composition}", w, h, name=name, upscale_to=final)
+        prompt = clean_prompt(prompt)
+        path, zones = None, None
+        for attempt in range(3):          # repaint with another seed if the art director finds fake lettering
+            seed = int(hashlib.md5(f"{prompt}|{attempt}".encode()).hexdigest()[:8], 16)
+            path = generate(f"{prompt}, {composition}", w, h, seed=seed, name=f"{name}_{attempt}", upscale_to=final)
+            zones = has_fake_text(path) if path else None
+            if not zones:
+                return path
+            print(f"Ilustrador: la ilustración tenía letras falsas, se repinta ({attempt + 1}/3)")
+        if path and zones:
+            _soften(path, zones)
+        return path
     except Exception as e:
         print(f"Ilustrador: {e}")
         return None
@@ -250,8 +313,12 @@ def draw_characters() -> int:
             dst = os.path.join(CHARS, f"{k}_{mood}.png")
             if os.path.exists(dst):
                 continue
-            src = generate(f"head and shoulders portrait of {desc}, {mdesc}, looking at the viewer, dark luxurious "
-                           "background with soft golden bokeh, centered", 1024, 1024, seed=seed, name=f"char_{k}_{mood}")
+            src = None
+            for attempt in range(3):
+                src = generate(f"head and shoulders portrait of {desc}, {mdesc}, looking at the viewer, dark luxurious "
+                               "background with soft golden bokeh, centered", 1024, 1024, seed=seed + attempt, name=f"char_{k}_{mood}_{attempt}")
+                if src and not has_fake_text(src):
+                    break
             if src:
                 os.replace(src, dst)
                 n += 1
