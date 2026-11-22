@@ -321,6 +321,79 @@ def text_card(title: str, body: str, eyebrow: str, w: int, h: int) -> str:
                 w, h, watermark="datos")
 
 
+
+# ------------------------------------------------------------------ avatars (original pixel-art characters of the EGG universe)
+CHARACTERS = {   # name: (hair, skin, outfit, accent background, long hair?, extra)
+    "egg": ("#2a1710", "#eab48e", "#d4af37", "#3a2c0a", True, "earrings"),
+    "mateo": ("#3b2416", "#b97a52", "#16a34a", "#0c2a17", False, "cap"),
+    "santiago": ("#141414", "#c98a62", "#1e3a8a", "#0b1630", False, "beard"),
+    "valeria": ("#b8325a", "#f0c4a2", "#f59e0b", "#3a1020", True, ""),
+    "sofia": ("#c99a5b", "#f1c9a5", "#f3ecdc", "#2a2420", True, "earrings"),
+    "martina": ("#14100c", "#d9a17d", "#111111", "#26201a", True, ""),
+    "diego": ("#0f0f0f", "#b8774f", "#15803d", "#0d2414", False, ""),
+}
+ALIASES = {"egg": "egg", "eggs": "egg", "mateo": "mateo", "el profe": "mateo", "profe": "mateo", "santiago": "santiago",
+           "el tiburon": "santiago", "tiburón": "santiago", "tiburon": "santiago", "valeria": "valeria", "sofia": "sofia",
+           "sofía": "sofia", "martina": "martina", "diego": "diego"}
+
+
+def _character(who: str) -> tuple:
+    k = ALIASES.get(str(who or "").strip().lower().replace("'", ""), "")
+    if k:
+        return CHARACTERS[k]
+    h = sum(map(ord, str(who or "parce")))       # a stable look for any other name (the friends of the parche)
+    hairs = ["#1b1b1b", "#3b2416", "#6b4226", "#8a5a33", "#0f0f0f"]
+    skins = ["#f1c9a5", "#d9a17d", "#c98a62", "#b8774f", "#8d5a3b"]
+    tops = ["#ef4444", "#3b82f6", "#a855f7", "#f97316", "#14b8a6", "#e11d48", "#22c55e"]
+    return (hairs[h % 5], skins[(h // 5) % 5], tops[(h // 3) % 7], "#1a1d24", h % 3 == 0, "cap" if h % 4 == 1 else "")
+
+
+def avatar(who: str = "egg", size: int = 120, mood: str = "smug") -> str:
+    """Pixel-art bust (20×20) in a gold ring. mood: smug | wink | shock | laugh | neutral."""
+    hair, skin, top, bg, long_hair, extra = _character(who)
+    px: dict[tuple[int, int], str] = {}
+
+    def rect(x0, y0, x1, y1, c):
+        for x in range(x0, x1 + 1):
+            for y in range(y0, y1 + 1):
+                px[(x, y)] = c
+    if long_hair:
+        rect(4, 4, 15, 16, hair)
+    rect(3, 15, 16, 19, top)                         # shoulders
+    rect(8, 13, 11, 15, skin)                        # neck
+    rect(6, 5, 13, 13, skin)                         # face
+    rect(5, 3, 14, 5, hair); rect(5, 5, 6, 8, hair); rect(13, 5, 14, 8, hair); rect(7, 6, 9, 6, hair)   # hair + bangs
+    if extra == "cap":
+        rect(4, 2, 15, 4, top); rect(13, 4, 17, 4, top)
+    if extra == "beard":
+        rect(6, 11, 13, 13, hair); rect(8, 12, 11, 12, skin)
+    if extra == "earrings":
+        px[(5, 11)] = "#d4af37"; px[(14, 11)] = "#d4af37"; rect(8, 16, 11, 16, "#d4af37")
+    eye = "#1b1b1b"
+    if mood == "wink":
+        px[(8, 9)] = eye; rect(10, 9, 12, 9, eye)
+    elif mood == "laugh":
+        rect(7, 9, 9, 9, eye); rect(10, 9, 12, 9, eye)
+    elif mood == "shock":
+        rect(7, 8, 8, 9, "#ffffff"); rect(11, 8, 12, 9, "#ffffff"); px[(8, 9)] = eye; px[(11, 9)] = eye
+    else:
+        px[(8, 9)] = eye; px[(11, 9)] = eye
+    if mood == "smug":
+        rect(7, 7, 9, 7, hair) if not long_hair else None
+        px[(11, 11)] = "#9c3b4b"; rect(9, 12, 11, 12, "#9c3b4b")
+    elif mood == "shock":
+        rect(9, 11, 10, 12, "#5a1a24")
+    elif mood == "laugh":
+        rect(8, 11, 11, 12, "#5a1a24"); rect(9, 11, 10, 11, "#ffffff")
+    else:
+        rect(9, 12, 10, 12, "#9c3b4b")
+    rects = "".join(f"<rect x='{x}' y='{y}' width='1.02' height='1.02' fill='{c}'/>" for (x, y), c in px.items())
+    return (f"<svg width='{size}' height='{size}' viewBox='0 0 20 20' shape-rendering='crispEdges' style='flex:none;border-radius:50%;"
+            f"background:radial-gradient(circle at 50% 35%,{bg},#050403);box-shadow:0 0 0 {max(2, size // 30)}px #d4af37,0 12px 30px #000a'>"
+            f"<clipPath id='c{abs(hash((who, mood, size))) % 99999}'><circle cx='10' cy='10' r='10'/></clipPath>"
+            f"<g clip-path='url(#c{abs(hash((who, mood, size))) % 99999})'>{rects}</g></svg>")
+
+
 def meme(fmt: str, m: dict, w: int, h: int) -> str:
     """Original meme layouts (no third-party images or characters): EGG's tweet, Nadie/Literalmente nadie,
     expectativa vs realidad, POV, starter pack and no/sí."""
@@ -328,7 +401,7 @@ def meme(fmt: str, m: dict, w: int, h: int) -> str:
     big = int(w * .062)
     if fmt == "tweet":
         body = (f"<div style='margin:auto 0;background:#0e0c09;border:2px solid #2a261f;border-radius:44px;padding:56px 54px'>"
-                f"<div style='display:flex;align-items:center;gap:22px'>{MARK.format(s=92)}<div><div style='font-size:38px;font-weight:800'>"
+                f"<div style='display:flex;align-items:center;gap:22px'>{avatar('egg', 104, 'smug')}<div><div style='font-size:38px;font-weight:800'>"
                 f"EGG <span style='color:#d4af37'>✦</span></div><div style='font-size:28px;color:#8e877a'>@easygoldglitch</div></div></div>"
                 f"<div style='font-size:{big}px;line-height:1.3;margin-top:40px;font-weight:600'>{esc(m.get('texto') or '')}</div></div>")
     elif fmt == "nadie":
@@ -341,7 +414,8 @@ def meme(fmt: str, m: dict, w: int, h: int) -> str:
         body = (f"<div style='margin:auto 0;display:flex;flex-direction:column;gap:30px'>{panel('Expectativa', m.get('expectativa') or '', '#00e5ff')}"
                 f"{panel('Realidad', m.get('realidad') or '', '#ff4d6d')}</div>")
     elif fmt == "pov":
-        body = (f"<div style='margin:auto 0;text-align:center'><div style='font-size:{int(w * .2)}px'>{esc(m.get('emoji') or '👀')}</div>"
+        body = (f"<div style='margin:auto 0;text-align:center'><div style='display:flex;justify-content:center;align-items:center;gap:20px'>"
+                f"{avatar('egg', int(w * .26), 'shock')}<div style='font-size:{int(w * .14)}px'>{esc(m.get('emoji') or '👀')}</div></div>"
                 f"<div class='anton gold' style='font-size:{int(w * .12)}px;line-height:1'>POV:</div>"
                 f"<div style='font-size:{int(w * .066)}px;font-weight:800;line-height:1.2;margin-top:30px'>{esc(m.get('texto') or '')}</div></div>")
     elif fmt == "starter":
@@ -355,10 +429,11 @@ def meme(fmt: str, m: dict, w: int, h: int) -> str:
                 f"padding:12px 26px;border-radius:12px;letter-spacing:.06em'>● ÚLTIMO MOMENTO</div>"
                 f"<div style='font-size:{int(w * .062)}px;font-weight:800;line-height:1.2;margin-top:34px'>{esc(m.get('titular') or '')}</div>"
                 f"<div style='margin-top:46px;background:#0e0c09;border:2px solid #2a261f;border-radius:36px;padding:38px 40px;display:flex;gap:22px'>"
-                f"{MARK.format(s=72)}<div style='font-size:{int(w * .05)}px;line-height:1.3;font-weight:600'>{esc(m.get('reaccion') or '')}</div></div></div>")
+                f"{avatar('egg', 96, 'smug')}<div style='font-size:{int(w * .05)}px;line-height:1.3;font-weight:600'>{esc(m.get('reaccion') or '')}</div></div></div>")
     elif fmt == "cuando":
         body = (f"<div style='margin:auto 0'><div style='font-size:{int(w * .066)}px;font-weight:800;line-height:1.25'>{esc(m.get('cuando') or '')}</div>"
-                f"<div class='anton gold' style='font-size:{int(w * .09)}px;line-height:1.05;margin-top:56px'>{esc(m.get('reaccion') or '')}</div></div>")
+                f"<div style='display:flex;align-items:center;gap:28px;margin-top:56px'>{avatar('egg', int(w * .2), 'wink')}"
+                f"<div class='anton gold' style='font-size:{int(w * .08)}px;line-height:1.05'>{esc(m.get('reaccion') or '')}</div></div></div>")
     elif fmt == "tier":
         colors = {"S": "#ff4d6d", "A": "#d4af37", "B": "#00e5ff"}
         rows = "".join(f"<div style='display:flex;gap:20px;align-items:stretch;margin-top:20px'><div class='anton' style='width:120px;"
@@ -371,22 +446,25 @@ def meme(fmt: str, m: dict, w: int, h: int) -> str:
     elif fmt == "chat":
         msgs = [x for x in (m.get("mensajes") or []) if isinstance(x, dict)][:5]
         bubbles = "".join(
-            (f"<div style='align-self:flex-end;max-width:80%;background:#d4af37;color:#050403;border-radius:30px 30px 6px 30px;padding:22px 30px'>"
-             f"<div style='font-size:24px;font-weight:800;opacity:.7'>EGG 💅</div><div style='font-size:{int(w * .042)}px;font-weight:700;line-height:1.25'>{esc(x.get('texto') or '')}</div></div>")
+            (f"<div style='align-self:flex-end;display:flex;gap:16px;align-items:flex-end;max-width:88%'>"
+             f"<div style='background:#d4af37;color:#050403;border-radius:30px 30px 6px 30px;padding:22px 30px'>"
+             f"<div style='font-size:24px;font-weight:800;opacity:.7'>EGG 💅</div><div style='font-size:{int(w * .042)}px;font-weight:700;line-height:1.25'>{esc(x.get('texto') or '')}</div></div>"
+             f"{avatar('egg', 84, 'smug')}</div>")
             if i == len(msgs) - 1 else
-            (f"<div style='align-self:flex-start;max-width:80%;background:#1b1813;border:2px solid #2a261f;border-radius:30px 30px 30px 6px;padding:22px 30px'>"
+            (f"<div style='align-self:flex-start;display:flex;gap:16px;align-items:flex-end;max-width:88%'>{avatar(x.get('de') or 'Parce', 76, ('shock', 'laugh', 'neutral', 'wink')[i % 4])}"
+             f"<div style='background:#1b1813;border:2px solid #2a261f;border-radius:30px 30px 30px 6px;padding:22px 30px'>"
              f"<div style='font-size:24px;font-weight:800;color:{('#00e5ff', '#ff8a3d', '#a78bfa', '#00f0a0')[i % 4]}'>{esc(x.get('de') or 'Parce')}</div>"
-             f"<div style='font-size:{int(w * .04)}px;line-height:1.25'>{esc(x.get('texto') or '')}</div></div>")
+             f"<div style='font-size:{int(w * .04)}px;line-height:1.25'>{esc(x.get('texto') or '')}</div></div></div>")
             for i, x in enumerate(msgs))
         body = (f"<div style='margin:auto 0;display:flex;flex-direction:column;gap:18px'>"
                 f"<div style='text-align:center;font-size:30px;font-weight:800;color:#cfc6b2;margin-bottom:10px'>👥 {esc(m.get('grupo') or 'El parche ⚽')}</div>{bubbles}</div>")
     elif fmt == "duelo":
         side = lambda who, txt, c, e: (f"<div style='flex:1;border:2px solid {c}66;background:{c}12;border-radius:34px;padding:34px 30px;text-align:center'>"
-                                       f"<div style='font-size:{int(w * .12)}px'>{e}</div><div class='anton' style='font-size:{int(w * .05)}px;color:{c};margin-top:10px'>{esc(who)}</div>"
+                                       f"<div style='display:flex;justify-content:center'>{e}</div><div class='anton' style='font-size:{int(w * .05)}px;color:{c};margin-top:18px'>{esc(who)}</div>"
                                        f"<div style='font-size:{int(w * .038)}px;font-weight:700;line-height:1.25;margin-top:18px'>{esc(txt)}</div></div>")
-        body = (f"<div style='margin:auto 0;display:flex;gap:22px;align-items:stretch'>{side(m.get('izquierda') or 'Tu amigo', m.get('izq_texto') or '', '#9a9384', '🗣️')}"
+        body = (f"<div style='margin:auto 0;display:flex;gap:22px;align-items:stretch'>{side(m.get('izquierda') or 'Tu amigo', m.get('izq_texto') or '', '#9a9384', avatar(m.get('izquierda') or 'Tu amigo', int(w * .2), 'shock'))}"
                 f"<div class='anton' style='align-self:center;font-size:70px;color:#d4af37'>VS</div>"
-                f"{side(m.get('derecha') or 'Vos con datos', m.get('der_texto') or '', '#d4af37', '📊')}</div>")
+                f"{side(m.get('derecha') or 'Vos con datos', m.get('der_texto') or '', '#d4af37', avatar('egg', int(w * .2), 'smug'))}</div>")
     elif fmt == "impopular":
         body = (f"<div style='margin:auto 0'><div class='chip' style='border:2px solid #ff4d6d;color:#ff4d6d'>🌶️ Opinión impopular</div>"
                 f"<div class='anton' style='font-size:{int(w * .08)}px;line-height:1.05;margin-top:34px'>{esc(m.get('opinion') or '')}</div>"
@@ -451,15 +529,17 @@ def cta(w: int, h: int) -> str:
       <div style='margin:auto 0'>
         <div class='anton' style='font-size:{int(w * .11)}px;line-height:1'>Todas las<br><span class='gold'>probabilidades</span><br>de cada partido</div>
         <div style='font-size:{int(w * .034)}px;color:#cfc6b2;margin-top:34px;line-height:1.4'>Goles, córners, tarjetas y jugadores, más el historial público de aciertos y fallos.</div>
-        <div class='chip anton' style='margin-top:50px;background:#d4af37;color:#050403;font-size:{int(w * .045)}px;padding:22px 40px;letter-spacing:.04em'>Link en la bio →</div>
+        <div style='display:flex;align-items:center;gap:26px;margin-top:50px'>{avatar('egg', int(w * .16), 'wink')}
+          <div class='chip anton' style='background:#d4af37;color:#050403;font-size:{int(w * .045)}px;padding:22px 40px;letter-spacing:.04em'>Link en la bio →</div></div>
       </div>{FOOT}""", w, h, watermark="gratis")
 
 
 # ------------------------------------------------------------------ reel frames (1080×1920)
 def reel_frame(big: str, small: str = "", color: str = "#f3ecdc", accent: str | None = None, glitch: bool = True,
                badge_names: tuple[str, str] | None = None, top: str = "", kicker: str = "", tilt: int = 8,
-               bars: list[tuple[str, float, str]] | None = None) -> str:
-    """One scene. Depth: blurred giant echo of the text behind, 3D tilt, glow and floating light."""
+               bars: list[tuple[str, float, str]] | None = None, host: str | None = None) -> str:
+    """One scene. Depth: blurred giant echo of the text behind, 3D tilt, glow and floating light.
+    host: mood of EGG's avatar presenting the scene (bottom-left), e.g. shock | smug | wink | laugh."""
     accent = accent or house()
     w, h = 1080, 1920
     shadow = "text-shadow:7px 0 0 #ff2d55cc,-7px 0 0 #00e5ffcc,0 18px 60px rgba(0,0,0,.75);" if glitch else "text-shadow:0 18px 60px rgba(0,0,0,.75);"
@@ -481,6 +561,9 @@ def reel_frame(big: str, small: str = "", color: str = "#f3ecdc", accent: str | 
             f"font-size:{size}px;color:{color};opacity:.10;filter:blur(14px)'>{esc(big)}</div>")
     kick = (f"<div class='chip' style='margin:0 auto 40px;border:2px solid {accent};color:{accent};font-size:30px'>{esc(kicker)}</div>"
             if kicker else "")
+    if host:
+        kick = (f"<div style='position:absolute;left:-10px;bottom:-470px;display:flex;align-items:center;gap:18px;z-index:3'>"
+                f"{avatar('egg', 190, host)}<div class='chip anton' style='background:#d4af37;color:#050403;font-size:34px'>EGG</div></div>") + kick
     return base(f"""{top_bar(top or "Goldglitch", accent)}
       <div style='margin:auto 0;text-align:center;position:relative'>{echo}{kick}{badges}
         <div style='transform:perspective(1400px) rotateX({tilt // 2}deg)'>
@@ -506,7 +589,7 @@ def reel_script(kind: str, rows: list[dict], tx: dict, when_fn, record: dict | N
     rate = _rate(record)
     if kind in ("picks_dia", "reel") and rows:
         f.append((reel_frame(tx.get("reel_hook") or "MIRÁ ESTO 👀", tx.get("reel_sub") or "o sea… quédate hasta el #1",
-                             kicker=f"Top {len(rows)} · ligas grandes"), 1.3, "punch"))
+                             kicker=f"Top {len(rows)} · ligas grandes", host="shock"), 1.3, "punch"))
         if rate:
             f.append((reel_frame(f"{rate[0]}/{rate[1]}", f"picks de 75%+ acertados ({rate[2]}%) · fallos incluidos",
                                  color="#d4af37", kicker="Historial público", glitch=False), 1.2, "slide"))
@@ -542,12 +625,13 @@ def reel_script(kind: str, rows: list[dict], tx: dict, when_fn, record: dict | N
             f.append((reel_frame(big, small, glitch=i % 2 == 0, kicker=(f"🔥 {trend}" if trend else "Meme EGG") if i == 0 else "",
                                  tilt=6), 1.4 if i else 1.1,
                       ("punch", "shake", "slide", "flash")[i % 4]))
-        f.append((reel_frame("MANDÁSELO 📲", "a ese amigo que necesita verlo 😂", color="#d4af37"), 1.2, "punch"))
+        f.append((reel_frame("MANDÁSELO 📲", "a ese amigo que necesita verlo 😂", color="#d4af37", host="laugh"), 1.2, "punch"))
     else:
         f.append((reel_frame(tx.get("edu_title") or tx.get("cover_title") or "DATO", "espera al final 👀", kicker="Dato"), 1.5, "punch"))
         for line in [x for x in (tx.get("edu_body") or tx.get("cover_subtitle") or "").split("\n") if x.strip()][:5]:
             f.append((reel_frame(line, "", glitch=False, tilt=4), 1.6, "slide"))
-    f.append((reel_frame("LINK EN LA BIO", "todas las probabilidades, gratis. Next level 🥂", color="#d4af37", kicker="EGG · Goldglitch Stats"), 1.8, "punch"))
+    f.append((reel_frame("LINK EN LA BIO", "todas las probabilidades, gratis. Next level 🥂", color="#d4af37", kicker="EGG · Goldglitch Stats",
+                         host="wink"), 1.8, "punch"))
     return f
 
 

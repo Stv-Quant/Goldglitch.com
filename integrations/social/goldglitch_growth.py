@@ -261,9 +261,9 @@ Cómo trabajas en la reunión:
 1. Mira las métricas y el historial (ver_metricas, ver_historial).
 2. Consulta a los miembros que aporten (consultar). Si falta una especialidad, CONTRATA un agente nuevo con un rol y
    misión precisos (contratar) y consúltalo; despide a quien no aporte. Máximo {MAX_MEMBERS} miembros.
-3. Decide el plan de HOY con definir_plan: 4 a 7 publicaciones (volumen alto: el objetivo es crecer rápido), al menos 3 de
+3. Decide el plan de HOY con definir_plan: 7 a 10 publicaciones (volumen alto: el objetivo es crecer rápido), al menos 3 de
    ellas "reel" (video vertical de ritmo rápido, el formato que más alcance orgánico da; topic "resultados" para un reel
-   de resultados, si no son picks), solo equipos de ligas top, horas 07:00–23:00 separadas al menos 90 min,
+   de resultados, si no son picks), solo equipos de ligas top, horas 07:00–23:00 separadas al menos 60 min,
    cada una con gancho, ángulo, tema y llamado a la acción. Al menos 1 "meme" al día (idea de Valeria). Los picks no se
    repiten: un partido mostrado en picks (carrusel o reel) no vuelve a salir en 24 h (y el reel o post de resultados de la noche muestra cómo le fue a esos mismos picks), así que no pongas varias piezas
    de picks sin partidos nuevos (usa "liga" distinta, resultados, memes o educativos). Basa las decisiones en datos cuando los haya; cuando no,
@@ -496,14 +496,14 @@ class Committee:
                 problems.append(f"{t} {hhmm}: usa palabras prohibidas por la marca")
                 continue
             m = int(hhmm[:2]) * 60 + int(hhmm[3:])
-            if any(abs(m - x) < 90 for x in times):
-                problems.append(f"{t} {hhmm}: menos de 90 min de otra publicación")
+            if any(abs(m - x) < 60 for x in times):
+                problems.append(f"{t} {hhmm}: menos de 60 min de otra publicación")
                 continue
             times.append(m)
             ok.append({k: str(p.get(k, ""))[:400] for k in ("type", "time", "angle", "topic", "hook", "cta", "liga", "meme_formato", "mercado", "segmento")})
         e = now_co() + __import__("datetime").timedelta(minutes=10)
-        left = (23 * 60 - (e.hour * 60 + e.minute)) // 90 + 1 if (now_co().strftime("%Y-%m-%d") == getattr(self, "today", "")
-                                                                and getattr(self, "mode", "normal") != "extra_noche") else 7
+        left = (23 * 60 - (e.hour * 60 + e.minute)) // 60 + 1 if (now_co().strftime("%Y-%m-%d") == getattr(self, "today", "")
+                                                                and getattr(self, "mode", "normal") != "extra_noche") else 10
         if len(ok) < (3 if left >= 3 else 1):
             return "Plan rechazado: " + "; ".join(problems or ["menos de 3 publicaciones válidas"])
         self.plan = sorted(ok, key=lambda p: p["time"])
@@ -575,7 +575,7 @@ PASO 2: decide. Formato:
 poner 2 memes si hay tendencias fuertes, y si una tendencia explota justo ahora, el meme puede ir con "time":"ahora")
 (opcional: UNA publicación del plan puede llevar "time":"ahora" si debe salir apenas termine la reunión)
 "aprendizajes":[{{"miembro":"clave de quien lo aprendió","texto":"..."}}], "acta":"qué viste, qué decidiste, qué experimento corre y cómo se mide"}}
-4 a 7 publicaciones (volumen alto), horas 07:00–23:00 separadas al menos 90 min; "picks_dia" solo si hay picks
+7 a 10 publicaciones (volumen alto), horas 07:00–23:00 separadas al menos 60 min; "picks_dia" solo si hay picks
 próximos (puede repetirse con distinta "liga": Liga BetPlay, Premier League, LaLiga…), al menos 3 "reel" (topic "resultados"
 para un reel de resultados), al menos 1 "meme", al menos 1 concepto disruptivo de Mía (pon su concepto en "angle"), "resultados" solo si hay picks jugados. Un partido mostrado en picks no se
 repite en 24 h; el de resultados de la noche cuenta cómo le fue a los picks de la mañana: no pongas más piezas de picks que partidos nuevos (varía la "liga").""")
