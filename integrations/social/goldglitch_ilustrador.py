@@ -102,6 +102,10 @@ def _download(model: str) -> str:
 
 
 def install() -> int:
+    c = cfg()
+    if c.get("model") and os.path.isdir(c.get("path", "")):      # already installed: just test again
+        print(f"Ilustrador ya instalado ({c['model']}). Probando…")
+        return 0 if test() else 1
     name, vram = gpu()
     ram = ram_gb()
     print(f"Tarjeta gráfica: {name or 'no se encontró una NVIDIA'} · {vram / 1024:.0f} GB · RAM {ram} GB")
@@ -143,6 +147,16 @@ def install() -> int:
 _PIPE = None
 
 
+def _vae_tiling(p) -> None:
+    """Decode the image in tiles (low VRAM). Newer diffusers moved it from the pipeline to the VAE."""
+    for obj in (p, getattr(p, "vae", None)):
+        for name in ("enable_vae_tiling", "enable_tiling"):
+            fn = getattr(obj, name, None)
+            if callable(fn):
+                fn()
+                return
+
+
 def _pipe():
     global _PIPE
     if _PIPE is not None:
@@ -159,14 +173,14 @@ def _pipe():
     elif c["model"] == "sdxl-lightning":
         from diffusers import AutoencoderKL, EulerDiscreteScheduler, StableDiffusionXLPipeline, UNet2DConditionModel
         from safetensors.torch import load_file
-        unet = UNet2DConditionModel.from_config(os.path.join(c["path"], "unet")).to(torch.float16)
+        unet = UNet2DConditionModel.from_config(UNet2DConditionModel.load_config(os.path.join(c["path"], "unet"))).to(torch.float16)
         unet.load_state_dict(load_file(os.path.join(c["path"], "sdxl_lightning_4step_unet.safetensors"), device="cpu"))
         vae = AutoencoderKL.from_pretrained(os.path.join(MODELS, "sdxl-vae-fp16-fix"), torch_dtype=torch.float16)
         p = StableDiffusionXLPipeline.from_pretrained(c["path"], unet=unet, vae=vae, torch_dtype=torch.float16, variant="fp16",
                                                       use_safetensors=True)
         p.scheduler = EulerDiscreteScheduler.from_config(p.scheduler.config, timestep_spacing="trailing")
         p.enable_sequential_cpu_offload()      # 4 GB cards: the model goes to the GPU piece by piece
-        p.enable_vae_tiling()
+        _vae_tiling(p)
     else:
         from diffusers import AutoencoderKL, DPMSolverMultistepScheduler, StableDiffusionXLPipeline
         vae = AutoencoderKL.from_pretrained(os.path.join(MODELS, "sdxl-vae-fp16-fix"), torch_dtype=torch.float16)
@@ -176,7 +190,7 @@ def _pipe():
             p.to("cuda")
         else:
             p.enable_model_cpu_offload()
-        p.enable_vae_tiling()
+        _vae_tiling(p)
     _PIPE = p
     return p
 
