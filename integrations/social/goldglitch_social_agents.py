@@ -247,7 +247,8 @@ No escribas hashtags dentro de ig, fb ni tiktok (van aparte) y no uses "#" para 
 - concepto: el concepto elegido en máx. 7 palabras.
 - ilustracion: EN INGLÉS, la descripción de la ilustración de fondo que pintará la IA (escena, personajes ficticios,
   acción, emoción, luz y encuadre), máx. 60 palabras, cinematográfica y de lujo. Nunca personas reales, futbolistas
-  reales, escudos, logos, marcas ni texto. Si sale EGG: "a stylish young Colombian woman with long dark wavy hair with
+  reales, escudos, logos, marcas ni texto; evita lo que la IA llena de letras falsas (camisetas vistas de espaldas con
+  número, marcadores, carteles, pantallas, periódicos): mejor rostros, manos, balón, luces, estadio desenfocado. Si sale EGG: "a stylish young Colombian woman with long dark wavy hair with
   golden highlights and gold hoop earrings".
 - yt_title: título del Short de YouTube (máx. 80 caracteres): la palabra clave de búsqueda al inicio (liga, equipo,
   partido) + gancho; sin hashtags.

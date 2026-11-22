@@ -46,7 +46,7 @@ def available() -> bool:
 
 
 def run(prompt: str, system: str, *, mcp_config: dict | None = None, allowed_tools: str | None = None,
-        max_turns: int = 1, timeout: int = 300, model: str = MODEL) -> str:
+        max_turns: int = 1, timeout: int = 300, model: str = MODEL, tools: str = "") -> str:
     """One non-interactive Claude Code run. Returns the final text. Raises UsageLimit / CliError."""
     exe = find_claude()
     if not exe:
@@ -54,7 +54,7 @@ def run(prompt: str, system: str, *, mcp_config: dict | None = None, allowed_too
     os.makedirs(WORKDIR, exist_ok=True)
     args = [exe, "-p", "--model", model, "--output-format", "json", "--no-session-persistence",
             "--max-turns", str(max_turns), "--permission-mode", "dontAsk", "--permission-prompts", "none",
-            "--tools", "", "--disable-slash-commands"]
+            "--tools", tools, "--disable-slash-commands"]
     cfg_path = None
     if mcp_config:
         fd, cfg_path = tempfile.mkstemp(prefix="gg_mcp_", suffix=".json")
@@ -65,6 +65,8 @@ def run(prompt: str, system: str, *, mcp_config: dict | None = None, allowed_too
             args += ["--allowedTools", allowed_tools]
     else:
         args += ["--strict-mcp-config", "--disallowedTools", "mcp__*"]
+        if allowed_tools:
+            args += ["--allowedTools", allowed_tools]
     sys_fd, sys_path = tempfile.mkstemp(prefix="gg_sys_", suffix=".txt")
     with os.fdopen(sys_fd, "w", encoding="utf-8") as f:
         f.write(system)
@@ -103,6 +105,22 @@ def ask_json(system: str, task: str, timeout: int = 300) -> dict:
     """Text-only call that must answer with one JSON object."""
     text = run(task, system + "\n\nResponde SOLO con un objeto JSON válido, sin texto adicional ni bloques de código.",
                timeout=timeout)
+    text = re.sub(r"^```(?:json)?|```$", "", text.strip(), flags=re.M).strip()
+    try:
+        return json.loads(text[text.find("{"): text.rfind("}") + 1])
+    except ValueError as e:
+        raise CliError(f"respuesta sin JSON válido: {e}: {text[:200]}")
+
+
+def ask_image_json(system: str, task: str, image_path: str, timeout: int = 300) -> dict:
+    """Look at one image (Claude reads it with its Read tool, nothing else allowed) and answer with JSON."""
+    import shutil
+    os.makedirs(WORKDIR, exist_ok=True)
+    name = "imagen_revision" + os.path.splitext(image_path)[1].lower()
+    shutil.copyfile(image_path, os.path.join(WORKDIR, name))
+    text = run(f"Abre la imagen {name} con la herramienta Read y luego responde.\n\n{task}",
+               system + "\n\nResponde SOLO con un objeto JSON válido, sin texto adicional ni bloques de código.",
+               tools="Read", allowed_tools="Read", max_turns=3, timeout=timeout)
     text = re.sub(r"^```(?:json)?|```$", "", text.strip(), flags=re.M).strip()
     try:
         return json.loads(text[text.find("{"): text.rfind("}") + 1])
