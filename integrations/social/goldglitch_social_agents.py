@@ -245,6 +245,10 @@ Entrega:
 {self._market_ask(post)}
 No escribas hashtags dentro de ig, fb ni tiktok (van aparte) y no uses "#" para numerar: escribe "Nº1" o "el 1".
 - concepto: el concepto elegido en máx. 7 palabras.
+- ilustracion: EN INGLÉS, la descripción de la ilustración de fondo que pintará la IA (escena, personajes ficticios,
+  acción, emoción, luz y encuadre), máx. 60 palabras, cinematográfica y de lujo. Nunca personas reales, futbolistas
+  reales, escudos, logos, marcas ni texto. Si sale EGG: "a stylish young Colombian woman with long dark wavy hair with
+  golden highlights and gold hoop earrings".
 - yt_title: título del Short de YouTube (máx. 80 caracteres): la palabra clave de búsqueda al inicio (liga, equipo,
   partido) + gancho; sin hashtags.
 - yt: descripción de YouTube (3 a 5 líneas): la primera con palabras clave de búsqueda, luego el valor, y el enlace

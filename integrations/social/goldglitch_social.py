@@ -174,6 +174,25 @@ def shown_results(st: dict | None, results: list[dict]) -> list[dict] | None:
             or match_key(r) + "|" + (r.get("label") or "").lower() in keys]
 
 
+def illustrations(post: dict, tx: dict, tag: str) -> tuple[str | None, str | None]:
+    """AI illustrations painted on this PC (feed 4:5 and reel 9:16, 4K) for the piece; (None, None) if not installed."""
+    try:
+        import goldglitch_ilustrador as IL
+        if not IL.available():
+            return None, None
+        base = str(tx.get("ilustracion") or "").strip() or {
+            "meme": "two football fans arguing passionately in a luxury sports bar at night, golden light, humorous mood",
+            "picks_dia": "epic night football stadium seen from the stands, golden floodlights, smoke and confetti, anticipation",
+            "resultados": "football players celebrating under golden floodlights, dramatic stadium atmosphere, rain of gold confetti",
+            "reel": "dynamic close-up of a football on the grass of a stadium at night, golden sparks, motion blur",
+        }.get(post["type"], "a stylish young woman analyzing football statistics on holographic golden screens, luxury penthouse at night")
+        log("  [Martina] Ilustrador: pintando el arte de la pieza…")
+        return IL.scene(post["type"], base, False, f"{tag}_feed"), IL.scene(post["type"], base, True, f"{tag}_reel")
+    except Exception as e:
+        log(f"  Ilustrador no disponible: {e}")
+        return None, None
+
+
 def build(post: dict, facts: dict, ag: Agents, now: datetime, tag: str, shown: set[str] | None = None,
           st: dict | None = None) -> dict:
     """Texts + images + video for one planned post. Returns {feed:[jpg], story:None, video:mp4, reel:bool, texts}.
@@ -240,6 +259,7 @@ def build(post: dict, facts: dict, ag: Agents, now: datetime, tag: str, shown: s
         tx["fb"] += f"\n\nhttps://easygoldglitch.com/?ref=fb_{tag}"
 
     wfn = lambda r: when(r["kickoffAt"], now) if r.get("kickoffAt") else ""
+    V.set_bg(*illustrations(post, tx, tag))
     shown_keys = [match_key(r) for r in rows] if reel_of == "picks_dia" else []
     shown_rows = [{k: r.get(k) for k in ("matchId", "league", "home", "away", "label", "p", "kickoffAt")}
                   for r in rows] if reel_of == "picks_dia" else []
