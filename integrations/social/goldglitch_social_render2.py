@@ -465,7 +465,11 @@ def text_card(title: str, body: str, eyebrow: str, w: int, h: int) -> str:
 def avatar(who: str = "egg", size: int = 120, mood: str = "smug") -> str:
     """Portrait of a character of the EGG universe: the AI-painted gallery when it exists (instalar_ilustrador.bat),
     else the vector version. mood: smug | wink | shock | laugh | neutral."""
-    from goldglitch_art import ALIASES, portrait
+    # Drawn avatars are banned from the posts (they looked cheap). Only the AI-painted gallery may appear, and only if
+    # it is explicitly enabled with REDES_PERSONAJES=1; otherwise no character is drawn at all.
+    if os.environ.get("REDES_PERSONAJES", "0") != "1":
+        return ""
+    from goldglitch_art import ALIASES
     try:
         import goldglitch_ilustrador as IL
         key = ALIASES.get(str(who or "").strip().lower().replace("'", ""), "")
@@ -475,7 +479,7 @@ def avatar(who: str = "egg", size: int = 120, mood: str = "smug") -> str:
     if painted:
         return (f"<img src='{_data_uri(painted, 1024)}' style='flex:none;width:{size}px;height:{size}px;border-radius:50%;object-fit:cover;"
                 f"box-shadow:0 0 0 {max(3, size // 34)}px #d4af37,0 {size // 12}px {size // 5}px #000b'>")
-    return portrait(who, size, mood)
+    return ""
 
 
 def meme(fmt: str, m: dict, w: int, h: int) -> str:
@@ -666,9 +670,9 @@ def reel_frame(big: str, small: str = "", color: str = "#f3ecdc", accent: str | 
             f"font-size:{size}px;color:{color};opacity:.10;filter:blur(14px)'>{esc(big)}</div>")
     kick = (f"<div class='chip' style='margin:0 auto 40px;border:2px solid {accent};color:{accent};font-size:30px'>{esc(kicker)}</div>"
             if kicker else "")
-    if face:      # the character who speaks in this beat, big and centered
+    if face and avatar(face[0], 10, face[1]):      # the character who speaks in this beat, big and centered
         kick += f"<div style='display:flex;justify-content:center;margin-bottom:46px'>{avatar(face[0], 420, face[1])}</div>"
-    if host:
+    if host and avatar("egg", 10, host):
         kick = (f"<div style='position:absolute;left:-10px;bottom:-470px;display:flex;align-items:center;gap:18px;z-index:3'>"
                 f"{avatar('egg', 190, host)}<div class='chip anton' style='background:#d4af37;color:#050403;font-size:34px'>EGG</div></div>") + kick
     return base(f"""{top_bar(top or "Goldglitch", accent)}
