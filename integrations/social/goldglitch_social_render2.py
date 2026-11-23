@@ -826,11 +826,8 @@ def _voiceover(frames: list[tuple], name: str) -> list:
             return [None] * len(frames)
     except Exception:
         return [None] * len(frames)
-    out = []
-    for i, fr in enumerate(frames):
-        text = strip_emoji(fr[3] or "").strip()
-        out.append(VZ.say(text, os.path.join(OUT, f"{name}_voz_{i}.wav")) if text else None)
-    return out
+    items = [(strip_emoji(fr[3] or "").strip(), os.path.join(OUT, f"{name}_voz_{i}.wav")) for i, fr in enumerate(frames)]
+    return VZ.say_many(items)
 
 
 def R_SCALE() -> float:
