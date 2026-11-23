@@ -783,6 +783,21 @@ def main() -> int:
             ensayo()
         elif cmd == "tiktok-login":
             tiktok_login()
+        elif cmd == "ya":                   # publish one piece right now: the next pending one of today's plan, else a meme
+            want = sys.argv[2] if len(sys.argv) > 2 else ""
+            st = load_json(STATE, {})
+            today = datetime.now(TZ).strftime("%Y-%m-%d")
+            pending = [p for p in (st.get("plan") or []) if st.get("day") == today and p.get("status") not in ("done", "skipped")]
+            post = next((p for p in pending if not want or p.get("type") == want), None)
+            post = dict(post) if post else {"type": want or "meme", "angle": "Pieza inmediata: lo que está pasando hoy en el fútbol",
+                                            "topic": "tendencia del día", "hook": "", "cta": "Datos gratis en el enlace del perfil"}
+            publish_now([post])
+            if post.get("time") and pending:     # mark the plan item as handled so the tick does not repeat it
+                st = load_json(STATE, {})
+                for p in st.get("plan") or []:
+                    if p.get("time") == post.get("time") and p.get("type") == post.get("type"):
+                        p["status"] = "done"
+                save_json(STATE, st)
         elif cmd == "comunidad":            # one community round now (replies + likes on every connected network)
             clients()
             if AGENT is None:

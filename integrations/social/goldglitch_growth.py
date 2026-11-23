@@ -31,9 +31,10 @@ PLAN = os.path.join(HERE, "redes_plan_comite.json")
 DRAFT = os.path.join(HERE, "redes_borrador_comite.json")   # night extra meetings leave a draft for the morning meeting
 MEMORY = os.path.join(HERE, "redes_memoria.md")
 ACTAS = os.path.join(HERE, "redes_comite_actas")
-MAX_MEMBERS = 32
+MAX_MEMBERS = 40
 DEPARTMENTS = {   # key: (name, head, members)
-    "economia": ("Estrategia Económica", "sofia", ["sofia", "unit_econ", "econometria", "pricing", "analista"]),
+    "economia": ("Estrategia Económica", "sofia", ["sofia", "unit_econ", "econometria", "pricing"]),
+    "datos": ("Inteligencia de Datos y del Consumidor", "analista", ["analista", "datos_ciencia", "social_analytics", "consumidor"]),
     "mercados": ("Mercados Internacionales", "internacional", ["internacional", "mx_us", "conosur_es"]),
     "audiencias": ("Audiencias y Segmentos", "audiencia", ["audiencia", "segmentos", "parche"]),
     "creativo": ("Creativo", "diseno", ["diseno", "disrupcion", "video", "copy", "narrativa"]),
@@ -45,6 +46,10 @@ DEPT_QUESTIONS = {
     "economia": "Con la tabla económica y el plan económico de la semana: ¿dónde está el cuello de botella del embudo hoy, "
                 "qué asignación de las publicaciones de hoy (formatos, mercados, segmentos) maximiza cuentas creadas por "
                 "publicación, qué experimento corre y con qué métrica y criterio? Di qué es dato y qué es supuesto.",
+    "datos": "Con la tabla económica (embudo, países, dispositivos, páginas, botones) y las métricas por publicación de cada red: "
+             "1) qué funcionó y qué no, con números; 2) tres anomalías u oportunidades; 3) cinco propuestas concretas para hoy con "
+             "impacto esperado y cómo se mide; 4) qué hashtags, horarios y formatos rindieron; 5) el microfundamento (por qué lo "
+             "hace el consumidor) detrás de lo que funcionó. Si faltan datos, di cuáles y cómo conseguirlos.",
     "mercados": "Con los partidos y tendencias de hoy en cada país: ¿qué mercados atacar hoy, con qué ligas y a qué horas "
                 "(hora de Colombia), y qué piezas adaptar a cada uno?",
     "audiencias": "¿Qué segmentos atacar hoy (hinchas, comentaristas, profesores, analistas, fantasy, apostadores +18 solo con "
@@ -196,6 +201,24 @@ BASE = {
                          "chistes, piques, apodos y situaciones de hombres viendo fútbol (el que se las da de DT, el que "
                          "nunca acierta, el que llora por el VAR) y aterriza el tono para que no suene a marca sino a parche. "
                          "Humor de fútbol y de amigos; nunca a costa de mujeres ni de nadie."},
+    "datos_ciencia": {"nombre": "Camilo", "genero": "h", "rol": "Head of Data Science — atribución y pronóstico de crecimiento",
+                      "estilo": "científico de datos caleño, directo, piensa en distribuciones y en intervalos",
+                      "perfil": "33 años, matemático (Univalle) con maestría en ciencia de datos (Georgia Tech); armó modelos de "
+                                "atribución y cohortes para apps de suscripción con millones de usuarios.",
+                      "mision": "Cruza publicaciones, métricas por red, visitas por país/canal y cuentas creadas para estimar qué "
+                                "mueve el crecimiento; pronostica la semana, detecta anomalías y dice con qué confianza."},
+    "social_analytics": {"nombre": "Ricardo", "genero": "h", "rol": "Head of Social Analytics — métricas por red y por publicación",
+                         "estilo": "analista obsesivo y práctico, habla con números concretos de cada post",
+                         "perfil": "30 años, fue analista de redes de un club grande y de una casa de medios deportivos; lee "
+                                   "Instagram, TikTok, YouTube y Facebook post por post.",
+                         "mision": "Lee las métricas de cada publicación (vistas, likes, comentarios, compartidos, guardados) y "
+                                   "el rendimiento de hashtags, horarios y formatos; dice qué duplicar, qué matar y qué probar mañana."},
+    "consumidor": {"nombre": "Paula", "rol": "Investigadora del comportamiento del consumidor — microfundamentos",
+                   "perfil": "31 años, economista conductual (PhD, Universidad de los Andes + estancia en la LSE); estudia "
+                             "utilidad, sesgos, jobs-to-be-done, disposición a pagar y hábitos de los fans del fútbol.",
+                   "mision": "Explica POR QUÉ la gente hace clic, comparte, se registra o paga: el motivo de fondo (estatus en el "
+                             "parche, tener la razón, ansiedad antes del partido, ritual), la fricción que lo frena y el estímulo "
+                             "ético que lo destraba; traduce eso en piezas y mensajes concretos."},
     "analista": {"nombre": "Mariana", "rol": "Analista de conversión y métricas",
                  "perfil": "25 años, economista con maestría en Londres, adicta a los dashboards; directa y precisa.",
                  "mision": "Lee el embudo (visitas → cuentas → pagos) por origen y por enlace. Detecta qué canal, formato y "
@@ -225,7 +248,9 @@ BASE = {
 }
 
 DIRECTOR = f"""Eres Valentina, 26 años, la Directora de Crecimiento de EGG (Goldglitch Stats): caleña, administradora con
-MBA en el exterior, visionaria y exigente. Diriges una FIRMA de marketing con departamentos (Estrategia Económica,
+MBA en el exterior, visionaria y exigente. Diriges una MEGA EMPRESA de marketing de productos digitales, experta en los
+microfundamentos del consumidor (por qué decide, comparte, se registra y paga), con departamentos (Estrategia Económica,
+Inteligencia de Datos y del Consumidor,
 Mercados Internacionales, Audiencias y Segmentos, Creativo, Viralidad y Tendencias, Neuromarketing y Búsqueda, Growth y
 Ventas), cada uno con su jefe o jefa. Las decisiones de crecimiento son ECONÓMICAS: cada publicación es inventario escaso
 que se asigna donde más cuentas creadas y suscripciones produce, con datos, experimentos y revisión de si se acertó.
@@ -239,9 +264,13 @@ En cada reunión responden SIEMPRE los 7 departamentos (cada jefe trae la posici
 (Sofía, con Andrés Felipe, Laura, Nicolás y Mariana), Mercados Internacionales (Gabriela, con Diego y Lucía), Audiencias y
 Segmentos (Catalina, con Tomás y Mateo "el Profe"), Creativo (Martina, con Mía, Antonia, Salomé e Isabel; dirección de
 arte), Viralidad y Tendencias (Valeria, con Isabella y Luciana; meme y audio en tendencia), Neuromarketing y Búsqueda
-(Renata, con Daniela; ganchos y banco SEO que va en todas las publicaciones) y Growth y Ventas (Santiago "el Tiburón",
+(Renata, con Daniela; ganchos y banco SEO que va en todas las publicaciones), Inteligencia de Datos y del Consumidor (Mariana, con Camilo, Ricardo y Paula:
+métricas por publicación y por red, anomalías y propuestas) y Growth y Ventas (Santiago "el Tiburón",
 con Juliana en marca y cumplimiento).
 Objetivo: crecimiento ORGÁNICO y viral (sin pauta pagada) que se convierta en cuentas creadas y en suscripciones Pro/Elite.
+Los HASHTAGS son fundamentales para el alcance: cada publicación lleva el banco SEO de Daniela (20 a 30 en Instagram,
+10 en TikTok, 12 en YouTube), mezclando grandes, medianos y de nicho, de la liga, los equipos y el mercado; revisa cuáles
+rindieron con Ricardo.
 Asigna a cada publicación un "mercado" (CO, MX, US, AR, ES, CL, PE o LATAM) y un "segmento", siguiendo la asignación del
 plan económico, y registra 1 a 3 "decisiones" con su razón económica, efecto esperado, métrica y fecha de revisión.
 
@@ -735,6 +764,7 @@ def economics_table(metrics: dict, state: dict) -> dict:
             "canal_por_pais_30d": ((metrics or {}).get("analytics30") or {}).get("sourceByCountry", [])[:15],
             "paginas_30d": ((metrics or {}).get("analytics30") or {}).get("pages", [])[:10],
             "botones_mas_clicados_30d": ((metrics or {}).get("analytics30") or {}).get("ctas", [])[:10],
+            "metricas_por_publicacion": (load(os.path.join(HERE, "redes_metricas_redes.json"), []) or [])[-40:],
             "advertencia": "Muestra pequeña: trata las diferencias como hipótesis hasta tener 2+ semanas y repeticiones."}
 
 

@@ -175,6 +175,23 @@ def load_colors(leagues: list[str]) -> dict:
     return _COLORS
 
 
+KNOWN_COLORS = {   # kit colours of big clubs (fallback when ESPN's colour data is missing)
+    "milan": ("#c8102e", "#111111"), "inter": ("#0a2fa3", "#111111"), "juventus": ("#111111", "#f5f5f5"),
+    "napoli": ("#1e90ff", "#f5f5f5"), "roma": ("#8e1f2f", "#f0bc42"), "lazio": ("#87d8f7", "#f5f5f5"),
+    "real madrid": ("#f5f5f5", "#d4af37"), "barcelona": ("#a50044", "#004d98"), "atletico": ("#cb3524", "#f5f5f5"),
+    "sevilla": ("#f5f5f5", "#d71920"), "betis": ("#0bb363", "#f5f5f5"), "athletic": ("#ee2523", "#f5f5f5"),
+    "manchester city": ("#6cabdd", "#f5f5f5"), "manchester united": ("#da291c", "#111111"), "liverpool": ("#c8102e", "#f5f5f5"),
+    "arsenal": ("#ef0107", "#f5f5f5"), "chelsea": ("#034694", "#f5f5f5"), "tottenham": ("#f5f5f5", "#132257"),
+    "newcastle": ("#111111", "#f5f5f5"), "bayern": ("#dc052d", "#f5f5f5"), "dortmund": ("#fde100", "#111111"),
+    "psg": ("#004170", "#da291c"), "paris saint": ("#004170", "#da291c"), "river plate": ("#f5f5f5", "#d6001c"),
+    "boca": ("#0b2a6f", "#f6c200"), "flamengo": ("#c8102e", "#111111"), "palmeiras": ("#006437", "#f5f5f5"),
+    "america de cali": ("#d3122a", "#f5f5f5"), "deportivo cali": ("#0b8a3b", "#f5f5f5"), "atletico nacional": ("#0b8a3b", "#f5f5f5"),
+    "millonarios": ("#0a3a8a", "#f5f5f5"), "atletico junior": ("#d3122a", "#f5f5f5"), "boca juniors": ("#0b2a6f", "#f6c200"), "santa fe": ("#d3122a", "#f5f5f5"),
+    "club america": ("#f6d500", "#0b2a6f"), "chivas": ("#d3122a", "#f5f5f5"), "tigres": ("#f6b500", "#0b2a6f"),
+    "monterrey": ("#0b2a6f", "#f5f5f5"),
+}
+
+
 def club_colors(name: str) -> tuple[str, str]:
     c = (_COLORS or {}).get(_norm(name))
     if not c:
@@ -182,6 +199,10 @@ def club_colors(name: str) -> tuple[str, str]:
         c = next((v for k, v in (_COLORS or {}).items() if k != "_leagues" and isinstance(v, list) and k and (k in n or n in k)), None)
     if c:
         return c[0], c[1]
+    n = _norm(name)
+    for k in sorted(KNOWN_COLORS, key=len, reverse=True):
+        if k in n:
+            return KNOWN_COLORS[k]
     h = team_color(name)
     return h, "#d4af37"
 
@@ -199,7 +220,56 @@ def initials(name: str) -> str:
     return ("".join(w[0] for w in words[:3]) or name[:2]).upper()
 
 
+KIT_PATTERN = {   # well-known kit layouts (colours come from the club's real colours; no crests, no sponsors)
+    "stripes": ["juventus", "barcelona", "inter", "milan", "atletico", "atlético", "athletic", "newcastle", "sporting",
+                "estudiantes", "san lorenzo", "porto", "brentford", "sunderland", "deportivo cali", "santos", "botafogo",
+                "atalanta", "udinese", "club brugge", "independiente santa fe", "junior", "colo colo", "penarol", "peñarol"],
+    "sash": ["river plate", "vasco", "rayo vallecano", "racing club"],
+    "band": ["boca juniors", "boca"],
+    "hoops": ["celtic", "queens park", "shamrock"],
+    "halves": ["blackburn", "huracan", "huracán"],
+}
+
+
+def kit_pattern(name: str) -> str:
+    n = str(name or "").lower()
+    for club, pat in sorted(((c, p) for p, cs in KIT_PATTERN.items() for c in cs), key=lambda x: -len(x[0])):
+        if club in n:       # longest name first: "boca juniors" before "junior"
+            return pat
+    return ("plain", "trim", "panel")[sum(map(ord, n)) % 3]
+
+
 def badge(name: str, size: int) -> str:
+    """A shirt in the club's real colours and a kit layout like theirs (stripes, sash, hoops…). Never a crest or logo."""
+    c1, c2 = club_colors(name)
+    if c2.lower() == c1.lower():
+        c2 = "#f5f5f4" if _lum(c1) < 0.6 else "#111111"
+    pat = kit_pattern(name)
+    uid = abs(hash((name, size))) % 999999
+    body = "M30 14 L42 9 Q50 17 58 9 L70 14 L91 29 L81 46 L72 40 L72 91 Q50 95 28 91 L28 40 L19 46 L9 29 Z"
+    deco = {
+        "stripes": "".join(f"<rect x='{x}' y='0' width='7' height='100' fill='{c2}'/>" for x in (33, 47, 61)),
+        "sash": f"<path d='M20 30 L36 14 L82 82 L68 96 Z' fill='{c2}'/>",
+        "band": f"<rect x='0' y='44' width='100' height='15' fill='{c2}'/>",
+        "hoops": "".join(f"<rect x='0' y='{y}' width='100' height='8' fill='{c2}'/>" for y in (26, 42, 58, 74)),
+        "halves": f"<rect x='50' y='0' width='50' height='100' fill='{c2}'/>",
+        "panel": f"<rect x='28' y='38' width='6' height='60' fill='{c2}'/><rect x='66' y='38' width='6' height='60' fill='{c2}'/>",
+        "trim": f"<rect x='0' y='84' width='100' height='12' fill='{c2}' opacity='.9'/>",
+        "plain": "",
+    }[pat]
+    return f"""<svg width='{size}' height='{size}' viewBox='0 0 100 100' style='flex:none;filter:drop-shadow(0 {max(3, size // 18)}px {max(6, size // 7)}px rgba(0,0,0,.6))'>
+<defs><clipPath id='k{uid}'><path d='{body}'/></clipPath>
+<linearGradient id='s{uid}' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='#fff' stop-opacity='.28'/><stop offset='.45' stop-color='#fff' stop-opacity='0'/>
+<stop offset='1' stop-color='#000' stop-opacity='.32'/></linearGradient></defs>
+<g clip-path='url(#k{uid})'><rect width='100' height='100' fill='{c1}'/>{deco}
+<path d='M9 29 L19 46 L28 40 L28 36 L14 24 Z M91 29 L81 46 L72 40 L72 36 L86 24 Z' fill='{c2}' opacity='.95'/>
+<path d='M36 30 Q40 60 34 92 M64 30 Q60 60 66 92' stroke='#000' stroke-opacity='.12' stroke-width='1.6' fill='none'/>
+<rect width='100' height='100' fill='url(#s{uid})'/></g>
+<path d='M42 9 Q50 19 58 9' fill='none' stroke='{c2}' stroke-width='3.4' stroke-linecap='round'/>
+<path d='{body}' fill='none' stroke='rgba(0,0,0,.45)' stroke-width='1.2'/></svg>"""
+
+
+def _old_badge(name: str, size: int) -> str:
     """Original monogram in the club's real colours (solid primary, thick ring in the alternate colour). Not a crest."""
     c1, c2 = club_colors(name)
     ink = "#0b0a08" if _lum(c1) > 0.62 else "#ffffff"
@@ -257,7 +327,9 @@ def base(body: str, w: int, h: int, accent: str | None = None, watermark: str = 
 *{{box-sizing:border-box;margin:0;padding:0}}
 body{{width:{w}px;height:{h}px;overflow:hidden;position:relative;color:#f3ecdc;font-family:Inter,sans-serif;
  background:radial-gradient(900px 700px at 100% 0%,{accent}33,transparent 60%),radial-gradient(800px 700px at 0% 100%,#d4af3726,transparent 60%),#050403}}
-.grain{{position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.028) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.028) 1px,transparent 1px);background-size:60px 60px}}
+.grain{{position:absolute;inset:0;background-image:radial-gradient(rgba(255,255,255,.07) 1.1px,transparent 1.3px);background-size:14px 14px;
+ -webkit-mask-image:linear-gradient(160deg,#000 0%,transparent 55%);mask-image:linear-gradient(160deg,#000 0%,transparent 55%)}}
+.slab{{position:absolute;left:-10%;width:120%;transform:rotate(-9deg);pointer-events:none}}
 .streak{{position:absolute;left:-20%;top:12%;width:140%;height:180px;transform:rotate(-14deg);background:linear-gradient(90deg,transparent,{accent}22,#d4af3722,transparent);filter:blur(30px)}}
 .wrap{{position:relative;height:100%;display:flex;flex-direction:column;padding:70px 72px}}
 .top{{display:flex;justify-content:space-between;align-items:center}}
@@ -330,14 +402,17 @@ def pick(pk: dict, idx: int, total: int, when: str, w: int, h: int) -> str:
     c, acc = pcolor(p), ACCENT.get(pk["league"], "#d4af37")
     deg = int(p * 360)
     hot = "<div class='chip' style='background:#00f0a01f;border:2px solid #00f0a0;color:#00f0a0;font-size:20px'>Probabilidad alta</div>" if p >= 0.85 else ""
-    teams = "".join(f"<div style='display:flex;align-items:center;gap:26px'>{badge(t, 118)}<div class='anton' style='font-size:{int(w * .07)}px;line-height:1'>{esc(t)}</div></div>"
+    teams = "".join(f"<div style='display:flex;align-items:center;gap:26px'>{badge(t, 132)}<div class='anton' style='font-size:{int(w * .075)}px;line-height:1'>{esc(t)}</div></div>"
                     for t in (pk["home"], pk["away"]))
+    h1, a1 = club_colors(pk["home"])[0], club_colors(pk["away"])[0]
+    teams = (f"<div style='position:relative'><div class='slab' style='top:40px;height:230px;background:linear-gradient(90deg,{h1}55,{h1}22 45%,{a1}22 55%,{a1}55);"
+             f"border-top:3px solid {h1}aa;border-bottom:3px solid {a1}aa'></div><div style='position:relative;display:flex;flex-direction:column;gap:18px'>{teams}</div></div>")
     return base(f"""{top_bar(f"Pick {idx}/{total}", acc)}
       <div style='display:flex;gap:16px;align-items:center;margin-top:46px;flex-wrap:wrap'>
         <div class='chip' style='background:{acc}22;border:2px solid {acc};color:{acc}'>{esc(pk['league'])}</div>
         <div class='chip' style='border:2px solid #3a352b;color:#cfc6b2'>{esc(when)}</div>{hot}
       </div>
-      <div style='display:flex;flex-direction:column;gap:22px;margin-top:44px'>{teams}</div>
+      <div style='margin-top:44px'>{teams}</div>
       <div style='margin-top:auto;display:flex;align-items:center;gap:40px;background:rgba(14,12,9,.82);border:2px solid {c}55;border-radius:36px;padding:34px 38px'>
         <div style='width:{int(w * .3)}px;height:{int(w * .3)}px;border-radius:50%;flex:none;display:grid;place-items:center;
              background:conic-gradient({c} {deg}deg,#24211b {deg}deg);box-shadow:0 0 60px {c}44'>

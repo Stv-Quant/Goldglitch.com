@@ -48,8 +48,8 @@ LOOKS = {  # hair, skin, top, pants
 }
 ROOM_OF = {  # department → room in the floor plan
     "direccion": ["director", "tiburon", "marca"],
-    "economia": ["sofia", "unit_econ", "econometria", "pricing", "analista"],
-    "datos": ["viralidad", "viral", "comunidad", "neuro", "seo"],
+    "economia": ["sofia", "unit_econ", "econometria", "pricing", "analista", "consumidor"],
+    "datos": ["viralidad", "viral", "comunidad", "neuro", "seo", "social_analytics", "datos_ciencia"],
     "mercados": ["internacional", "mx_us", "conosur_es"],
     "creativo": ["diseno", "disrupcion", "video", "copy", "narrativa"],
     "juntas": ["audiencia", "segmentos", "parche"],
