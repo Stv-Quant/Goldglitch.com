@@ -903,6 +903,20 @@ def main() -> int:
         return 0
     facts = S.signed("/api/social/feed", {})
     c = Committee(key, S.signed, S.load_json(S.STATE, {}), facts, S.log)
+    if "--ya" in sys.argv:            # meeting now (any hour) + publish right away on every network
+        S.log("Reunión inmediata de la firma con publicación inmediata")
+        res = c.meet(today, "extra")
+        posts = res.get("ahora") or (res.get("plan") or plan_for(today) or [])[:1]
+        if not posts:
+            posts = [{"type": "meme", "angle": "Pieza inmediata decidida en la reunión", "topic": "tendencia del día"}]
+        S.publish_now(posts[:1])
+        if posts and not res.get("ahora"):     # the published plan item does not repeat later
+            st = S.load_json(S.STATE, {})
+            for p in st.get("plan") or []:
+                if p.get("time") == posts[0].get("time") and p.get("type") == posts[0].get("type"):
+                    p["status"] = "done"
+            S.save_json(S.STATE, st)
+        return 0
     if extra and not (7 <= now.hour < 22):
         day = today if now.hour < 7 else (now + timedelta(days=1)).strftime("%Y-%m-%d")
         S.log(f"Reunión extraordinaria de noche: deja un borrador para la reunión de la mañana del {day}")
