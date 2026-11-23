@@ -186,7 +186,7 @@ def illustrations(post: dict, tx: dict, tag: str) -> tuple[str | None, str | Non
             "resultados": "football players celebrating under golden floodlights, dramatic stadium atmosphere, rain of gold confetti",
             "reel": "dynamic close-up of a football on the grass of a stadium at night, golden sparks, motion blur",
         }.get(post["type"], "a stylish young woman analyzing football statistics on holographic golden screens, luxury penthouse at night")
-        log("  [Martina] Ilustrador: pintando el arte de la pieza…")
+        log("  [Valeria] Ilustrador: pintando el arte de la pieza…")
         return IL.scene(post["type"], base, False, f"{tag}_feed"), IL.scene(post["type"], base, True, f"{tag}_reel")
     except Exception as e:
         log(f"  Ilustrador no disponible: {e}")
@@ -206,7 +206,10 @@ def build(post: dict, facts: dict, ag: Agents, now: datetime, tag: str, shown: s
     soon = time.time() * 1000 + 20 * 60 * 1000        # never a match that already started (or starts in < 20 min)
     fresh = [r for r in facts.get("upcoming") or [] if match_key(r) not in (shown or set())
              and float(r.get("kickoffAt") or 0) > soon]
-    picks = V.top_picks(fresh, 5, focus) or V.top_picks(fresh, 5)
+    if post.get("obligatorio") == "manana" or (t == "picks_dia" and not focus):
+        picks = V.famous_picks(fresh, 4)          # fewer than 5, famous teams of Europe, South America and Liga BetPlay
+    else:
+        picks = V.top_picks(fresh, 4, focus) or V.top_picks(fresh, 4)
     res = sorted([r for r in facts.get("results") or [] if V.top_league(r.get("league"))],
                  key=lambda r: (r["status"] != "won", -r["p"])) or sorted(facts.get("results") or [], key=lambda r: (r["status"] != "won", -r["p"]))
     for r in res:
@@ -243,6 +246,15 @@ def build(post: dict, facts: dict, ag: Agents, now: datetime, tag: str, shown: s
                 "historial": facts["record"]}
     else:
         rows, data = [], {"historial": facts["record"]}
+        if t in ("sabias_que", "noticia"):       # real material only: today's headlines and the model's next big matches
+            try:
+                data["titulares_futbol"] = T.brief(n=6).get("titulares_futbol", [])
+            except Exception:
+                data["titulares_futbol"] = []
+            data["proximos"] = [{k: r[k] for k in ("league", "home", "away", "label", "p")} | {"cuando": when(r["kickoffAt"], now)}
+                                for r in V.famous_picks(fresh, 4)]
+            if t == "noticia" and not data["titulares_futbol"]:
+                raise SkipPiece("no hay titulares reales de fútbol para la noticia")
     if t in ("meme", "reel", "pregunta", "picks_dia"):        # ride what is happening right now
         try:
             data["tendencias_del_momento"] = T.brief(n=6)
@@ -310,7 +322,8 @@ def build(post: dict, facts: dict, ag: Agents, now: datetime, tag: str, shown: s
             pages = [V.cover(tx["cover_title"], tx["cover_subtitle"], list(dict.fromkeys(r["league"] for r in rows)), w, h)]
             pages += [V.pick(r, i + 1, len(rows), wfn(r), w, h) for i, r in enumerate(rows)]
             return pages + [V.cta(w, h)]
-        eyebrow = {"pregunta": "Tu turno", "mito_dato": "Mito vs dato"}.get(t, "Aprende a leer datos")
+        eyebrow = {"pregunta": "Tu turno", "mito_dato": "Mito vs dato", "sabias_que": "¿Sabías que…?",
+                   "noticia": "Noticia del día"}.get(t, "Aprende a leer datos")
         return [V.text_card(tx.get("edu_title") or tx["cover_title"], tx.get("edu_body") or tx["cover_subtitle"], eyebrow, w, h)] + (
             [V.cta(w, h)] if h > 1400 else [])
 
@@ -379,7 +392,7 @@ def publish(post: dict, piece: dict, meta: Meta | None, tt: TikTok | None, dry: 
                      if len(piece["feed"]) > 1 else meta.ig_image(src(piece["feed"][0]), caption(tx, "ig"))))
         if piece["story"] and not local:
             jobs.append(("instagram_historia", lambda: meta.ig_story(upload(piece["story"]))))
-    if meta and getattr(meta, "fb", True) and piece.get("reel"):
+    if meta and getattr(meta, "fb", True) and (piece.get("reel") or (post["type"] == "sabias_que" and piece.get("video"))):
         jobs.append(("facebook", lambda: meta.fb_video(piece["video"], caption(tx, "fb"), tx.get("cover_title", ""))))
     elif meta and getattr(meta, "fb", True):
         jobs.append(("facebook", lambda: meta.fb_photos(piece["feed"], caption(tx, "fb"))))
@@ -389,6 +402,8 @@ def publish(post: dict, piece: dict, meta: Meta | None, tt: TikTok | None, dry: 
         YT.audio_vibe = str(tx.get("audio_vibe") or "")[:60]
         title = str(tx.get("yt_title") or tx.get("reel_hook") or tx.get("cover_title") or "Datos de fútbol")[:90]
         jobs.append(("youtube", lambda: YT.short(piece["video"], f"{title} #Shorts"[:100], caption(tx, "yt"))))
+    nets = post.get("redes") or ["instagram", "facebook", "tiktok", "youtube"]   # each network's audience (plan)
+    jobs = [(n, f) for n, f in jobs if n.split("_")[0] in nets]
     for net, fn in jobs:
         if net in done:
             continue
@@ -600,6 +615,7 @@ def _tick(dry: bool) -> None:
             except Exception as e:
                 log(f"El comité no pudo reunirse ({e}); planea el Estratega")
         plan = plan or ag.plan(f"{now:%A %d/%m/%Y}", facts, memory)
+        plan = G.with_mandatory(plan, today, st)        # morning picks + night results always go
         st = {**st, "day": today, "plan": plan, "plan_v": G.plan_version(today), "history": (st.get("history") or [])[-60:]}
         log("Plan de hoy: " + ", ".join(f"{p['time']} {p['type']}" for p in plan))
         save_json(STATE, st)
@@ -616,7 +632,8 @@ def _tick(dry: bool) -> None:
         if post.get("status") in ("done", "skipped") or post["time"] > now.strftime("%H:%M"):
             continue
         hh, mm = map(int, post["time"].split(":"))
-        if now - now.replace(hour=hh, minute=mm, second=0, microsecond=0) > timedelta(hours=2) and not post.get("tries"):
+        if now - now.replace(hour=hh, minute=mm, second=0, microsecond=0) > timedelta(hours=2) and not post.get("tries") \
+                and not (post.get("obligatorio") and (post["type"] == "resultados" or now.hour < 20)):
             post["status"] = "skipped"  # the PC was off: publishing a 9 a.m. piece at night makes no sense
             log(f"Se omite {post['type']} de las {post['time']}: ya pasó su hora")
             continue
@@ -641,6 +658,8 @@ def _tick(dry: bool) -> None:
             nets = {"instagram"} if meta and meta.ig else set()
             nets |= {"facebook"} if meta and getattr(meta, "fb", True) else set()
             nets |= {"tiktok"} if tt else set()
+            nets |= {"youtube"} if YT is not None else set()
+            nets &= set(post.get("redes") or ["instagram", "facebook", "tiktok", "youtube"])
             if dry or nets <= set(post.get("done", {})) or post["tries"] >= MAX_TRIES:
                 post["status"] = "done"
                 st.setdefault("history", []).append({"day": today, "type": post["type"], "time": post["time"], "angle": post.get("angle"), "mercado": post.get("mercado"), "segmento": post.get("segmento"),

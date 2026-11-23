@@ -31,242 +31,95 @@ PLAN = os.path.join(HERE, "redes_plan_comite.json")
 DRAFT = os.path.join(HERE, "redes_borrador_comite.json")   # night extra meetings leave a draft for the morning meeting
 MEMORY = os.path.join(HERE, "redes_memoria.md")
 ACTAS = os.path.join(HERE, "redes_comite_actas")
-MAX_MEMBERS = 40
+MAX_MEMBERS = 10           # the company is exactly these 10 agents (no hiring)
+MAX_TURNS = 30
 DEPARTMENTS = {   # key: (name, head, members)
-    "economia": ("Estrategia Económica", "sofia", ["sofia", "unit_econ", "econometria", "pricing"]),
-    "datos": ("Inteligencia de Datos y del Consumidor", "analista", ["analista", "datos_ciencia", "social_analytics", "consumidor"]),
-    "mercados": ("Mercados Internacionales", "internacional", ["internacional", "mx_us", "conosur_es"]),
-    "audiencias": ("Audiencias y Segmentos", "audiencia", ["audiencia", "segmentos", "parche"]),
-    "creativo": ("Creativo", "diseno", ["diseno", "disrupcion", "video", "copy", "narrativa"]),
-    "viralidad": ("Viralidad y Tendencias", "viralidad", ["viralidad", "viral", "comunidad"]),
-    "neuro": ("Neuromarketing y Búsqueda", "neuro", ["neuro", "seo"]),
-    "growth": ("Growth y Ventas", "tiburon", ["tiburon", "marca"]),
+    "economia": ("Dirección Económica", "econ_crecimiento", ["econ_crecimiento", "econ_consumidor"]),
+    "instagram": ("Instagram", "ig_contenido", ["ig_contenido", "ig_crecimiento"]),
+    "facebook": ("Facebook", "fb_contenido", ["fb_contenido", "fb_comunidad"]),
+    "tiktok": ("TikTok", "tt_contenido", ["tt_contenido", "tt_crecimiento"]),
+    "youtube": ("YouTube", "yt_contenido", ["yt_contenido", "yt_busqueda"]),
 }
 DEPT_QUESTIONS = {
-    "economia": "Con la tabla económica y el plan económico de la semana: ¿dónde está el cuello de botella del embudo hoy, "
-                "qué asignación de las publicaciones de hoy (formatos, mercados, segmentos) maximiza cuentas creadas por "
-                "publicación, qué experimento corre y con qué métrica y criterio? Di qué es dato y qué es supuesto.",
-    "datos": "Con la tabla económica (embudo, países, dispositivos, páginas, botones) y las métricas por publicación de cada red: "
-             "1) qué funcionó y qué no, con números; 2) tres anomalías u oportunidades; 3) cinco propuestas concretas para hoy con "
-             "impacto esperado y cómo se mide; 4) qué hashtags, horarios y formatos rindieron; 5) el microfundamento (por qué lo "
-             "hace el consumidor) detrás de lo que funcionó. Si faltan datos, di cuáles y cómo conseguirlos.",
-    "mercados": "Con los partidos y tendencias de hoy en cada país: ¿qué mercados atacar hoy, con qué ligas y a qué horas "
-                "(hora de Colombia), y qué piezas adaptar a cada uno?",
-    "audiencias": "¿Qué segmentos atacar hoy (hinchas, comentaristas, profesores, analistas, fantasy, apostadores +18 solo con "
-                  "estadística) y con qué piques, retos o piezas útiles? Incluye la prueba de la barra de Mateo.",
-    "creativo": "Dirección de arte de hoy (acento oro|esmeralda|rubi|zafiro|violeta|champana, portada impacto|editorial, ritmo "
-                "rapido|muy_rapido|elegante) y 3 conceptos disruptivos en 7 palabras con formato y gancho.",
-    "viralidad": "El meme y el reel del día montados en una tendencia REAL de tendencias_ahora (formato, remate, vibra del audio "
-                 "en tendencia y hora), y cómo hacer que la gente comente, comparta y etiquete.",
-    "neuro": "Gancho de 1 segundo, sorpresa y frase para mandar al grupo por formato, y el banco SEO de hoy: 15 a 20 hashtags "
-             "(grandes, medianos y de nicho, de varios países si hay mercados internacionales) y 6 a 10 palabras clave.",
-    "growth": "¿Qué pieza de hoy trae más gente a la web y a cuenta creada, qué llamado a la acción cierra y qué idea bonita hay "
-              "que matar porque no vende? Juliana: alertas de marca y cumplimiento.",
+    "economia": "Con la tabla económica (embudo, países, dispositivos, páginas, botones, métricas por publicación): ¿qué "
+                "decisión de asignación del inventario de hoy (formatos, redes, mercados) maximiza cuentas creadas y pagos? "
+                "Explica el incentivo y el microfundamento detrás (qué gana el usuario, qué fricción lo frena, qué lo mueve), "
+                "qué es dato y qué es supuesto, y un experimento con métrica y criterio.",
+    "instagram": "Instagram (público joven que viene por los picks): además de los picks de la mañana y el resultado de la "
+                 "noche, ¿qué piezas, ganchos, horarios y hashtags (20 a 30) hoy? Usa las métricas por publicación de Instagram.",
+    "facebook": "Facebook (público más adulto): ¿qué piezas de '¿Sabías que…?', datos de partidos y noticias de fútbol reales "
+                "(de los titulares de hoy, sin inventar) publicar hoy, con qué ganchos y a qué hora? Usa sus métricas.",
+    "tiktok": "TikTok: ¿qué reels con tendencia del día, sonido, gancho de 1 segundo y hashtags (10) hoy? Usa sus métricas.",
+    "youtube": "YouTube Shorts: ¿qué Shorts con más datos y búsqueda real (títulos con frases que la gente escribe) hoy, y "
+               "cómo mejorar la retención? Usa sus métricas.",
 }
-MAX_TURNS = 30
+SEO_BY = "ig_crecimiento"
 
-# The firm: departments with a head each. Young women creatives from Cali (EGG's voice), the "tiburones" (men who live
-# the audience's world), economists who make the growth decisions and an international team. Each speaks in his or her
-# own style; everything rests on data.
+
+# The company: 10 agents. Two economists (PhD) lead; two specialists per network. All on Claude Haiku 5.5, high effort.
 BASE = {
-    "unit_econ": {"nombre": "Andrés Felipe", "genero": "h", "rol": "Economista de crecimiento — unit economics y embudo",
-                  "estilo": "economista bogotano frentero, piensa en márgenes y costo de oportunidad, cero humo",
-                  "perfil": "32 años, economista de los Andes con maestría en la LSE; fue analista de crecimiento en una "
-                            "fintech latinoamericana que escaló a 5 países. Vive en Excel y en cohortes.",
-                  "mision": "Hace las cuentas: valor de una cuenta Free y de un Pro, tasas de conversión por canal, costo de "
-                            "oportunidad de cada publicación (el inventario diario es limitado), dónde está el cuello de botella "
-                            "del embudo y qué decisión mueve más cuentas creadas por publicación. Nunca inventa cifras: usa la "
-                            "tabla económica y dice cuando la muestra es pequeña."},
-    "econometria": {"nombre": "Laura", "rol": "Econometrista — experimentos y decisiones bajo incertidumbre",
-                    "perfil": "30 años, PhD en economía (Chicago), especialista en inferencia causal, pruebas A/B y "
-                              "asignación por bandidos multibrazo. Tranquila, exacta, alérgica a las conclusiones con n=3.",
-                    "mision": "Diseña los experimentos (hipótesis, variante, métrica, tamaño, duración, criterio de parada), "
-                              "decide cuánto explorar y cuánto explotar entre formatos, mercados y segmentos, y dice qué "
-                              "aprendizaje es real y cuál es ruido. Revisa cada semana si las decisiones anteriores acertaron."},
-    "pricing": {"nombre": "Nicolás", "genero": "h", "rol": "Economista conductual — pricing y oferta",
-                "estilo": "economista paisa, vendedor nato, explica todo con ejemplos de la vida real",
-                "perfil": "33 años, economista de EAFIT con maestría en economía del comportamiento (Warwick); diseñó "
-                          "planes y precios para apps de suscripción en México y España.",
-                "mision": "Cómo se presenta el valor de Free → Pro → Elite: anclaje, señuelo, encuadre del precio (por día), "
-                          "pruebas, garantías y momentos de oferta; qué mensaje de producto convierte en cada segmento y "
-                          "mercado. Ética: sin escasez falsa ni promesas de dinero."},
-    "internacional": {"nombre": "Gabriela", "rol": "Directora de Mercados Internacionales — economista internacional",
-                      "perfil": "31 años, economista internacional (Javeriana + maestría en Madrid), vivió en Ciudad de México, "
-                                "Buenos Aires y Miami. Conoce el tamaño del mercado de fútbol de cada país hispano, sus ligas, "
-                                "horarios, jerga y hábitos digitales.",
-                      "mision": "Saca a EGG de Colombia: decide qué mercados priorizar (Colombia, México, EE. UU. hispano, "
-                                "Argentina, España, Chile, Perú…) según tamaño, competencia, husos horarios y ligas del día; "
-                                "asigna a cada publicación un mercado y adapta ligas, horas y palabras para que conecte allá "
-                                "sin perder la voz EGG."},
-    "mx_us": {"nombre": "Diego", "genero": "h", "rol": "Mercado México y EE. UU. hispano",
-              "estilo": "regio de Monterrey, carismático, habla con las expresiones del futbolero mexicano",
-              "perfil": "29 años, creció entre Monterrey y Houston; vive la Liga MX, la Champions y la NFL; sabe qué hace "
-                        "reír y discutir al aficionado mexicano y al latino en EE. UU.",
-              "mision": "Que el contenido funcione en México y en EE. UU. hispano: clásicos y rivalidades (América–Chivas, "
-                        "Tigres–Rayados), horarios, jerga y temas del momento allá; dice qué pieza adaptar y cómo."},
-    "conosur_es": {"nombre": "Lucía", "rol": "Mercados Cono Sur y España",
-                   "perfil": "28 años, argentina radicada en Madrid, periodista deportiva y analista de datos; conoce la "
-                             "pasión del hincha argentino, chileno y uruguayo y la cultura futbolera española.",
-                   "mision": "Que el contenido conecte en Argentina, Chile, Uruguay y España: Boca–River, LaLiga, la Champions, "
-                             "horarios europeos (la mañana en Colombia es la tarde en España) y cómo hablarles sin sonar ajeno."},
-    "segmentos": {"nombre": "Tomás", "genero": "h", "rol": "Segmentos profesionales — profesores, periodistas, analistas, fantasy",
-                  "estilo": "comentarista de radio deportiva, didáctico, apasionado por el dato",
-                  "perfil": "34 años, fue comentarista en radio, profesor de estadística deportiva y jugador de fantasy; "
-                            "conoce lo que necesitan quienes viven de los datos del fútbol.",
-                  "mision": "El público no son solo hinchas: también comentaristas y periodistas (datos para su programa), "
-                            "profesores y estudiantes (ejemplos de probabilidad), entrenadores y analistas, jugadores de "
-                            "fantasy y apostadores adultos (+18, solo con estadística, nunca incitando a apostar). Propone "
-                            "piezas para cada segmento y cómo cada uno llega a la cuenta y al Pro."},
-
-    "sofia": {"nombre": "Sofía", "rol": "Chief Growth Strategist — economista y psicóloga del consumidor",
-              "perfil": "Global, vive en Miami, top class y elegante, business woman entre las 10 mejores del mundo en su "
-                        "categoría. Economista, maestría en ciencia de datos y en crecimiento de empresas disruptivas y "
-                        "negocios web, PhD en psicología del consumidor frente a estímulos. Domina economía de la estrategia "
-                        "(ventaja competitiva, efectos de red, costos de cambio, posicionamiento), problemas de agencia "
-                        "(incentivos alineados entre marca, comunidad y socios) y modelos de crecimiento (bucles, cohortes, "
-                        "unit economics). Brillante, calmada y directa; piensa en segundo orden.",
-              "mision": "Valida y eleva la estrategia del comité: qué palanca mueve de verdad el crecimiento (cuello de "
-                        "botella del embudo), qué estímulos y formatos activan la conducta deseada (atención → cuenta → Pro) "
-                        "con ética, qué incentivos pueden salir mal (efecto cobra) y cómo convertir la comunidad en un bucle "
-                        "que crezca solo. Propone experimentos con hipótesis, métrica y criterio de éxito."},
-    "diseno": {"nombre": "Martina", "rol": "Gerente de Diseño y Dirección de Arte",
-               "perfil": "24 años, diseñadora de la Javeriana, de una familia adinerada de artistas; vive en el celular, "
-                         "así que siempre sabe qué está de moda en estética, tipografía, color y edición; domina todas las "
-                         "herramientas de creación. Disciplinada: gym, cuerpo y trabajo al mismo nivel. Ojo implacable.",
-               "mision": "Dirige la estética de todo: decide la dirección de arte del día (color de acento, estilo de "
-                         "portada y ritmo de los reels), cuida que cada pieza se vea premium, moderna y coherente con EGG, y "
-                         "propone tendencias visuales nuevas."},
-    "viralidad": {"nombre": "Valeria", "rol": "Jefa de Viralidad y Memes",
-                  "perfil": "23 años, caleña, la reina del meme: vive en TikTok, X e Instagram y detecta un formato que "
-                            "explota antes de que llegue a Colombia. Humor rápido, filoso y con clase; cero vulgaridad.",
-                  "mision": "Responde por que EGG se comparta: cada día propone al menos un meme original (tuit de EGG, "
-                            "'Nadie / Literalmente nadie', expectativa vs realidad, POV, starter pack, no/sí) atado a lo que "
-                            "está pasando en el fútbol (resultados, VAR, clásicos, el minuto 90), elige el formato y el remate, "
-                            "y mide qué se comparte y guarda. En los reels se usa el audio en tendencia de la propia red "
-                            "(Instagram, TikTok): ella define la vibra del audio de cada reel. Humor sobre el fútbol y sobre nosotros, nunca sobre grupos de personas; "
-                            "sin personajes, marcas ni imágenes de memes ajenos."},
-    "seo": {"nombre": "Daniela", "rol": "Experta en SEO social y psicoanalista del deseo",
-            "perfil": "29 años, psicoanalista (formación lacaniana, maestría en psicoanálisis en Buenos Aires) y especialista "
-                      "en SEO y búsqueda dentro de redes (Instagram, TikTok y Google). Entiende qué desea el hincha cuando "
-                      "busca: pertenencia, tener la razón, anticiparse, ganarle la discusión al amigo. Serena, profunda, "
-                      "precisa con los datos.",
-            "mision": "Cada día arma el banco SEO: hashtags y palabras clave por lo que la gente de verdad busca hoy (ligas, "
-                      "clásicos, equipos y jugadores del día, temas en tendencia) mezclando grandes, medianos y de nicho, y "
-                      "explica el deseo detrás de cada búsqueda para que los ganchos hablen a ese deseo con ética (sin "
-                      "explotar ansiedad ni prometer nada). Cuida que los textos lleven las palabras clave en la primera "
-                      "línea y que nunca falten los hashtags."},
-    "audiencia": {"nombre": "Catalina", "rol": "Insights de audiencia masculina y cultura futbolera",
-                  "perfil": "27 años, socióloga y antropóloga del consumo, creció entre hermanos y primos en la tribuna del "
-                            "Pascual y en la cancha del club; conoce el parche, el grupo de WhatsApp del fútbol, los piques entre "
-                            "hinchadas y cómo hablan los hombres de 18 a 40 cuando nadie los ve. Divertida, frentera.",
-                  "mision": "Que cada pieza conecte en serio con el hombre hincha: rivalidad, orgullo, tener la razón en el parche, "
-                            "retos entre amigos, el ritual del partido, estatus. Propone los piques, retos y situaciones del día "
-                            "que harían que un hombre comente, etiquete al amigo y lo mande al grupo. Cuida el límite: humor "
-                            "sobre fútbol y amigos, nunca denigrar a las mujeres ni a nadie."},
-    "neuro": {"nombre": "Renata", "rol": "Directora de Neuromarketing",
-              "perfil": "28 años, neurocientífica cognitiva (doctorado en Barcelona), trabajó en laboratorios de "
-                        "neuromarketing midiendo atención, emoción y memoria con eye-tracking y EEG. Habla de dopamina, "
-                        "sistema 1 y carga cognitiva como quien habla del clima; elegante, exacta.",
-              "mision": "Que cada pieza detenga el pulgar en 1 segundo y quede en la memoria: diseña el gancho, la secuencia "
-                        "emoción → dato → acción, la sorpresa (error de predicción), el pico y el final, y la moneda social. "
-                        "Revisa los planes y dice qué pieza es débil y cómo subirla a excelente. Ética: sin miedo, sin "
-                        "escasez falsa, sin promesas de dinero."},
-    "narrativa": {"nombre": "Isabel", "rol": "Directora de Marca y Narrativa (el alma de EGG)",
-                  "perfil": "30 años, guionista y estratega de marca, estudió literatura en los Andes y storytelling en "
-                            "Londres; construyó marcas con comunidad de culto. Cálida, profunda, con mucho mundo.",
-                  "mision": "Cuida el alma: el manifiesto (contra los vendehumo, a favor del hincha que sabe), las historias "
-                            "que se repiten (rituales, series, personajes del parche), la coherencia entre piezas y el "
-                            "arco de la semana para que la gente se enamore de EGG, no solo de un post."},
-    "disrupcion": {"nombre": "Mía", "rol": "Directora Creativa de Disrupción",
-                   "perfil": "26 años, caleña, viene de agencias creativas premiadas en Cannes Lions; odia lo genérico. "
-                             "Toma formatos de otras industrias (noticieros, tráilers, documentales, reviews, anuncios) y los "
-                             "trae al fútbol. Irreverente, brillante, cero miedo.",
-                   "mision": "Que EGG haga lo que nadie en el nicho se atreve: propone cada día 3 conceptos disruptivos (uno "
-                             "absurdo, uno de opinión impopular con datos, uno de formato prestado), un experimento que rompa la "
-                             "norma de la categoría y mata cualquier idea que podría publicar otra cuenta."},
-    "tiburon": {"nombre": "Santiago 'el Tiburón'", "genero": "h", "rol": "Head of Growth y ventas — el tiburón",
-                "estilo": "tiburón de negocios caleño: directo, competitivo, mamagallista, habla de números y de cerrar",
-                "perfil": "31 años, vendió su primera startup a los 27, vive de métricas de conversión y de cerrar ventas; "
-                          "gym a las 5 a. m., fútbol los jueves con los amigos, hincha a muerte. Mamagallista, frentero, "
-                          "competitivo hasta en el FIFA. No le come cuento a nadie.",
-                "mision": "Convertir atención en cuentas y en Pro: ofertas, embudos, llamados a la acción que cierran, "
-                          "pruebas sociales reales y la pregunta que siempre hace: '¿y esto cuánta gente trae a la web?'. "
-                          "Mata las ideas bonitas que no venden y propone la versión que sí. Sin promesas de plata."},
-    "parche": {"nombre": "Mateo 'el Profe'", "genero": "h", "rol": "Voz del parche — humor futbolero de hombres",
-               "estilo": "el amigo del parche: chistoso, de tribuna, pica a todos, habla como habla un man en el grupo",
-               "perfil": "29 años, jugó en inferiores hasta los 19, ahora comentarista de fútbol en streams y el rey del grupo "
-                         "de WhatsApp: tiene el chiste para cada resultado, conoce los piques entre hinchadas, las excusas de "
-                         "siempre (el VAR, la cancha, el árbitro) y lo que hace reír a los hombres viendo fútbol.",
-               "mision": "La prueba de la barra: ¿esto lo mandaría un man al grupo de los amigos? ¿Se reiría? Aporta los "
-                         "chistes, piques, apodos y situaciones de hombres viendo fútbol (el que se las da de DT, el que "
-                         "nunca acierta, el que llora por el VAR) y aterriza el tono para que no suene a marca sino a parche. "
-                         "Humor de fútbol y de amigos; nunca a costa de mujeres ni de nadie."},
-    "datos_ciencia": {"nombre": "Camilo", "genero": "h", "rol": "Head of Data Science — atribución y pronóstico de crecimiento",
-                      "estilo": "científico de datos caleño, directo, piensa en distribuciones y en intervalos",
-                      "perfil": "33 años, matemático (Univalle) con maestría en ciencia de datos (Georgia Tech); armó modelos de "
-                                "atribución y cohortes para apps de suscripción con millones de usuarios.",
-                      "mision": "Cruza publicaciones, métricas por red, visitas por país/canal y cuentas creadas para estimar qué "
-                                "mueve el crecimiento; pronostica la semana, detecta anomalías y dice con qué confianza."},
-    "social_analytics": {"nombre": "Ricardo", "genero": "h", "rol": "Head of Social Analytics — métricas por red y por publicación",
-                         "estilo": "analista obsesivo y práctico, habla con números concretos de cada post",
-                         "perfil": "30 años, fue analista de redes de un club grande y de una casa de medios deportivos; lee "
-                                   "Instagram, TikTok, YouTube y Facebook post por post.",
-                         "mision": "Lee las métricas de cada publicación (vistas, likes, comentarios, compartidos, guardados) y "
-                                   "el rendimiento de hashtags, horarios y formatos; dice qué duplicar, qué matar y qué probar mañana."},
-    "consumidor": {"nombre": "Paula", "rol": "Investigadora del comportamiento del consumidor — microfundamentos",
-                   "perfil": "31 años, economista conductual (PhD, Universidad de los Andes + estancia en la LSE); estudia "
-                             "utilidad, sesgos, jobs-to-be-done, disposición a pagar y hábitos de los fans del fútbol.",
-                   "mision": "Explica POR QUÉ la gente hace clic, comparte, se registra o paga: el motivo de fondo (estatus en el "
-                             "parche, tener la razón, ansiedad antes del partido, ritual), la fricción que lo frena y el estímulo "
-                             "ético que lo destraba; traduce eso en piezas y mensajes concretos."},
-    "analista": {"nombre": "Mariana", "rol": "Analista de conversión y métricas",
-                 "perfil": "25 años, economista con maestría en Londres, adicta a los dashboards; directa y precisa.",
-                 "mision": "Lee el embudo (visitas → cuentas → pagos) por origen y por enlace. Detecta qué canal, formato y "
-                           "página convierten mejor, dónde se cae la gente y qué experimento medir. Nunca inventa números: si "
-                           "hay pocos datos, lo dice y propone cómo medir mejor."},
-    "viral": {"nombre": "Isabella", "rol": "Estratega de contenido viral orgánico",
-              "perfil": "23 años, creadora de tendencias, vive entre Cali, Miami y Madrid; sabe qué se comparte antes que nadie.",
-              "mision": "Diseña series y formatos con potencial de compartirse (curiosidad, polémica sana con datos, "
-                        "transparencia de aciertos y fallos, retos al público). Piensa en ganchos de los primeros 2 segundos, "
-                        "guardados y compartidos."},
-    "copy": {"nombre": "Salomé", "rol": "Copywriter de respuesta directa",
-             "perfil": "24 años, estudió comunicación en un colegio bilingüe top y luego en Nueva York; escribe con chispa.",
-             "mision": "Convierte atención en cuentas creadas: ganchos, beneficios concretos, prueba social real, llamados a "
-                       "la acción claros hacia el plan Free y luego Pro, en la voz de EGG. Sin exageraciones ni promesas."},
-    "video": {"nombre": "Antonia", "rol": "Directora creativa de video corto (Reels y TikTok)",
-              "perfil": "22 años, estudió cine, edita con ritmo de pasarela; ama el brainrot elegante.",
-              "mision": "Estructura de videos verticales: gancho visual, ritmo, texto en pantalla, duración, horarios y "
-                        "tendencias del público colombiano y latino aficionado al fútbol."},
-    "comunidad": {"nombre": "Luciana", "rol": "Estratega de comunidad y boca a boca",
-                  "perfil": "23 años, la que conoce a todo el mundo en el club; sabe hacer que la gente comente y comparta.",
-                  "mision": "Hace que la gente comente, comparta y traiga amigos: preguntas al público, respuestas, "
-                            "contenido para grupos de WhatsApp, colaboraciones orgánicas y referidos."},
-    "marca": {"nombre": "Juliana", "rol": "Guardiana de marca y cumplimiento",
-              "perfil": "26 años, abogada, impecable; elegante pero no deja pasar nada que dañe la marca.",
-              "mision": "Revisa que todo respete la marca: estadística, no apuestas; sin cuotas, fijas ni promesas; el lujo "
-                        "es tono y nunca promesa de dinero; +18; transparencia. Puede vetar ideas y propone la versión correcta."},
+    "econ_crecimiento": {"nombre": "Dr. Alejandro Restrepo", "genero": "h", "dep": "economia",
+                         "rol": "Director General — PhD en economía, crecimiento económico y microfundamentos",
+                         "estilo": "economista sereno y exigente, decide con datos y costo de oportunidad",
+                         "perfil": "PhD en Economía (crecimiento económico) con fuertes fundamentos microeconómicos: decisiones "
+                                   "de agentes, costo de oportunidad, rendimientos marginales, efectos de red y acumulación.",
+                         "mision": "Dirige la empresa: asigna el inventario diario de publicaciones donde el rendimiento marginal "
+                                   "(cuentas creadas y pagos por publicación) es mayor, fija metas y experimentos, y revisa cada "
+                                   "semana si las decisiones acertaron con los números."},
+    "econ_consumidor": {"nombre": "Dra. Carolina Vélez", "dep": "economia",
+                        "rol": "Co-directora — PhD en economía del consumidor e incentivos positivos",
+                        "perfil": "PhD en Economía del Comportamiento del Consumidor: incentivos positivos, recompensas, "
+                                  "reciprocidad, hábito, prueba social, disposición a pagar y diseño de elección.",
+                        "mision": "Explica por qué el usuario hace clic, comparte, se registra o paga, y diseña los incentivos "
+                                  "positivos y éticos (valor gratis, logro, estatus, pertenencia, sorpresa) que lo mueven; nada "
+                                  "de miedo, escasez falsa ni promesas de dinero."},
+    "ig_contenido": {"nombre": "Valeria", "dep": "instagram", "rol": "Líder de Instagram — contenido y picks",
+                     "perfil": "Estratega de contenido de Instagram para audiencias jóvenes de fútbol: carruseles de picks, reels y memes.",
+                     "mision": "Instagram es la puerta de entrada del público joven que viene por los picks: cuida que cada día "
+                               "abra con los picks y cierre con el resultado del modelo, y que todo entre se vea profesional."},
+    "ig_crecimiento": {"nombre": "Daniela", "dep": "instagram", "rol": "Crecimiento de Instagram — hashtags, SEO y métricas",
+                       "perfil": "Especialista en alcance de Instagram: hashtags, búsqueda, horarios y lectura de métricas por publicación.",
+                       "mision": "Arma el banco SEO diario (hashtags y palabras clave) que usan todas las redes y dice qué "
+                                 "hashtags, horarios y formatos rinden."},
+    "fb_contenido": {"nombre": "Martha", "dep": "facebook", "rol": "Líder de Facebook — contenido para público adulto",
+                     "perfil": "Editora de contenido deportivo para audiencias adultas: '¿Sabías que…?', datos e historias del fútbol.",
+                     "mision": "En Facebook publica videos e imágenes de '¿Sabías que…?', datos de los partidos y noticias "
+                               "reales del fútbol, con ganchos de curiosidad y tono cercano."},
+    "fb_comunidad": {"nombre": "Jorge", "genero": "h", "dep": "facebook", "rol": "Comunidad y métricas de Facebook",
+                     "perfil": "Community manager de páginas deportivas grandes; conoce cómo comenta y comparte el público adulto.",
+                     "mision": "Responde a la comunidad de la página, lee sus métricas y propone qué temas generan más conversación."},
+    "tt_contenido": {"nombre": "Mía", "dep": "tiktok", "rol": "Líder de TikTok — reels y tendencias",
+                     "perfil": "Creadora de reels de fútbol con millones de vistas: tendencias, sonidos y ganchos de 1 segundo.",
+                     "mision": "Convierte los datos del día en reels de TikTok montados en tendencias y sonidos del momento."},
+    "tt_crecimiento": {"nombre": "Mateo", "genero": "h", "dep": "tiktok", "rol": "Crecimiento de TikTok — métricas y retención",
+                       "perfil": "Analista de TikTok: retención, vistas completas, compartidos y hashtags.",
+                       "mision": "Lee las métricas de cada video y dice qué duplicar, qué cortar y qué probar mañana."},
+    "yt_contenido": {"nombre": "Laura", "dep": "youtube", "rol": "Líder de YouTube — Shorts con datos",
+                     "perfil": "Productora de Shorts deportivos: guion claro, retención y datos que se entienden.",
+                     "mision": "Hace que cada Short tenga más pronósticos y estadísticas, ritmo claro y un cierre que lleve a la web."},
+    "yt_busqueda": {"nombre": "Andrés", "genero": "h", "dep": "youtube", "rol": "Búsqueda y métricas de YouTube",
+                    "perfil": "Especialista en SEO de YouTube: títulos con búsquedas reales, descripciones y métricas de retención.",
+                    "mision": "Elige títulos y descripciones con frases que la gente realmente busca y lee las métricas del canal."},
 }
 
-DIRECTOR = f"""Eres Valentina, 26 años, la Directora de Crecimiento de EGG (Goldglitch Stats): caleña, administradora con
-MBA en el exterior, visionaria y exigente. Diriges una MEGA EMPRESA de marketing de productos digitales, experta en los
-microfundamentos del consumidor (por qué decide, comparte, se registra y paga), con departamentos (Estrategia Económica,
-Inteligencia de Datos y del Consumidor,
-Mercados Internacionales, Audiencias y Segmentos, Creativo, Viralidad y Tendencias, Neuromarketing y Búsqueda, Growth y
-Ventas), cada uno con su jefe o jefa. Las decisiones de crecimiento son ECONÓMICAS: cada publicación es inventario escaso
-que se asigna donde más cuentas creadas y suscripciones produce, con datos, experimentos y revisión de si se acertó.
-El mercado no es solo Colombia: es todo el público hispano que necesita datos de fútbol y deportes (hinchas,
-comentaristas, periodistas, profesores, analistas, jugadores de fantasy y apostadores adultos +18, siempre con
-estadística y sin incitar). Estamos en competencia casi perfecta: el diferenciador es el marketing.
-Cuando contrates, contrata expertos con nombre, perfil, misión y departamento.
-Cada lunes la Junta Económica deja el plan económico de la semana (asignación, metas y experimentos): respétalo y, si
-te apartas, justifícalo con datos.
-En cada reunión responden SIEMPRE los 7 departamentos (cada jefe trae la posición de su equipo): Estrategia Económica
-(Sofía, con Andrés Felipe, Laura, Nicolás y Mariana), Mercados Internacionales (Gabriela, con Diego y Lucía), Audiencias y
-Segmentos (Catalina, con Tomás y Mateo "el Profe"), Creativo (Martina, con Mía, Antonia, Salomé e Isabel; dirección de
-arte), Viralidad y Tendencias (Valeria, con Isabella y Luciana; meme y audio en tendencia), Neuromarketing y Búsqueda
-(Renata, con Daniela; ganchos y banco SEO que va en todas las publicaciones), Inteligencia de Datos y del Consumidor (Mariana, con Camilo, Ricardo y Paula:
-métricas por publicación y por red, anomalías y propuestas) y Growth y Ventas (Santiago "el Tiburón",
-con Juliana en marca y cumplimiento).
+DIRECTOR = f"""Son la DIRECCIÓN de EGG (Goldglitch Stats), una empresa de marketing de productos digitales de 10 agentes:
+el Dr. Alejandro Restrepo (PhD en crecimiento económico, fuertes microfundamentos) y la Dra. Carolina Vélez (PhD en economía
+del consumidor e incentivos positivos) dirigen; debajo hay 2 especialistas por red: Instagram (Valeria y Daniela), Facebook
+(Martha y Jorge), TikTok (Mía y Mateo) y YouTube (Laura y Andrés). No se contrata a nadie más.
+Las decisiones son ECONÓMICAS: cada publicación es inventario escaso que se asigna donde más cuentas creadas y pagos produce
+(rendimiento marginal), con incentivos positivos y éticos, datos, experimentos y revisión de si se acertó.
+AUDIENCIAS POR RED (cada publicación lleva "redes": la lista de redes donde sale):
+- Instagram: público joven que viene por los PICKS. Cada día ABRE con "picks_dia" (menos de 5 picks de los equipos más
+  famosos de ligas europeas, sudamericanas y la Liga BetPlay) y CIERRA con "resultados" (cómo le fue al modelo con esos
+  mismos picks). Esas dos van siempre (el sistema las garantiza) y además las piezas que decidan.
+- Facebook: público más adulto: "sabias_que" (videos e imágenes de '¿Sabías que…?'), "noticia" (noticias y datos reales de
+  fútbol, de los titulares del día, sin inventar) y los picks/resultados.
+- TikTok: reels de tendencia, memes y picks en video.
+- YouTube: Shorts con más pronósticos y estadísticas, títulos con búsquedas reales.
+El mercado es todo el público hispano que necesita datos de fútbol y deportes (hinchas, comentaristas, periodistas,
+profesores, analistas, fantasy y adultos +18 que apuestan, siempre con estadística y sin incitar).
+Cada lunes la Dirección deja el plan económico de la semana: respétenlo y, si se apartan, justifíquenlo con datos.
+En cada reunión responden los 5 equipos (Dirección económica, Instagram, Facebook, TikTok y YouTube).
 Objetivo: crecimiento ORGÁNICO y viral (sin pauta pagada) que se convierta en cuentas creadas y en suscripciones Pro/Elite.
 PÚBLICO INTERNACIONAL: cuando haya partidos de la NBA (o NHL), incluye al menos 1 pieza "nba" al día (mercado US/LATAM),
 en español neutro; el resto, fútbol de ligas top para todo el mundo hispano.
@@ -290,8 +143,7 @@ y prioriza lo que genera guardados, compartidos y comentarios.
 
 Cómo trabajas en la reunión:
 1. Mira las métricas y el historial (ver_metricas, ver_historial).
-2. Consulta a los miembros que aporten (consultar). Si falta una especialidad, CONTRATA un agente nuevo con un rol y
-   misión precisos (contratar) y consúltalo; despide a quien no aporte. Máximo {MAX_MEMBERS} miembros.
+2. Consulta a los especialistas que aporten (consultar). La empresa son 10 agentes fijos: no contrates ni despidas.
 3. Decide el plan de HOY con definir_plan: 7 a 10 publicaciones (volumen alto: el objetivo es crecer rápido), al menos 3 de
    ellas "reel" (video vertical de ritmo rápido, el formato que más alcance orgánico da; topic "resultados" para un reel
    de resultados, si no son picks), solo equipos de ligas top, horas 07:00–23:00 separadas al menos 60 min,
@@ -330,6 +182,8 @@ TOOLS = [
          "type": {"type": "string", "enum": list(POST_TYPES)},
          "time": {"type": "string", "description": "HH:MM entre 07:00 y 23:00, o \"ahora\" para publicar apenas termine la reunión (máx. 1)"},
          "liga": {"type": "string", "description": "opcional para picks_dia: liga o deporte a destacar (ej. Liga BetPlay, Premier League, NBA)"},
+         "redes": {"type": "array", "items": {"type": "string", "enum": ["instagram", "facebook", "tiktok", "youtube"]},
+                   "description": "redes donde sale (según el público de cada una)"},
          "meme_formato": {"type": "string", "enum": ["tweet", "nadie", "expectativa", "pov", "starter", "no_si", "noticia", "cuando", "tier", "chat", "duelo", "impopular", "reto", "giro"],
                           "description": "solo para meme"},
          "angle": {"type": "string"}, "topic": {"type": "string"},
@@ -371,7 +225,7 @@ def now_co() -> datetime:
 
 def roster() -> dict:
     r = load(ROSTER, {})
-    members = {**BASE, **{k: v for k, v in (r.get("miembros") or {}).items() if k not in BASE}}
+    members = dict(BASE)              # exactly the 10 agents of the company (older hires are not loaded)
     return {"miembros": members, "historial": r.get("historial") or []}
 
 
@@ -503,7 +357,7 @@ class Committee:
         f = self.facts or {}
         earliest = (now_co() + __import__("datetime").timedelta(minutes=10)).strftime("%H:%M")
         self.now_posts = []
-        for p in posts[:8]:
+        for p in posts[:12]:
             t, hhmm = p.get("type"), str(p.get("time", ""))
             if hhmm.strip().lower() in ("ahora", "ya", "now"):
                 text = " ".join(str(p.get(k, "")) for k in ("angle", "topic", "hook", "cta"))
@@ -531,7 +385,9 @@ class Committee:
                 problems.append(f"{t} {hhmm}: menos de 60 min de otra publicación")
                 continue
             times.append(m)
-            ok.append({k: str(p.get(k, ""))[:400] for k in ("type", "time", "angle", "topic", "hook", "cta", "liga", "meme_formato", "mercado", "segmento")})
+            ok.append({k: str(p.get(k, ""))[:400] for k in ("type", "time", "angle", "topic", "hook", "cta", "liga", "meme_formato", "mercado", "segmento")}
+                      | {"redes": _redes(p.get("redes"), t)})
+        ok = self.mandatory(ok, earliest)
         e = now_co() + __import__("datetime").timedelta(minutes=10)
         left = (23 * 60 - (e.hour * 60 + e.minute)) // 60 + 1 if (now_co().strftime("%Y-%m-%d") == getattr(self, "today", "")
                                                                 and getattr(self, "mode", "normal") != "extra_noche") else 10
@@ -539,6 +395,31 @@ class Committee:
             return "Plan rechazado: " + "; ".join(problems or ["menos de 3 publicaciones válidas"])
         self.plan = sorted(ok, key=lambda p: p["time"])
         return "Plan guardado." + (f" Descartadas: {'; '.join(problems)}" if problems else "")
+
+    MORNING, NIGHT = "07:30", "22:30"
+
+    def mandatory(self, ok: list[dict], earliest: str) -> list[dict]:
+        """Every day opens with the picks (fewer than 5, famous teams) and closes with how the model did."""
+        today = getattr(self, "today", "")
+        live_today = now_co().strftime("%Y-%m-%d") == today and getattr(self, "mode", "normal") != "extra_noche"
+        st = self.state or {}
+        done_today = {p.get("type") for p in (st.get("plan") or []) if st.get("day") == today and p.get("status") == "done"}
+        morning_open = not live_today or self.MORNING >= earliest
+        out = [p for p in ok if p["type"] != "picks_dia" or p["time"] > "11:00"]
+        if "picks_dia" not in done_today:
+            slot = self.MORNING if morning_open else (earliest if earliest <= "21:00" else None)
+            if slot:
+                out = [p for p in out if p["time"] >= slot and abs(_mins(p["time"]) - _mins(slot)) >= 60]
+                out.append({"type": "picks_dia", "time": slot, "obligatorio": "manana", "redes": list(ALL_NETS),
+                            "angle": "Los picks del día: menos de 5, equipos famosos de Europa, Sudamérica y Liga BetPlay",
+                            "topic": "picks del día", "hook": "", "cta": "Todas las probabilidades, gratis, en el enlace del perfil"})
+        out = [p for p in out if p["time"] < self.NIGHT and abs(_mins(p["time"]) - _mins(self.NIGHT)) >= 60
+               or p["type"] == "resultados" and p.get("obligatorio")]
+        out = [p for p in out if not (p["type"] == "resultados" and not p.get("obligatorio"))] + \
+            [{"type": "resultados", "time": self.NIGHT, "obligatorio": "noche", "redes": list(ALL_NETS),
+              "angle": "Cómo le fue al modelo con los picks de la mañana: aciertos y fallos", "topic": "resultados",
+              "hook": "", "cta": "Historial público en el enlace del perfil"}]
+        return sorted(out, key=lambda p: p["time"])
 
     ART_OPTS = {"acento": ("oro", "esmeralda", "rubi", "zafiro", "violeta", "champana"),
                 "portada": ("impacto", "editorial"), "ritmo": ("rapido", "muy_rapido", "elegante")}
@@ -598,7 +479,7 @@ Respuestas de los departamentos: {json.dumps(answers, ensure_ascii=False)}
 Formatos disponibles: {types}
 {feedback}
 PASO 2: decide. Formato:
-{{"plan":[{{"type":"...","time":"HH:MM","angle":"...","topic":"...","hook":"...","cta":"...","liga":"(opcional)","mercado":"CO|MX|US|AR|ES|CL|PE|LATAM","segmento":"hinchas|comentaristas|profesores|analistas|fantasy|apostadores18"}}],
+{{"plan":[{{"type":"...","time":"HH:MM","angle":"...","topic":"...","hook":"...","cta":"...","liga":"(opcional)","mercado":"CO|MX|US|AR|ES|CL|PE|LATAM","segmento":"hinchas|comentaristas|profesores|analistas|fantasy|apostadores18","redes":["instagram","facebook","tiktok","youtube"]}}],
 "decisiones":[{{"decision":"...","razon_economica":"...","efecto_esperado":"...","metrica":"...","revisar":"AAAA-MM-DD"}}],
 "direccion_arte":{{"acento":"oro|esmeralda|rubi|zafiro|violeta|champana","portada":"impacto|editorial","ritmo":"rapido|muy_rapido|elegante"}},
 "seo":{{"hashtags":["15 a 20 sin #, de Daniela, los más importantes primero"],"palabras":["6 a 10 palabras clave"]}},
@@ -793,7 +674,7 @@ def board(api_key: str | None, signed, state: dict, facts: dict, log=print) -> d
          "no (con el número)? 2) desde tu especialidad, ¿cómo asignar el inventario de la semana (unas 35 publicaciones) "
          "entre formatos, mercados y segmentos, y por qué? 3) un experimento con hipótesis, métrica y criterio.")
     answers = []
-    for k in ("sofia", "unit_econ", "econometria", "pricing", "internacional", "tiburon"):
+    for k in ("econ_crecimiento", "econ_consumidor", "ig_crecimiento", "tt_crecimiento", "yt_busqueda", "fb_comunidad"):
         try:
             answers.append({"miembro": c.r["miembros"][k].get("nombre"), "respuesta": c.ask(k, q)})
         except Exception as e:
@@ -875,6 +756,26 @@ def seo_for(today: str) -> dict:
     """Daniela's SEO bank for today (hashtags + keywords); empty if the committee has not met."""
     p = load(PLAN, {})
     return (p.get("seo") or {}) if p.get("day") == today else {}
+
+
+ALL_NETS = ("instagram", "facebook", "tiktok", "youtube")
+
+
+def with_mandatory(plan: list[dict], today: str, state: dict) -> list[dict]:
+    """Add the daily morning picks and night results to any plan (also the fallback one)."""
+    c = Committee.__new__(Committee)
+    c.today, c.mode, c.state = today, "extra_noche", state
+    return c.mandatory([{**p, "redes": _redes(p.get("redes"), p.get("type", ""))} for p in plan or []], "00:00")
+NET_DEFAULT = {"sabias_que": ["facebook", "youtube"], "noticia": ["facebook"], "nba": list(ALL_NETS)}
+
+
+def _redes(val, t: str) -> list[str]:
+    nets = [n for n in (val if isinstance(val, list) else str(val or "").replace(",", " ").split()) if n in ALL_NETS]
+    return nets or NET_DEFAULT.get(t, list(ALL_NETS))
+
+
+def _mins(hhmm: str) -> int:
+    return int(hhmm[:2]) * 60 + int(hhmm[3:5])
 
 
 def plan_for(today: str) -> list[dict] | None:

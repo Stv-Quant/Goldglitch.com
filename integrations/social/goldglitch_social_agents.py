@@ -107,13 +107,17 @@ POST_TYPES = {
     "educativo": "Pieza educativa de una imagen sobre probabilidad o cómo leer los datos.",
     "pregunta": "Pregunta a la comunidad para generar comentarios y compartidos (imagen con la pregunta).",
     "mito_dato": "Mito vs dato sobre probabilidad o estadística deportiva (imagen).",
+    "sabias_que": "'¿Sabías que…?' para Facebook (público adulto) y YouTube: un dato curioso, histórico o estadístico REAL del "
+                  "fútbol o de los partidos del día (de los datos o titulares; nunca inventado), en imagen y video narrado.",
+    "noticia": "Noticia o dato de fútbol del día para Facebook: un titular REAL de hoy (de los titulares de ESPN en los datos) "
+               "explicado con contexto y, si aplica, la probabilidad del modelo para su próximo partido. Nunca inventar.",
     "nba": "Picks de la NBA (y NHL) para el público internacional: carrusel + reel narrado con los partidos de esta noche "
            "y sus probabilidades. Español neutro, mercados EE. UU. hispano, México y LATAM.",
     "meme": "Meme ORIGINAL de fútbol y datos en la voz de EGG (plantillas propias: tuit de EGG, 'Nadie / Literalmente "
             "nadie', expectativa vs realidad, POV, starter pack, no/sí, último momento, cuando, tier list, chat del parche, "
             "duelo) — imagen + reel corto, pensado para que el hombre lo mande al grupo de los amigos.",
 }
-TEXT_TYPES = {"educativo", "pregunta", "mito_dato"}
+TEXT_TYPES = {"educativo", "pregunta", "mito_dato", "sabias_que", "noticia"}
 MEME_FORMATS = {
     "tweet": '{"texto": "el tuit (máx. 180 caracteres)"}',
     "nadie": '{"remate": "lo que viene después de Nadie: / Literalmente nadie: (máx. 90 caracteres)"}',
@@ -241,6 +245,7 @@ Entrega:
 {"Si en los datos hay tendencias_del_momento, monta el gancho y el texto sobre la que más pegue con esta pieza (sin inventar hechos)." if data.get("tendencias_del_momento") and post['type'] != 'meme' else ''}
 {self._seo_ask(post)}
 {self._market_ask(post)}
+{self._net_ask(post)}
 No escribas hashtags dentro de ig, fb ni tiktok (van aparte) y no uses "#" para numerar: escribe "Nº1" o "el 1".
 PARTIDOS Y FECHAS (crítico): la hora actual está en los datos ("ahora"). Solo presenta como futuro un partido que esté en
 los datos de próximos partidos con su hora; los resultados van en pasado. Los titulares y tendencias son noticias que YA
@@ -353,6 +358,20 @@ Formato: {{"puntajes":{{...}}, "mejorado":{{solo las claves que reescribiste}}}}
                 "que 'sabe de fútbol', el VAR, el minuto 90, el que dice que su equipo ganaba fijo…), con el giro EGG de "
                 "datos y lujo con clase. Original: nada de personajes, marcas ni imágenes de memes famosos. Nunca te burles "
                 "de un grupo de personas; sí del fútbol y de nosotros mismos.")
+
+    @staticmethod
+    def _net_ask(post: dict) -> str:
+        nets = post.get("redes") or []
+        tips = {"instagram": "Instagram: público joven que viene por los picks; directo, visual, gancho fuerte.",
+                "facebook": "Facebook: público más adulto; tono cercano y claro, '¿Sabías que…?', datos y contexto, sin jerga juvenil.",
+                "tiktok": "TikTok: tendencia del día, ritmo y gancho de 1 segundo.",
+                "youtube": "YouTube: título y descripción con búsquedas reales, más datos."}
+        sel = [tips[n] for n in nets if n in tips]
+        extra = ("Esta es la pieza OBLIGATORIA de la mañana: los picks del día (menos de 5, equipos famosos); que se sienta como "
+                 "la cita diaria." if post.get("obligatorio") == "manana" else
+                 "Esta es la pieza OBLIGATORIA de la noche: cómo le fue al modelo con los picks de la mañana, aciertos y fallos "
+                 "con honestidad." if post.get("obligatorio") == "noche" else "")
+        return ("Redes de esta pieza y su público:\n- " + "\n- ".join(sel) + ("\n" + extra if extra else "")) if sel else extra
 
     @staticmethod
     def _market_ask(post: dict) -> str:

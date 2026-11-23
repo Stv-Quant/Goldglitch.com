@@ -497,7 +497,8 @@ def community_round(agent, nets: list[str], fb_page: str | None, log=print, max_
         url = url or fb_page
         if not url:
             continue
-        log(f"  [Luciana] Comunidad · {net}: respondiendo comentarios y dando me gusta…")
+        who = {"instagram": "Valeria", "facebook": "Jorge", "tiktok": "Mateo", "youtube": "Andrés"}.get(net, "Jorge")
+        log(f"  [{who}] Comunidad · {net}: respondiendo comentarios y dando me gusta…")
         try:
             r = agent.run(task, url, [], "", False, net, system=COMMUNITY_SYSTEM, max_steps=max_steps,
                           final_regex=r"^\s*$")
@@ -505,7 +506,8 @@ def community_round(agent, nets: list[str], fb_page: str | None, log=print, max_
             out[net] = (r, detail)
             n = save_social_metrics(net, detail)
             if n:
-                log(f"  [Ricardo] Métricas de {net}: {n} publicaciones leídas")
+                who = {"instagram": "Daniela", "facebook": "Jorge", "tiktok": "Mateo", "youtube": "Andrés"}.get(net, "Jorge")
+                log(f"  [{who}] Métricas de {net}: {n} publicaciones leídas")
         except Exception as e:
             out[net] = ("error", str(e)[:300])
             log(f"  comunidad {net}: {e}")

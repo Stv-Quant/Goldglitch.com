@@ -46,13 +46,13 @@ LOOKS = {  # hair, skin, top, pants
     "segmentos": ("#2b2b2b", "#d19a72", "#f97316", "#111827"), "neuro": ("#101010", "#e2ad88", "#06b6d4", "#0b1220"),
     "disrupcion": ("#7c3aed", "#e8b691", "#facc15", "#111111"), "narrativa": ("#8a5a33", "#f2cfb3", "#be185d", "#27272a"),
 }
-ROOM_OF = {  # department → room in the floor plan
-    "direccion": ["director", "tiburon", "marca"],
-    "economia": ["sofia", "unit_econ", "econometria", "pricing", "analista", "consumidor"],
-    "datos": ["viralidad", "viral", "comunidad", "neuro", "seo", "social_analytics", "datos_ciencia"],
-    "mercados": ["internacional", "mx_us", "conosur_es"],
-    "creativo": ["diseno", "disrupcion", "video", "copy", "narrativa"],
-    "juntas": ["audiencia", "segmentos", "parche"],
+ROOM_OF = {  # department → room in the floor plan (10-agent company)
+    "direccion": ["econ_crecimiento", "econ_consumidor"],
+    "economia": [],
+    "datos": ["ig_contenido", "ig_crecimiento"],
+    "mercados": ["yt_contenido", "yt_busqueda"],
+    "creativo": ["tt_contenido", "tt_crecimiento"],
+    "juntas": ["fb_contenido", "fb_comunidad"],
 }
 
 
@@ -81,7 +81,7 @@ def roster() -> dict:
 def data() -> dict:
     now = datetime.now(TZ)
     today = now.strftime("%Y-%m-%d")
-    members = {"director": {"nombre": "Valentina", "rol": "Directora General"}, **roster()}
+    members = roster()
     names = {k: v.get("nombre", "") for k, v in members.items() if v.get("nombre")}
     st = statuses(names)
     people = []
@@ -187,14 +187,14 @@ function box(x, y, w, d, h, c, z = 0, faceDeco) {
 function ell(x, y, rx, ry, c, z = 0) { const [a, b] = iso(x, y, z); cx.beginPath(); cx.ellipse(a, b, rx, ry, 0, 0, 7); cx.fillStyle = c; cx.fill(); }
 // -------------------------------------------------- floor plan
 const ROOMS = {
-  direccion: {x: 0, y: 0, w: 8, d: 7, floor: ['#6b4423', '#764b27'], name: 'DIRECCIÓN GENERAL'},
-  economia: {x: 8, y: 0, w: 10, d: 7, floor: ['#8e9aa6', '#97a3ae'], name: 'ESTRATEGIA ECONÓMICA'},
-  datos: {x: 18, y: 0, w: 12, d: 7, floor: ['#7c8a99', '#8593a1'], name: 'DATOS Y TENDENCIAS'},
-  mercados: {x: 0, y: 7, w: 8, d: 8, floor: ['#3b4f7a', '#425883'], name: 'MERCADOS INTERNACIONALES'},
+  direccion: {x: 0, y: 0, w: 8, d: 7, floor: ['#6b4423', '#764b27'], name: 'DIRECCIÓN · ECONOMISTAS'},
+  economia: {x: 8, y: 0, w: 10, d: 7, floor: ['#8e9aa6', '#97a3ae'], name: 'SALA DE ESTRATEGIA'},
+  datos: {x: 18, y: 0, w: 12, d: 7, floor: ['#7c8a99', '#8593a1'], name: 'INSTAGRAM'},
+  mercados: {x: 0, y: 7, w: 8, d: 8, floor: ['#3b4f7a', '#425883'], name: 'YOUTUBE'},
   pasillo: {x: 8, y: 7, w: 14, d: 3, floor: ['#3a3f47', '#41464f']},
-  juntas: {x: 8, y: 10, w: 8, d: 6, floor: ['#7a4e2a', '#83552e'], name: 'SALA DE JUNTAS'},
+  juntas: {x: 8, y: 10, w: 8, d: 6, floor: ['#7a4e2a', '#83552e'], name: 'FACEBOOK'},
   biblio: {x: 16, y: 10, w: 6, d: 6, floor: ['#5c3b22', '#654126'], name: 'BIBLIOTECA'},
-  creativo: {x: 22, y: 7, w: 8, d: 9, floor: ['#2e3a66', '#34416f'], name: 'ESTUDIO CREATIVO'},
+  creativo: {x: 22, y: 7, w: 8, d: 9, floor: ['#2e3a66', '#34416f'], name: 'TIKTOK'},
   jardin: {x: 0, y: 15, w: 11, d: 9, floor: ['#3f8f3a', '#46993f'], name: 'JARDÍN'},
   zen: {x: 11, y: 16, w: 9, d: 8, floor: ['#d9c9a0', '#e1d2ab'], name: 'ZONA ZEN'},
   lounge: {x: 20, y: 16, w: 10, d: 8, floor: ['#5a2f4a', '#633452'], name: 'LOUNGE Y LIVES'},
