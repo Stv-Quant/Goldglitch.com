@@ -438,8 +438,13 @@ Tu trabajo: hacer que la comunidad sienta que hay alguien de verdad del otro lad
 - Prohibido: mensajes directos, seguir o dejar de seguir, borrar o reportar, cambiar configuraciones, abrir enlaces de
   comentarios, publicar contenido nuevo salvo lo que diga la tarea.
 - Usa la herramienta escribir para tus respuestas (las escribes tú, en el momento).
-Al final usa terminar con estado "publicado" y en detalle: cuántas respuestas, cuántos me gusta y 2 o 3 temas o
-preguntas frecuentes de la comunidad (sirven a la firma). Si no hay comentarios nuevos, termina igual y dilo."""
+MÉTRICAS (para el equipo de datos): revisa también las métricas visibles de las últimas 5 publicaciones de esta red
+(reproducciones o vistas, me gusta, comentarios, compartidos y guardados si se ven; en YouTube Studio y TikTok Studio están
+en la lista de contenido; en Instagram en cada publicación o en "Ver estadísticas"). Solo lee, no cambies nada.
+Al final usa terminar con estado "publicado" y en detalle: cuántas respuestas, cuántos me gusta, 2 o 3 temas o preguntas
+frecuentes de la comunidad, y una última línea que empiece exactamente con METRICAS: seguida de un JSON
+[{"publicacion": "título o primeras palabras", "fecha": "como se vea", "vistas": n, "likes": n, "comentarios": n,
+"compartidos": n, "guardados": n}] (usa null si no se ve). Si no hay comentarios nuevos, termina igual."""
 
 COMMUNITY_TASKS = {
     "youtube": ("https://studio.youtube.com/", "En YouTube Studio > 'Comentarios' (menú izquierdo), pestaña 'Sin respuesta' / "
@@ -458,7 +463,33 @@ COMMUNITY_TASKS = {
 }
 
 
-def community_round(agent, nets: list[str], fb_page: str | None, log=print, max_steps: int = 45) -> dict:
+SOCIAL_METRICS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "redes_metricas_redes.json")
+
+
+def save_social_metrics(net: str, detail: str) -> int:
+    """Keep the per-post numbers the community agent read (views, likes, comments, shares, saves)."""
+    import re as _re
+    m = _re.search(r"METRICAS:\s*(\[.*\])", detail or "", _re.S)
+    if not m:
+        return 0
+    try:
+        rows = json.loads(m.group(1))
+    except ValueError:
+        return 0
+    try:
+        data = json.load(open(SOCIAL_METRICS, encoding="utf-8"))
+    except (OSError, ValueError):
+        data = []
+    at = time.strftime("%Y-%m-%d %H:%M")
+    rows = [{"red": net, "leido": at, **{k: r.get(k) for k in ("publicacion", "fecha", "vistas", "likes", "comentarios", "compartidos", "guardados")}}
+            for r in rows if isinstance(r, dict)][:10]
+    data = (data + rows)[-400:]
+    with open(SOCIAL_METRICS, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=1)
+    return len(rows)
+
+
+def community_round(agent, nets: list[str], fb_page: str | None, log=print, max_steps: int = 60) -> dict:
     """One round of community management on each network (CLI screen agent)."""
     out = {}
     for net in nets:
@@ -470,7 +501,11 @@ def community_round(agent, nets: list[str], fb_page: str | None, log=print, max_
         try:
             r = agent.run(task, url, [], "", False, net, system=COMMUNITY_SYSTEM, max_steps=max_steps,
                           final_regex=r"^\s*$")
-            out[net] = (r, (getattr(agent, "last", {}) or {}).get("detalle", ""))
+            detail = (getattr(agent, "last", {}) or {}).get("detalle", "")
+            out[net] = (r, detail)
+            n = save_social_metrics(net, detail)
+            if n:
+                log(f"  [Ricardo] Métricas de {net}: {n} publicaciones leídas")
         except Exception as e:
             out[net] = ("error", str(e)[:300])
             log(f"  comunidad {net}: {e}")

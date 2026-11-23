@@ -28,8 +28,9 @@ OUT = os.path.join(HERE, "redes_salida", "ilustraciones")
 CHARS = os.path.join(HERE, "redes_personajes")
 MODELS = os.path.join(HERE, "modelos_ia")
 
-STYLE = ("premium editorial digital illustration by a top concept artist, cinematic lighting, rich detail, painterly "
-         "textures, depth of field, dramatic rim light, luxury black and gold color palette, sharp focus, award-winning, "
+STYLE = ("authentic editorial sports photograph, documentary style, shot on 35mm with an 85mm lens, natural stadium "
+         "light, candid moment, real textures, subtle film grain, shallow depth of field, warm gold and deep black tones, "
+         "magazine quality, "
          "completely free of any text, letters, numbers or logos, plain blank fabrics and surfaces")
 # things that make the model paint fake letters: replace them with text-free versions
 TEXTY = [(r"\b(with |showing )?(the )?(numbers?|digits?)( \d+)?\b", ""), (r"\b\d+\b", ""),
