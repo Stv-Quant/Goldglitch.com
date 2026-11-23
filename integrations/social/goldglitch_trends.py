@@ -174,6 +174,28 @@ def get(log=print, force: bool = False) -> dict:
     return data
 
 
+_SUGGEST: dict = {}
+
+
+def search_phrases(seeds: list[str], per: int = 6) -> list[str]:
+    """What people actually type in YouTube/Google search for these topics (public autocomplete). Real phrases for
+    natural SEO titles, descriptions and hashtags."""
+    out = []
+    for q in seeds[:6]:
+        q = " ".join(str(q).split())[:60]
+        if not q:
+            continue
+        if q not in _SUGGEST:
+            try:
+                r = requests.get("https://suggestqueries.google.com/complete/search",
+                                 params={"client": "firefox", "ds": "yt", "hl": "es", "q": q}, headers=UA, timeout=8)
+                _SUGGEST[q] = [s for s in (r.json()[1] if r.ok else []) if _safe(s)][:per]
+            except Exception:
+                _SUGGEST[q] = []
+        out += _SUGGEST[q]
+    return list(dict.fromkeys(out))[:20]
+
+
 def brief(data: dict | None = None, n: int = 8) -> dict:
     """Compact version for prompts (agents read it to tie memes and hooks to what is happening now)."""
     data = data if data is not None else get()

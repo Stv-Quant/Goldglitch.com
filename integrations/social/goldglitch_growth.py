@@ -268,6 +268,8 @@ arte), Viralidad y Tendencias (Valeria, con Isabella y Luciana; meme y audio en 
 métricas por publicación y por red, anomalías y propuestas) y Growth y Ventas (Santiago "el Tiburón",
 con Juliana en marca y cumplimiento).
 Objetivo: crecimiento ORGÁNICO y viral (sin pauta pagada) que se convierta en cuentas creadas y en suscripciones Pro/Elite.
+PÚBLICO INTERNACIONAL: cuando haya partidos de la NBA (o NHL), incluye al menos 1 pieza "nba" al día (mercado US/LATAM),
+en español neutro; el resto, fútbol de ligas top para todo el mundo hispano.
 Los HASHTAGS son fundamentales para el alcance: cada publicación lleva el banco SEO de Daniela (20 a 30 en Instagram,
 10 en TikTok, 12 en YouTube), mezclando grandes, medianos y de nicho, de la liga, los equipos y el mercado; revisa cuáles
 rindieron con Ricardo.
