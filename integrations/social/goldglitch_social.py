@@ -203,7 +203,9 @@ def build(post: dict, facts: dict, ag: Agents, now: datetime, tag: str, shown: s
     focus = (post.get("liga") or "").strip()
     seo = G.seo_for(now.strftime("%Y-%m-%d"))
     post = {**post, "seo": seo}
-    fresh = [r for r in facts.get("upcoming") or [] if match_key(r) not in (shown or set())]
+    soon = time.time() * 1000 + 20 * 60 * 1000        # never a match that already started (or starts in < 20 min)
+    fresh = [r for r in facts.get("upcoming") or [] if match_key(r) not in (shown or set())
+             and float(r.get("kickoffAt") or 0) > soon]
     picks = V.top_picks(fresh, 5, focus) or V.top_picks(fresh, 5)
     res = sorted([r for r in facts.get("results") or [] if V.top_league(r.get("league"))],
                  key=lambda r: (r["status"] != "won", -r["p"])) or sorted(facts.get("results") or [], key=lambda r: (r["status"] != "won", -r["p"]))
@@ -240,7 +242,14 @@ def build(post: dict, facts: dict, ag: Agents, now: datetime, tag: str, shown: s
         if not rows:
             raise SkipPiece("no hay partidos nuevos de ligas top (los de las últimas 24 h ya se mostraron)"
                             if reel_of == "picks_dia" else "no hay partidos de ligas top para esta pieza")
+    data["ahora"] = now.strftime("%Y-%m-%d %H:%M (hora de Colombia)")
     tx = ag.write(post, data)
+    for k in ("cover_title", "cover_subtitle", "reel_hook", "reel_sub", "edu_title", "edu_body"):
+        if isinstance(tx.get(k), str):
+            tx[k] = V.strip_emoji(tx[k])
+    if isinstance(tx.get("meme"), dict):
+        tx["meme"] = {k: (V.strip_emoji(v) if isinstance(v, str) else [V.strip_emoji(x) if isinstance(x, str) else x for x in v]
+                          if isinstance(v, list) else v) for k, v in tx["meme"].items()}
     # Hashtags: Daniela's SEO bank first, then leagues/teams of the real picks, then the writer's (Instagram allows 30).
     seen, tags = set(), []
     base_tags = (["memesdefutbol", "futbolmemes", "humorfutbolero"] if t == "meme" else []) \
@@ -310,6 +319,10 @@ def caption(tx: dict, key: str) -> str:
     like '#1' in the text becomes 'Nº1' and hashtags written inside the text move to the hashtag block.
     Instagram: REDES_IG_HASHTAGS (30); TikTok: 10 (big + topic); Facebook: 8. Never empty."""
     text = tx.get(key) or ((tx.get("fb") or "").replace("ref=fb", "ref=yt") if key == "yt" else "")
+    if key == "fb":     # Meta allows only 2 posts with links per month to pages without Meta Verified: never put one
+        text = re.sub(r"\s*(https?://\S+|(www\.)?easygoldglitch\.com\S*)", "", str(text or "")).rstrip(" :→-👉👇")
+        if "perfil" not in text.lower():
+            text += "\n\nEnlace en el perfil de la página."
     body = re.sub(r"#(\d)", r"Nº\1", str(text or ""))
     inline = re.findall(r"(?<![\w&])#([^\W\d][\w]*)", body)
     body = re.sub(r"[ \t]*(?<![\w&])#[^\W\d][\w]*", "", body).rstrip()
@@ -602,6 +615,7 @@ def _tick(dry: bool) -> None:
             except SkipPiece as e:
                 post["status"] = "skipped"
                 log(f"  se omite: {e}")
+                save_json(STATE, st)
                 continue
             publish(post, piece, meta, tt, dry)
             if post.get("done") and not dry:

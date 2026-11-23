@@ -411,7 +411,8 @@ class AgentYouTube:
                 "y usa escribir_texto_preparado. Público: 'No, no es contenido creado para niños'. Abre 'Mostrar más' solo si "
                 "hace falta. Siguiente > Siguiente > Siguiente hasta 'Visibilidad' > 'Pública' > 'Publicar'. Espera la "
                 "confirmación ('Video publicado'). Si el canal pide verificar el teléfono o iniciar sesión, termina con "
-                "estado bloqueado." + trending_audio_step("YouTube Studio ('Editor' > 'Audio')", "YouTube", self.audio_vibe))
+                "estado bloqueado. IMPORTANTE: NO cierres el diálogo de subida antes de pulsar 'Publicar' (si lo cierras queda como "
+                "borrador privado) y NO intentes cambiar el audio: en la subida de YouTube Studio no existe esa opción.")
         run = self.agent.run
         try:
             return run(task, "https://studio.youtube.com/", [path], description, self.rehearsal, "youtube",
