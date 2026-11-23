@@ -41,12 +41,31 @@ def find_claude() -> str | None:
     return None
 
 
+EFFORT = os.environ.get("REDES_ESFUERZO", "high")          # every agent runs Haiku 5.5 at high effort
+_EFFORT_FLAG: list | None = None
+
+
+def _effort_args() -> tuple[list[str], dict]:
+    """High effort for every agent: Claude Code's --effort flag when this version has it; otherwise extended thinking."""
+    global _EFFORT_FLAG
+    if _EFFORT_FLAG is None:
+        try:
+            h = subprocess.run([find_claude(), "--help"], capture_output=True, text=True, encoding="utf-8", errors="replace",
+                               timeout=30, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0)).stdout
+        except Exception:
+            h = ""
+        _EFFORT_FLAG = ["--effort", EFFORT] if "--effort" in h else []
+    if _EFFORT_FLAG or EFFORT in ("", "off", "normal"):
+        return _EFFORT_FLAG, {}
+    return [], {"MAX_THINKING_TOKENS": {"high": "16000", "medium": "6000", "low": "2000"}.get(EFFORT, "16000")}
+
+
 def available() -> bool:
     return find_claude() is not None and os.environ.get("REDES_USAR_PRO", "1") != "0"
 
 
 def run(prompt: str, system: str, *, mcp_config: dict | None = None, allowed_tools: str | None = None,
-        max_turns: int = 1, timeout: int = 300, model: str = MODEL, tools: str = "") -> str:
+        max_turns: int = 1, timeout: int = 600, model: str = MODEL, tools: str = "") -> str:
     """One non-interactive Claude Code run. Returns the final text. Raises UsageLimit / CliError."""
     exe = find_claude()
     if not exe:
@@ -71,7 +90,10 @@ def run(prompt: str, system: str, *, mcp_config: dict | None = None, allowed_too
     with os.fdopen(sys_fd, "w", encoding="utf-8") as f:
         f.write(system)
     args += ["--system-prompt-file", sys_path]
+    eff_args, eff_env = _effort_args()
+    args += eff_args
     env = {k: v for k, v in os.environ.items() if k not in ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN")}  # use the Pro login
+    env.update(eff_env)
     try:
         p = subprocess.run(args, input=prompt, capture_output=True, text=True, encoding="utf-8", errors="replace",
                            timeout=timeout, cwd=WORKDIR, env=env,
@@ -101,7 +123,7 @@ def run(prompt: str, system: str, *, mcp_config: dict | None = None, allowed_too
     return text
 
 
-def ask_json(system: str, task: str, timeout: int = 300) -> dict:
+def ask_json(system: str, task: str, timeout: int = 600) -> dict:
     """Text-only call that must answer with one JSON object."""
     text = run(task, system + "\n\nResponde SOLO con un objeto JSON válido, sin texto adicional ni bloques de código.",
                timeout=timeout)
@@ -112,7 +134,7 @@ def ask_json(system: str, task: str, timeout: int = 300) -> dict:
         raise CliError(f"respuesta sin JSON válido: {e}: {text[:200]}")
 
 
-def ask_image_json(system: str, task: str, image_path: str, timeout: int = 300) -> dict:
+def ask_image_json(system: str, task: str, image_path: str, timeout: int = 600) -> dict:
     """Look at one image (Claude reads it with its Read tool, nothing else allowed) and answer with JSON."""
     import shutil
     os.makedirs(WORKDIR, exist_ok=True)
@@ -128,7 +150,7 @@ def ask_image_json(system: str, task: str, image_path: str, timeout: int = 300) 
         raise CliError(f"respuesta sin JSON válido: {e}: {text[:200]}")
 
 
-def ask_text(system: str, task: str, timeout: int = 300) -> str:
+def ask_text(system: str, task: str, timeout: int = 600) -> str:
     return run(task, system, timeout=timeout)
 
 

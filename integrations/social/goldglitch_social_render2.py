@@ -88,6 +88,38 @@ def top_picks(rows: list[dict], n: int = 5, focus: str = "") -> list[dict]:
     return best[:n]
 
 
+FAMOUS = ("real madrid", "barcelona", "atletico madrid", "atlético madrid", "manchester city", "manchester united", "liverpool",
+          "arsenal", "chelsea", "tottenham", "newcastle", "bayern", "dortmund", "leverkusen", "paris saint", "psg", "marseille",
+          "juventus", "milan", "inter", "napoli", "roma", "benfica", "porto", "sporting", "ajax", "boca juniors", "river plate",
+          "racing club", "independiente", "san lorenzo", "flamengo", "palmeiras", "corinthians", "sao paulo", "são paulo",
+          "santos", "gremio", "grêmio", "internacional", "fluminense", "botafogo", "atletico mineiro", "atlético mineiro",
+          "atletico nacional", "atlético nacional", "millonarios", "america de cali", "américa de cali", "deportivo cali",
+          "junior", "santa fe", "once caldas", "independiente medellin", "independiente medellín", "tolima", "america", "chivas",
+          "tigres", "monterrey", "cruz azul")
+EUROPE = {"Champions League", "Europa League", "Premier League", "LaLiga", "Serie A", "Bundesliga", "Ligue 1", "Primeira Liga", "Eredivisie"}
+SOUTH = {"Copa Libertadores", "Copa Sudamericana", "Brasileirão", "Liga Profesional Argentina"}
+
+
+def famous_picks(rows: list[dict], n: int = 4) -> list[dict]:
+    """The morning picks: fewer than 5, the most famous teams, mixing Europe, South America and Liga BetPlay."""
+    cands = top_picks(rows, 60)
+    fame = lambda r: sum(f in (r["home"] + " " + r["away"]).lower() for f in FAMOUS)
+    cands.sort(key=lambda r: (-fame(r), r["_rank"], -float(r["p"])))
+    out: list[dict] = []
+    for pool in (lambda r: r["league"] == "Liga BetPlay", lambda r: r["league"] in SOUTH, lambda r: r["league"] in EUROPE):
+        pick = next((r for r in cands if pool(r) and r not in out and fame(r)), None) or next((r for r in cands if pool(r) and r not in out), None)
+        if pick:
+            out.append(pick)
+    for r in cands:
+        if len(out) >= n:
+            break
+        if r not in out:
+            out.append(r)
+    out = out[:n]
+    load_colors([r["league"] for r in out])
+    return sorted(out, key=lambda r: -float(r["p"]))
+
+
 def slug(s: str) -> str:
     s = unicodedata.normalize("NFKD", s).encode("ascii", "ignore").decode()
     return "".join(w.capitalize() for w in "".join(c if c.isalnum() else " " for c in s).split())[:30]
