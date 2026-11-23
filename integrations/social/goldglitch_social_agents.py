@@ -244,6 +244,12 @@ Entrega:
 {self._seo_ask(post)}
 {self._market_ask(post)}
 No escribas hashtags dentro de ig, fb ni tiktok (van aparte) y no uses "#" para numerar: escribe "Nº1" o "el 1".
+PARTIDOS Y FECHAS (crítico): la hora actual está en los datos ("ahora"). Solo presenta como futuro un partido que esté en
+los datos de próximos partidos con su hora; los resultados van en pasado. Los titulares y tendencias son noticias que YA
+pasaron: nunca los presentes como un partido por jugarse ni inventes un partido. Si dudas de si ya se jugó, no lo menciones.
+VOZ HUMANA, NO DE IA: frases como las escribiría una persona real de la marca; máximo 2 emojis por texto (ninguno en
+títulos ni en textos de imagen); nada de muletillas repetidas ("o sea", "next level", "literal") en cada pieza, nada de
+listas de emojis ni de frases de plantilla ("¡No te lo pierdas!", "Descubre", "Increíble"). En fb nunca pongas enlaces.
 - concepto: el concepto elegido en máx. 7 palabras.
 - ilustracion: EN INGLÉS, la descripción de la ilustración de fondo que pintará la IA (escena, personajes ficticios,
   acción, emoción, luz y encuadre), máx. 60 palabras, cinematográfica y de lujo. Nunca personas reales, futbolistas
@@ -303,6 +309,8 @@ Datos (únicos números permitidos): {json.dumps(data, ensure_ascii=False)[:3000
 Pieza: {json.dumps({k: tx[k] for k in keys}, ensure_ascii=False)}
 
 {DISRUPT}
+Comprueba además que ningún partido presentado como futuro ya se haya jugado (compáralo con "ahora" y con las horas de
+los datos) y que el texto no suene a IA (muletillas, exceso de emojis, frases de plantilla); si falla, reescríbelo.
 Califica de 1 a 10: gancho del primer segundo, DISRUPCIÓN (¿algo que nadie en el nicho haría? ¿o es genérico?),
 relevancia para el hombre hincha, emoción/alma, claridad, moneda social (¿lo mandaría al grupo?), llamado a la acción,
 voz EGG y reglas de marca. Si algo está por debajo de 9, REESCRIBE esas

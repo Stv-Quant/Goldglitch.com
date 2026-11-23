@@ -103,8 +103,10 @@ def hashtags_for(rows: list[dict]) -> list[str]:
 
 
 # ------------------------------------------------------------------ shared look
-FONTS = ("@import url('https://fonts.googleapis.com/css2?family=Anton&family=Instrument+Serif&family=Inter:wght@400;600;800"
-         "&family=JetBrains+Mono:wght@500;700&display=swap');")
+# House typography (EGG identity): Big Shoulders Display for headlines (condensed, stadium signage), Instrument Serif
+# italic for the editorial accent, Inter for text and JetBrains Mono for every number (data feel).
+FONTS = ("@import url('https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800;900&family=Anton"
+         "&family=Instrument+Serif:ital@0;1&family=Inter:wght@400;600;800&family=JetBrains+Mono:wght@500;700&display=swap');")
 STEPS = [(0.85, "#00f0a0"), (0.75, "#a6ff3c"), (0.65, "#ffe14d"), (0.55, "#ffb020"), (0.40, "#ff7a2f"), (0.0, "#ff4d6d")]
 
 
@@ -261,7 +263,9 @@ body{{width:{w}px;height:{h}px;overflow:hidden;position:relative;color:#f3ecdc;f
 .top{{display:flex;justify-content:space-between;align-items:center}}
 .brand{{display:flex;align-items:center;gap:14px;font-weight:800;letter-spacing:.14em;font-size:24px;text-transform:uppercase}}
 .chip{{display:inline-flex;align-items:center;gap:10px;border-radius:99px;padding:10px 22px;font-family:'JetBrains Mono',monospace;font-size:24px;letter-spacing:.12em;text-transform:uppercase}}
-.anton{{font-family:Anton,Impact,sans-serif;text-transform:uppercase;letter-spacing:.01em}}
+.anton{{font-family:'Big Shoulders Display',Anton,Impact,sans-serif;font-weight:900;text-transform:uppercase;letter-spacing:.005em}}
+.serif{{font-family:'Instrument Serif',serif;font-style:italic;text-transform:none;letter-spacing:0}}
+.rule{{height:2px;background:linear-gradient(90deg,#d4af37,rgba(212,175,55,.15));margin:18px 0 0}}
 .gold{{background:linear-gradient(180deg,#fff2c0,#e7c25a 45%,#a77c18);-webkit-background-clip:text;color:transparent}}
 .foot{{margin-top:auto;display:flex;justify-content:space-between;align-items:center;font-size:22px;color:#8e877a}}
 </style></head><body>{_art_layer(h)}<div class='grain'></div><div class='streak'></div>{wm}<div class='wrap'>{body}</div></body></html>"""
@@ -279,11 +283,27 @@ def _art_layer(h: int) -> str:
 
 def top_bar(right: str, accent: str | None = None) -> str:
     accent = accent or house()
-    return (f"<div class='top'><div class='brand'>{MARK.format(s=46)}<span>Goldglitch <span style='color:#d4af37'>Stats</span></span></div>"
-            f"<div class='chip' style='border:2px solid {accent};color:{accent}'>{esc(right)}</div></div>")
+    import datetime as _dt
+    d = _dt.datetime.now(_dt.timezone(_dt.timedelta(hours=-5)))
+    days = ["LUN", "MAR", "MIÉ", "JUE", "VIE", "SÁB", "DOM"]
+    months = ["ENE", "FEB", "MAR", "ABR", "MAY", "JUN", "JUL", "AGO", "SEP", "OCT", "NOV", "DIC"]
+    edition = f"Nº {d.timetuple().tm_yday:03d} · {days[d.weekday()]} {d.day} {months[d.month - 1]}"
+    return (f"<div><div class='top'><div class='brand'>{MARK.format(s=44)}<span>EGG <span style='color:#d4af37'>·</span> "
+            f"<span style='font-weight:600;letter-spacing:.2em'>El Dato</span></span></div>"
+            f"<div style='font-family:JetBrains Mono,monospace;font-size:22px;letter-spacing:.14em;color:#b9ad92'>{edition}</div></div>"
+            f"<div class='rule'></div><div style='margin-top:14px;font-family:JetBrains Mono,monospace;font-size:20px;letter-spacing:.24em;"
+            f"color:{accent};text-transform:uppercase'>{esc(strip_emoji(right))}</div></div>")
 
 
-FOOT = "<div class='foot'><span>easygoldglitch.com</span><span>Probabilidad, no certeza · +18</span></div>"
+FOOT = ("<div class='foot' style='border-top:1px solid rgba(212,175,55,.25);padding-top:18px'><span style='letter-spacing:.12em'>"
+        "GOLDGLITCH STATS · easygoldglitch.com</span><span>Probabilidad, no certeza · +18</span></div>")
+
+
+def strip_emoji(s) -> str:
+    """Images carry no emoji (they read as 'AI template'); captions keep a few."""
+    import re as _re
+    return _re.sub("[\U0001F000-\U0001FAFF\u2600-\u27BF\uFE0F\u200D\u2B50\u2B06\u2934\u2935\u25B6\u25C0\u23E9-\u23FA]", "",
+                   str(s or "")).replace("  ", " ").strip()
 
 
 # ------------------------------------------------------------------ carousel
@@ -380,7 +400,7 @@ def meme(fmt: str, m: dict, w: int, h: int) -> str:
     if fmt == "tweet":
         body = (f"<div style='margin:auto 0;background:#0e0c09;border:2px solid #2a261f;border-radius:44px;padding:56px 54px'>"
                 f"<div style='display:flex;align-items:center;gap:22px'>{avatar('egg', 104, 'smug')}<div><div style='font-size:38px;font-weight:800'>"
-                f"EGG <span style='color:#d4af37'>✦</span></div><div style='font-size:28px;color:#8e877a'>@easygoldglitch</div></div></div>"
+                f"EGG</div><div style='font-size:28px;color:#8e877a'>@easygoldglitch</div></div></div>"
                 f"<div style='font-size:{big}px;line-height:1.3;margin-top:40px;font-weight:600'>{esc(m.get('texto') or '')}</div></div>")
     elif fmt == "nadie":
         body = (f"<div style='margin:auto 0'><div style='font-size:{big}px;line-height:1.5;color:#cfc6b2'>Nadie:<br>Literalmente nadie:</div>"
@@ -393,7 +413,7 @@ def meme(fmt: str, m: dict, w: int, h: int) -> str:
                 f"{panel('Realidad', m.get('realidad') or '', '#ff4d6d')}</div>")
     elif fmt == "pov":
         body = (f"<div style='margin:auto 0;text-align:center'><div style='display:flex;justify-content:center;align-items:center;gap:20px'>"
-                f"{avatar('egg', int(w * .26), 'shock')}<div style='font-size:{int(w * .14)}px'>{esc(m.get('emoji') or '👀')}</div></div>"
+                f"{avatar('egg', int(w * .26), 'shock')}<div style='font-size:{int(w * .14)}px'>{esc(strip_emoji(m.get('emoji') or ''))}</div></div>"
                 f"<div class='anton gold' style='font-size:{int(w * .12)}px;line-height:1'>POV:</div>"
                 f"<div style='font-size:{int(w * .066)}px;font-weight:800;line-height:1.2;margin-top:30px'>{esc(m.get('texto') or '')}</div></div>")
     elif fmt == "starter":
@@ -404,7 +424,7 @@ def meme(fmt: str, m: dict, w: int, h: int) -> str:
                 f"<div style='display:grid;grid-template-columns:1fr 1fr;gap:22px;margin-top:40px'>{tiles}</div></div>")
     elif fmt == "noticia":
         body = (f"<div style='margin:auto 0'><div class='anton' style='display:inline-block;background:#ff2d55;color:#fff;font-size:40px;"
-                f"padding:12px 26px;border-radius:12px;letter-spacing:.06em'>● ÚLTIMO MOMENTO</div>"
+                f"padding:12px 26px;border-radius:12px;letter-spacing:.06em'>ÚLTIMO MOMENTO</div>"
                 f"<div style='font-size:{int(w * .062)}px;font-weight:800;line-height:1.2;margin-top:34px'>{esc(m.get('titular') or '')}</div>"
                 f"<div style='margin-top:46px;background:#0e0c09;border:2px solid #2a261f;border-radius:36px;padding:38px 40px;display:flex;gap:22px'>"
                 f"{avatar('egg', 96, 'smug')}<div style='font-size:{int(w * .05)}px;line-height:1.3;font-weight:600'>{esc(m.get('reaccion') or '')}</div></div></div>")
@@ -426,7 +446,7 @@ def meme(fmt: str, m: dict, w: int, h: int) -> str:
         bubbles = "".join(
             (f"<div style='align-self:flex-end;display:flex;gap:16px;align-items:flex-end;max-width:88%'>"
              f"<div style='background:#d4af37;color:#050403;border-radius:30px 30px 6px 30px;padding:22px 30px'>"
-             f"<div style='font-size:24px;font-weight:800;opacity:.7'>EGG 💅</div><div style='font-size:{int(w * .042)}px;font-weight:700;line-height:1.25'>{esc(x.get('texto') or '')}</div></div>"
+             f"<div style='font-size:24px;font-weight:800;opacity:.7'>EGG</div><div style='font-size:{int(w * .042)}px;font-weight:700;line-height:1.25'>{esc(x.get('texto') or '')}</div></div>"
              f"{avatar('egg', 84, 'smug')}</div>")
             if i == len(msgs) - 1 else
             (f"<div style='align-self:flex-start;display:flex;gap:16px;align-items:flex-end;max-width:88%'>{avatar(x.get('de') or 'Parce', 76, ('shock', 'laugh', 'neutral', 'wink')[i % 4])}"
@@ -435,7 +455,7 @@ def meme(fmt: str, m: dict, w: int, h: int) -> str:
              f"<div style='font-size:{int(w * .04)}px;line-height:1.25'>{esc(x.get('texto') or '')}</div></div></div>")
             for i, x in enumerate(msgs))
         body = (f"<div style='margin:auto 0;display:flex;flex-direction:column;gap:18px'>"
-                f"<div style='text-align:center;font-size:30px;font-weight:800;color:#cfc6b2;margin-bottom:10px'>👥 {esc(m.get('grupo') or 'El parche ⚽')}</div>{bubbles}</div>")
+                f"<div style='text-align:center;font-size:30px;font-weight:800;color:#cfc6b2;margin-bottom:10px'>{esc(strip_emoji(m.get('grupo') or 'El parche'))}</div>{bubbles}</div>")
     elif fmt == "duelo":
         side = lambda who, txt, c, e: (f"<div style='flex:1;border:2px solid {c}66;background:{c}12;border-radius:34px;padding:34px 30px;text-align:center'>"
                                        f"<div style='display:flex;justify-content:center'>{e}</div><div class='anton' style='font-size:{int(w * .05)}px;color:{c};margin-top:18px'>{esc(who)}</div>"
@@ -444,16 +464,16 @@ def meme(fmt: str, m: dict, w: int, h: int) -> str:
                 f"<div class='anton' style='align-self:center;font-size:70px;color:#d4af37'>VS</div>"
                 f"{side(m.get('derecha') or 'Vos con datos', m.get('der_texto') or '', '#d4af37', avatar('egg', int(w * .2), 'smug'))}</div>")
     elif fmt == "impopular":
-        body = (f"<div style='margin:auto 0'><div class='chip' style='border:2px solid #ff4d6d;color:#ff4d6d'>🌶️ Opinión impopular</div>"
+        body = (f"<div style='margin:auto 0'><div class='chip' style='border:2px solid #ff4d6d;color:#ff4d6d'>Opinión impopular</div>"
                 f"<div class='anton' style='font-size:{int(w * .08)}px;line-height:1.05;margin-top:34px'>{esc(m.get('opinion') or '')}</div>"
                 f"<div style='margin-top:40px;display:flex;gap:16px;align-items:center;font-size:{int(w * .042)}px;color:#cfc6b2'>"
-                f"<span style='font-size:{int(w * .08)}px'>📊</span>{esc(m.get('dato') or '')}</div>"
-                f"<div style='margin-top:34px;font-size:30px;color:#d4af37;font-weight:800'>¿De acuerdo o te dolió? 👇</div></div>")
+                f"<span style='display:inline-block;width:10px;height:{int(w * .06)}px;background:#d4af37'></span>{esc(m.get('dato') or '')}</div>"
+                f"<div style='margin-top:34px;font-size:30px;color:#d4af37;font-weight:800'>¿De acuerdo o te dolió?</div></div>")
     elif fmt == "reto":
         qs = "".join(f"<div style='background:#0e0c09;border:2px solid #2a261f;border-radius:26px;padding:22px 28px;margin-top:18px;"
                      f"font-size:{int(w * .04)}px;font-weight:700'><span style='color:#d4af37'>{i + 1}.</span> {esc(q)}</div>"
                      for i, q in enumerate((m.get("opciones") or [])[:3]))
-        body = (f"<div style='margin:auto 0'><div class='chip' style='border:2px solid #00f0a0;color:#00f0a0'>🏆 Reto</div>"
+        body = (f"<div style='margin:auto 0'><div class='chip' style='border:2px solid #00f0a0;color:#00f0a0'>Reto</div>"
                 f"<div class='anton gold' style='font-size:{int(w * .085)}px;line-height:1;margin-top:26px'>{esc(m.get('titulo') or '')}</div>{qs}"
                 f"<div style='margin-top:26px;font-size:28px;color:#cfc6b2'>Respuestas en comentarios · etiquetá al que se cree DT</div></div>")
     elif fmt == "giro":
@@ -465,7 +485,7 @@ def meme(fmt: str, m: dict, w: int, h: int) -> str:
         row = lambda e, txt, c: (f"<div style='display:flex;align-items:center;gap:34px;padding:40px 0;border-top:2px solid #2a261f'>"
                                  f"<div style='font-size:{int(w * .13)}px'>{e}</div><div style='font-size:{int(w * .058)}px;font-weight:800;"
                                  f"line-height:1.2;color:{c}'>{esc(txt)}</div></div>")
-        body = f"<div style='margin:auto 0'>{row('🙅‍♀️', m.get('no') or '', '#9a9384')}{row('💅', m.get('si') or '', '#f3ecdc')}</div>"
+        body = f"<div style='margin:auto 0'>{row('NO', m.get('no') or '', '#9a9384')}{row('SÍ', m.get('si') or '', '#f3ecdc')}</div>"
     return base(f"{top_bar('Meme EGG')}{body}{FOOT}", w, h, watermark="meme")
 
 
@@ -481,7 +501,7 @@ def meme_lines(fmt: str, m: dict) -> list[tuple[str, str]]:
     if fmt == "starter":
         return [(m.get("titulo") or "STARTER PACK", "")] + [(str(x), "") for x in (m.get("items") or [])[:5]]
     if fmt == "no_si":
-        return [("🙅‍♀️", m.get("no") or ""), ("💅", m.get("si") or "")]
+        return [("NO", m.get("no") or ""), ("SÍ", m.get("si") or "")]
     if fmt == "impopular":
         return [("🌶️ OPINIÓN IMPOPULAR", ""), (m.get("opinion") or "", ""), ("📊", m.get("dato") or ""), ("¿TE DOLIÓ?", "comentá 👇")]
     if fmt == "reto":
@@ -539,6 +559,8 @@ def reel_frame(big: str, small: str = "", color: str = "#f3ecdc", accent: str | 
     host: mood of EGG's avatar presenting the scene (bottom-left), e.g. shock | smug | wink | laugh."""
     accent = accent or house()
     w, h = 1080, 1920
+    glitch = glitch and STYLE.get("ritmo") == "muy_rapido"      # chromatic glitch only on the most frantic days
+    big, small, kicker = strip_emoji(big), strip_emoji(small), strip_emoji(kicker)
     shadow = "text-shadow:7px 0 0 #ff2d55cc,-7px 0 0 #00e5ffcc,0 18px 60px rgba(0,0,0,.75);" if glitch else "text-shadow:0 18px 60px rgba(0,0,0,.75);"
     badges = ""
     if badge_names:
