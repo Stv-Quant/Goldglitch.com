@@ -13,6 +13,7 @@ import hashlib
 import html
 import math
 import os
+import re
 import struct
 import subprocess
 import unicodedata
@@ -189,6 +190,16 @@ KNOWN_COLORS = {   # kit colours of big clubs (fallback when ESPN's colour data 
     "millonarios": ("#0a3a8a", "#f5f5f5"), "atletico junior": ("#d3122a", "#f5f5f5"), "boca juniors": ("#0b2a6f", "#f6c200"), "santa fe": ("#d3122a", "#f5f5f5"),
     "club america": ("#f6d500", "#0b2a6f"), "chivas": ("#d3122a", "#f5f5f5"), "tigres": ("#f6b500", "#0b2a6f"),
     "monterrey": ("#0b2a6f", "#f5f5f5"),
+    # NBA
+    "lakers": ("#552583", "#fdb927"), "celtics": ("#007a33", "#f5f5f5"), "warriors": ("#1d428a", "#ffc72c"),
+    "bulls": ("#ce1141", "#111111"), "heat": ("#98002e", "#111111"), "knicks": ("#006bb6", "#f58426"), "nets": ("#111111", "#f5f5f5"),
+    "bucks": ("#00471b", "#eee1c6"), "76ers": ("#006bb6", "#ed174c"), "sixers": ("#006bb6", "#ed174c"), "raptors": ("#ce1141", "#111111"),
+    "cavaliers": ("#860038", "#fdbb30"), "pistons": ("#c8102e", "#1d42ba"), "pacers": ("#002d62", "#fdbb30"), "hawks": ("#e03a3e", "#f5f5f5"),
+    "hornets": ("#1d1160", "#00788c"), "magic": ("#0077c0", "#111111"), "wizards": ("#002b5c", "#e31837"), "nuggets": ("#0e2240", "#fec524"),
+    "timberwolves": ("#0c2340", "#78be20"), "thunder": ("#007ac1", "#ef3b24"), "trail blazers": ("#e03a3e", "#111111"),
+    "jazz": ("#002b5c", "#f9a01b"), "suns": ("#1d1160", "#e56020"), "clippers": ("#c8102e", "#1d428a"), "kings": ("#5a2d81", "#63727a"),
+    "mavericks": ("#00538c", "#b8c4ca"), "rockets": ("#ce1141", "#f5f5f5"), "grizzlies": ("#5d76a9", "#12173f"),
+    "pelicans": ("#0c2340", "#c8102e"), "spurs": ("#111111", "#c4ced4"),
 }
 
 
@@ -234,7 +245,7 @@ KIT_PATTERN = {   # well-known kit layouts (colours come from the club's real co
 def kit_pattern(name: str) -> str:
     n = str(name or "").lower()
     for club, pat in sorted(((c, p) for p, cs in KIT_PATTERN.items() for c in cs), key=lambda x: -len(x[0])):
-        if club in n:       # longest name first: "boca juniors" before "junior"
+        if re.search(rf"\b{re.escape(club)}\b", n):   # whole words, longest first ("boca juniors" before "junior")
             return pat
     return ("plain", "trim", "panel")[sum(map(ord, n)) % 3]
 
@@ -679,57 +690,72 @@ def _rate(rec: dict | None) -> tuple[int, int, int] | None:
     return None
 
 
-def reel_script(kind: str, rows: list[dict], tx: dict, when_fn, record: dict | None = None) -> list[tuple[str, float, str]]:
-    """[(html, seconds, effect)] — effect: punch | flash | shake | slide | none."""
-    f: list[tuple[str, float, str]] = []
+def _say_pct(p: float) -> str:
+    return f"{round(p * 100)} por ciento"
+
+
+def reel_script(kind: str, rows: list[dict], tx: dict, when_fn, record: dict | None = None) -> list[tuple]:
+    """[(html, seconds, effect, narration)] — slower scenes that can be read, each with its voice-over line.
+    effect: punch | flash | shake | slide | none. The seconds are a minimum: the voice can make a scene longer."""
+    f: list[tuple] = []
     rate = _rate(record)
-    if kind in ("picks_dia", "reel") and rows:
-        f.append((reel_frame(tx.get("reel_hook") or "MIRÁ ESTO 👀", tx.get("reel_sub") or "o sea… quédate hasta el #1",
-                             kicker=f"Top {len(rows)} · ligas grandes", host="shock"), 1.3, "punch"))
+    hook = strip_emoji(tx.get("reel_hook") or "")
+    if kind in ("picks_dia", "reel", "nba") and rows:
+        rows = rows[:4]
+        intl = kind == "nba"
+        f.append((reel_frame(hook or "LOS DATOS DE HOY", strip_emoji(tx.get("reel_sub") or ""), host="shock",
+                             kicker=("NBA · esta noche" if intl else f"Top {len(rows)} · ligas grandes")), 2.2, "punch",
+                  tx.get("voz_hook") or hook))
         if rate:
-            f.append((reel_frame(f"{rate[0]}/{rate[1]}", f"picks de 75%+ acertados ({rate[2]}%) · fallos incluidos",
-                                 color="#d4af37", kicker="Historial público", glitch=False), 1.2, "slide"))
+            f.append((reel_frame(f"{rate[0]}/{rate[1]}", f"picks de 75%+ acertados ({rate[2]}%), fallos incluidos",
+                                 color="#d4af37", kicker="Historial público", glitch=False), 2.4, "slide",
+                      f"Nuestro historial es público: {rate[0]} aciertos en {rate[1]} picks de alta probabilidad."))
         for i, r in enumerate(rows):
             acc = ACCENT.get(r["league"], "#d4af37")
             p = float(r["p"])
+            when = when_fn(r)
+            f.append((reel_frame(f"{r['home']} vs {r['away']}", f"{r['league']} · {when}", accent=acc, glitch=False,
+                                 badge_names=(r["home"], r["away"]), top=r["league"], tilt=8, kicker=f"Pick {i + 1} de {len(rows)}"),
+                      2.3, "punch", f"{r['home']} contra {r['away']}, {when}."))
             fail = max(2, round(1 / max(1e-6, 1 - p)))
-            f.append((reel_frame(f"#{len(rows) - i}", f"{r['league']} · {when_fn(r)}", accent=acc, top=r["league"], kicker="Pick"), 0.5, "flash"))
-            f.append((reel_frame(f"{r['home']} vs {r['away']}", r["label"], accent=acc, glitch=False, badge_names=(r["home"], r["away"]),
-                                 top=r["league"], tilt=10), 1.3, "punch"))
             f.append((reel_frame(f"{round(p * 100)}%", r["label"], color=pcolor(p), accent=acc, top=r["league"],
-                                 kicker=r.get("group") or "Probabilidad"), 1.0, "shake"))
-            f.append((reel_frame(f"1 DE CADA {fail}", "veces NO pasa. Literal, eso también es estadística.", color="#cfc6b2",
-                                 accent=acc, top=r["league"], glitch=False, tilt=4), 0.95, "slide"))
-        f.append((reel_frame("EL MÁS FUERTE", "de hoy", kicker="Ranking", bars=[(f"{r['home']}–{r['away']}"[:30], float(r["p"]), pcolor(float(r["p"])))
-                                                                            for r in rows[:4]]), 1.9, "punch"))
-        f.append((reel_frame("¿ENTRA O NO ENTRA?", "decime en comentarios: 1 entra · 2 no entra 👇", color="#d4af37"), 1.3, "shake"))
-        f.append((reel_frame("GUARDALO 📌", "y mandáselo a tu amigo del club que 'sabe de fútbol' 🥂",
-                             color="#f3ecdc", kicker="📌"), 1.2, "punch"))
+                                 kicker=r.get("group") or "Probabilidad",
+                                 bars=[(r["label"][:28], p, pcolor(p)), ("No pasa", 1 - p, "#5a544a")]), 2.6, "slide",
+                      f"{r['label']}: {_say_pct(p)}. Una de cada {fail} veces no pasa."))
+        best = max(rows, key=lambda r: float(r["p"]))
+        f.append((reel_frame("EL MÁS FUERTE", "de hoy", kicker="Ranking",
+                             bars=[(f"{r['home']}–{r['away']}"[:30], float(r["p"]), pcolor(float(r["p"]))) for r in rows]), 2.6, "punch",
+                  f"El más fuerte del día: {best['home']} contra {best['away']}, con {_say_pct(float(best['p']))}."))
     elif kind == "resultados" and rows:
         won = sum(r["status"] == "won" for r in rows)
-        f.append((reel_frame("¿CÓMO LE FUE AL MODELO?", "aciertos y fallos, sin filtro", kicker="Resultados"), 1.3, "punch"))
-        for r in rows[:6]:
+        f.append((reel_frame(hook or "¿CÓMO LE FUE AL MODELO?", "aciertos y fallos, sin filtro", kicker="Resultados"), 2.2, "punch",
+                  tx.get("voz_hook") or "Así le fue al modelo. Aciertos y fallos, sin filtro."))
+        for r in rows[:5]:
             ok = r["status"] == "won"
-            f.append((reel_frame("✓ ACERTÓ" if ok else "✗ FALLÓ", f"{r['label']} · {r['home']} vs {r['away']}",
-                                 color="#00f0a0" if ok else "#ff4d6d", kicker=f"{round(float(r['p']) * 100)}%"), 0.9, "shake" if ok else "flash"))
-        f.append((reel_frame(f"{won}/{len(rows)}", "picks de 75%+ jugados en las últimas horas", color="#d4af37", kicker="Balance"), 1.4, "punch"))
+            f.append((reel_frame("ACERTÓ" if ok else "FALLÓ", f"{r['label']} · {r['home']} vs {r['away']}",
+                                 color="#00f0a0" if ok else "#ff4d6d", kicker=f"{round(float(r['p']) * 100)}%"), 2.0, "slide",
+                      f"{r['home']} contra {r['away']}, {r['label']}: {'acertó' if ok else 'falló'}."))
+        f.append((reel_frame(f"{won}/{len(rows)}", "picks de 75%+ jugados en las últimas horas", color="#d4af37", kicker="Balance"), 2.2,
+                  "punch", f"Balance: {won} de {len(rows)}."))
         if rate:
-            f.append((reel_frame(f"{rate[2]}%", f"de acierto histórico ({rate[0]}/{rate[1]})", color="#d4af37", kicker="Historial público"), 1.3, "slide"))
+            f.append((reel_frame(f"{rate[2]}%", f"de acierto histórico ({rate[0]}/{rate[1]})", color="#d4af37", kicker="Historial público"),
+                      2.2, "slide", f"Y en el histórico, {rate[2]} por ciento de acierto."))
     elif kind == "meme":
-        trend = str(tx.get("tendencia_usada") or "")[:40]
+        trend = strip_emoji(str(tx.get("tendencia_usada") or ""))[:40]
         fmt, mm = tx.get("meme_formato") or "", tx.get("meme") or {}
         faces = meme_faces(fmt, mm)
-        for i, (big, small) in enumerate(l for l in meme_lines(fmt, mm) if l[0] or l[1]):
-            f.append((reel_frame(big, small, glitch=i % 2 == 0, kicker=(f"🔥 {trend}" if trend else "Meme EGG") if i == 0 else "",
-                                 tilt=6, face=faces[i] if i < len(faces) else None), 1.4 if i else 1.1,
-                      ("punch", "shake", "slide", "flash")[i % 4]))
-        f.append((reel_frame("MANDÁSELO 📲", "a ese amigo que necesita verlo 😂", color="#d4af37", host="laugh"), 1.2, "punch"))
+        for i, (big, small) in enumerate(l for l in meme_lines(fmt, mm) if strip_emoji(l[0]) or strip_emoji(l[1])):
+            say = " ".join(x for x in (strip_emoji(big), strip_emoji(small)) if x and len(x) > 1)
+            f.append((reel_frame(big, small, glitch=i % 2 == 0, kicker=(trend or "Meme EGG") if i == 0 else "",
+                                 tilt=6, face=faces[i] if i < len(faces) else None), 2.0 if i else 1.8,
+                      ("punch", "slide", "shake", "slide")[i % 4], say))
     else:
-        f.append((reel_frame(tx.get("edu_title") or tx.get("cover_title") or "DATO", "espera al final 👀", kicker="Dato"), 1.5, "punch"))
-        for line in [x for x in (tx.get("edu_body") or tx.get("cover_subtitle") or "").split("\n") if x.strip()][:5]:
-            f.append((reel_frame(line, "", glitch=False, tilt=4), 1.6, "slide"))
-    f.append((reel_frame("LINK EN LA BIO", "todas las probabilidades, gratis. Next level 🥂", color="#d4af37", kicker="EGG · Goldglitch Stats",
-                         host="wink"), 1.8, "punch"))
+        title = strip_emoji(tx.get("edu_title") or tx.get("cover_title") or "DATO")
+        f.append((reel_frame(hook or title, "", kicker="Dato"), 2.2, "punch", tx.get("voz_hook") or hook or title))
+        for line in [x for x in (tx.get("edu_body") or tx.get("cover_subtitle") or "").split("\n") if x.strip()][:4]:
+            f.append((reel_frame(line, "", glitch=False, tilt=4), 2.6, "slide", strip_emoji(line)))
+    f.append((reel_frame("ENLACE EN EL PERFIL", "todas las probabilidades, gratis", color="#d4af37", kicker="EGG · Goldglitch Stats",
+                         host="wink"), 2.4, "punch", tx.get("voz_cierre") or "Todas las probabilidades, gratis, en el enlace del perfil."))
     return f
 
 
@@ -788,6 +814,21 @@ def beat(path: str, seconds: float, bpm: int = 148, cuts: list[tuple[float, str]
 TRANSITIONS = ["zoomin", "slideup", "smoothleft", "circleopen", "fadewhite", "slidedown", "radial", "smoothup"]
 
 
+def _voiceover(frames: list[tuple], name: str) -> list:
+    """Human-sounding voice-over (goldglitch_voz: Kokoro, open model running on this PC). None per scene if off."""
+    try:
+        import goldglitch_voz as VZ
+        if not VZ.available():
+            return [None] * len(frames)
+    except Exception:
+        return [None] * len(frames)
+    out = []
+    for i, fr in enumerate(frames):
+        text = strip_emoji(fr[3] or "").strip()
+        out.append(VZ.say(text, os.path.join(OUT, f"{name}_voz_{i}.wav")) if text else None)
+    return out
+
+
 def R_SCALE() -> float:
     from goldglitch_social_render import SCALE
     return SCALE
@@ -798,14 +839,17 @@ def reel_video(frames: list[tuple[str, float, str]], name: str) -> str:
     transitions, over an original beat. 2160×3840 (4K) with REDES_ESCALA=2 (default), 30 fps, H.264 + AAC."""
     import imageio_ffmpeg
     ff = imageio_ffmpeg.get_ffmpeg_exe()
+    frames = [tuple(fr) + ("",) * (4 - len(fr)) for fr in frames]
+    voice = _voiceover(frames, name)            # [(path, seconds) | None] per scene
     imgs = render([f[0] for f in frames], 1080, 1920, f"{name}_frames")
     S = max(1, int(round(R_SCALE())))                      # 2 → 2160×3840 (4K vertical)
     W, H = 1080 * S, 1920 * S
     T = 0.14                                                # transition length
     inputs, parts, durs = [], [], []
-    for i, (img, (_, secs, fx)) in enumerate(zip(imgs, frames)):
-        pace = {"muy_rapido": 0.78, "elegante": 1.25}.get(STYLE["ritmo"], 1.0)
-        nfr = max(10, int((secs * pace + T) * 30))
+    for i, (img, (_, secs, fx, _say)) in enumerate(zip(imgs, frames)):
+        pace = {"muy_rapido": 0.9, "elegante": 1.2}.get(STYLE["ritmo"], 1.0)
+        need = (voice[i][1] + 0.45) if voice[i] else 0          # the scene lasts at least as long as its line
+        nfr = max(10, int((max(secs * pace, need) + T) * 30))
         durs.append(nfr / 30)
         inputs += ["-framerate", "30", "-loop", "1", "-t", f"{nfr / 30:.3f}", "-i", img]
         if fx == "punch":
@@ -832,13 +876,25 @@ def reel_video(frames: list[tuple[str, float, str]], name: str) -> str:
     total = off + T
     Path(OUT).mkdir(exist_ok=True)
     starts, acc = [], 0.0
-    for d, (_, _, fx) in zip(durs, frames):
+    for d, (_, _, fx, _s) in zip(durs, frames):
         starts.append((acc, fx))
         acc += d - T
     audio = beat(os.path.join(OUT, f"{name}_beat.wav"), total + 0.5, cuts=starts)
-    graph = ";".join(parts + chain)
     out = os.path.join(OUT, f"{name}.mp4")
-    cmd = [ff, "-y", *inputs, "-i", audio, "-filter_complex", graph, "-map", f"[{last}]", "-map", f"{len(imgs)}:a",
+    a_in, a_parts, mix = ["-i", audio], [], []
+    has_voice = any(voice)
+    a_parts.append(f"[{len(imgs)}:a]volume={0.16 if has_voice else 1.0}[bg]")
+    k = len(imgs) + 1
+    for (st, _), v in zip(starts, voice):
+        if v:
+            a_in += ["-i", v[0]]
+            ms = int((st + 0.12) * 1000)
+            a_parts.append(f"[{k}:a]aresample=44100,aformat=channel_layouts=stereo,adelay={ms}|{ms},volume=1.5[v{k}]")
+            mix.append(f"[v{k}]")
+            k += 1
+    a_parts.append(f"[bg]{''.join(mix)}amix=inputs={1 + len(mix)}:duration=first:normalize=0[aout]")
+    graph = ";".join(parts + chain + a_parts)
+    cmd = [ff, "-y", *inputs, *a_in, "-filter_complex", graph, "-map", f"[{last}]", "-map", "[aout]",
            "-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-maxrate", "28M", "-bufsize", "56M", "-pix_fmt", "yuv420p",
            "-c:a", "aac", "-b:a", "160k", "-shortest", "-r", "30", "-movflags", "+faststart", out]
     r = subprocess.run(cmd, capture_output=True, text=True)

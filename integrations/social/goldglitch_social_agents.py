@@ -111,6 +111,8 @@ POST_TYPES = {
     "educativo": "Pieza educativa de una imagen sobre probabilidad o cómo leer los datos.",
     "pregunta": "Pregunta a la comunidad para generar comentarios y compartidos (imagen con la pregunta).",
     "mito_dato": "Mito vs dato sobre probabilidad o estadística deportiva (imagen).",
+    "nba": "Picks de la NBA (y NHL) para el público internacional: carrusel + reel narrado con los partidos de esta noche "
+           "y sus probabilidades. Español neutro, mercados EE. UU. hispano, México y LATAM.",
     "meme": "Meme ORIGINAL de fútbol y datos en la voz de EGG (plantillas propias: tuit de EGG, 'Nadie / Literalmente "
             "nadie', expectativa vs realidad, POV, starter pack, no/sí, último momento, cuando, tier list, chat del parche, "
             "duelo) — imagen + reel corto, pensado para que el hombre lo mande al grupo de los amigos.",
@@ -247,6 +249,18 @@ No escribas hashtags dentro de ig, fb ni tiktok (van aparte) y no uses "#" para 
 PARTIDOS Y FECHAS (crítico): la hora actual está en los datos ("ahora"). Solo presenta como futuro un partido que esté en
 los datos de próximos partidos con su hora; los resultados van en pasado. Los titulares y tendencias son noticias que YA
 pasaron: nunca los presentes como un partido por jugarse ni inventes un partido. Si dudas de si ya se jugó, no lo menciones.
+HOOKS (los mejores, probados en Shorts/Reels/TikTok; el gancho decide todo en el primer segundo y medio):
+- Usa fórmulas que funcionan: brecha de curiosidad ("Este partido tiene una trampa que casi nadie ve"), número
+  inesperado ("El favorito solo tiene 41%"), contradicción ("Todos apuestan al local. Los datos dicen otra cosa"),
+  reto ("Si aciertas estos 3, sabes más que el 90% de los hinchas" solo si el dato existe), lo que está en juego
+  ("Hoy se define…"), resultado primero ("Ayer acertamos 5 de 6. Hoy vamos por estos"), lista con promesa ("3 partidos
+  de esta noche que el modelo ve claros").
+- El gancho dice algo concreto (equipo, número, partido) en máx. 8 palabras; nada de saludos ni de "mira esto".
+- No uses la palabra "parche" en ganchos ni títulos (máximo una vez en el texto, y solo si suena natural).
+- voz_hook: la misma idea dicha en voz alta, natural (máx. 16 palabras). voz_cierre: cierre hablado (máx. 12 palabras).
+SEO NATURAL: en los datos vienen "busquedas_reales" (lo que la gente escribe en YouTube/Google). Usa 1 o 2 de esas frases
+tal cual en el título de YouTube y en la primera línea de ig/tiktok, de forma natural; los hashtags salen de esas
+búsquedas, de la liga, los equipos y el mercado.
 VOZ HUMANA, NO DE IA: frases como las escribiría una persona real de la marca; máximo 2 emojis por texto (ninguno en
 títulos ni en textos de imagen); nada de muletillas repetidas ("o sea", "next level", "literal") en cada pieza, nada de
 listas de emojis ni de frases de plantilla ("¡No te lo pierdas!", "Descubre", "Increíble"). En fb nunca pongas enlaces.
@@ -256,8 +270,9 @@ listas de emojis ni de frases de plantilla ("¡No te lo pierdas!", "Descubre", "
   reales, escudos, logos, marcas ni texto; evita lo que la IA llena de letras falsas (camisetas vistas de espaldas con
   número, marcadores, carteles, pantallas, periódicos): mejor rostros, manos, balón, luces, estadio desenfocado. Si sale EGG: "a stylish young Colombian woman with long dark wavy hair with
   golden highlights and gold hoop earrings".
-- yt_title: título del Short de YouTube (máx. 80 caracteres): la palabra clave de búsqueda al inicio (liga, equipo,
-  partido) + gancho; sin hashtags.
+- yt_title: título del Short de YouTube (máx. 70 caracteres): empieza con una frase de "busquedas_reales" (ej.
+  "Arsenal vs Chelsea pronóstico") + el gancho concreto; sin hashtags, sin emojis, sin mayúsculas sostenidas.
+- voz_hook y voz_cierre: ver HOOKS.
 - yt: descripción de YouTube (3 a 5 líneas): la primera con palabras clave de búsqueda, luego el valor, y el enlace
   https://easygoldglitch.com/?ref=yt_desc ; +18; sin hashtags.
 - audio_vibe: la vibra del audio en tendencia que debe sonar en el reel (ej. "épico de estadio", "comedia", "tensión",

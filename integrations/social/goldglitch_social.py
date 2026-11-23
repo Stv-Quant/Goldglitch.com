@@ -227,6 +227,16 @@ def build(post: dict, facts: dict, ag: Agents, now: datetime, tag: str, shown: s
         rows = res
         data = {"won": sum(r["status"] == "won" for r in rows), "n": len(rows), "historial": facts["record"],
                 "partidos": [f"{r['home']} vs {r['away']}" for r in rows[:6]]}
+    elif t == "nba":            # international audience: NBA (and NHL) picks
+        intl = [r for r in facts.get("intl") or [] if float(r.get("kickoffAt") or 0) > soon and match_key(r) not in (shown or set())]
+        rows = [r for r in intl if r.get("sport") == "basketball"][:4] or intl[:4]
+        if not rows:
+            raise SkipPiece("no hay partidos de NBA/NHL próximos")
+        for r in rows:
+            r["_tag"] = "nba" if r.get("sport") == "basketball" else "nhl"
+        reel_of = "nba"
+        data = {"picks": [{k: r[k] for k in ("league", "home", "away", "label", "p")} | {"cuando": when(r["kickoffAt"], now)} for r in rows],
+                "historial": facts["record"], "deporte": "NBA (baloncesto)" if rows[0].get("sport") == "basketball" else "NHL"}
     elif reel_of == "picks_dia":
         rows = picks
         data = {"picks": [{k: r[k] for k in ("league", "home", "away", "label", "p")} | {"cuando": when(r["kickoffAt"], now)} for r in rows],
@@ -243,6 +253,12 @@ def build(post: dict, facts: dict, ag: Agents, now: datetime, tag: str, shown: s
             raise SkipPiece("no hay partidos nuevos de ligas top (los de las últimas 24 h ya se mostraron)"
                             if reel_of == "picks_dia" else "no hay partidos de ligas top para esta pieza")
     data["ahora"] = now.strftime("%Y-%m-%d %H:%M (hora de Colombia)")
+    try:          # real search phrases (YouTube/Google autocomplete) for natural SEO
+        seeds = ([f"{r['home']} vs {r['away']}" for r in rows[:2]] + list(dict.fromkeys(f"pronósticos {r['league']}" for r in rows[:3]))
+                 + (["nba picks hoy", "pronósticos nba"] if t == "nba" else ["pronósticos fútbol hoy"]))
+        data["busquedas_reales"] = T.search_phrases(seeds)
+    except Exception:
+        pass
     tx = ag.write(post, data)
     for k in ("cover_title", "cover_subtitle", "reel_hook", "reel_sub", "edu_title", "edu_body"):
         if isinstance(tx.get(k), str):
@@ -253,6 +269,7 @@ def build(post: dict, facts: dict, ag: Agents, now: datetime, tag: str, shown: s
     # Hashtags: Daniela's SEO bank first, then leagues/teams of the real picks, then the writer's (Instagram allows 30).
     seen, tags = set(), []
     base_tags = (["memesdefutbol", "futbolmemes", "humorfutbolero"] if t == "meme" else []) \
+        + (["nba", "nbapicks", "basketball", "baloncesto", "nbabasketball", "nbaenespañol", "nbalatam"] if t == "nba" else []) \
         + MARKET_TAGS.get((post.get("mercado") or "").upper(), [])
     for h in list(seo.get("hashtags") or [])[:10] + base_tags + V.hashtags_for(rows) + list(tx.get("hashtags") or []) + DEFAULT_TAGS:
         h = re.sub(r"[^\wñÑáéíóúÁÉÍÓÚüÜ]", "", str(h))
@@ -269,9 +286,9 @@ def build(post: dict, facts: dict, ag: Agents, now: datetime, tag: str, shown: s
 
     wfn = lambda r: when(r["kickoffAt"], now) if r.get("kickoffAt") else ""
     V.set_bg(*illustrations(post, tx, tag))
-    shown_keys = [match_key(r) for r in rows] if reel_of == "picks_dia" else []
+    shown_keys = [match_key(r) for r in rows] if reel_of in ("picks_dia", "nba") else []
     shown_rows = [{k: r.get(k) for k in ("matchId", "league", "home", "away", "label", "p", "kickoffAt")}
-                  for r in rows] if reel_of == "picks_dia" else []
+                  for r in rows] if reel_of in ("picks_dia", "nba") else []
     if t == "reel":
         video = V.reel_video(V.reel_script(reel_of, rows, tx, wfn, facts.get("record")), f"{tag}_reel")
         return {"feed": [], "story": None, "video": video, "reel": True, "texts": tx, "shown": shown_keys, "shown_rows": shown_rows}
@@ -289,7 +306,7 @@ def build(post: dict, facts: dict, ag: Agents, now: datetime, tag: str, shown: s
             for i in range(0, min(len(rows), per * 3), per):
                 pages.append(V.results(rows[i:i + per], data["won"], data["n"], w, h))
             return pages + [V.cta(w, h)]
-        if t == "picks_dia":
+        if t in ("picks_dia", "nba"):
             pages = [V.cover(tx["cover_title"], tx["cover_subtitle"], list(dict.fromkeys(r["league"] for r in rows)), w, h)]
             pages += [V.pick(r, i + 1, len(rows), wfn(r), w, h) for i, r in enumerate(rows)]
             return pages + [V.cta(w, h)]
@@ -299,7 +316,8 @@ def build(post: dict, facts: dict, ag: Agents, now: datetime, tag: str, shown: s
 
     feed = R.render(slides(1080, 1350), 1080, 1350, f"{tag}_feed")
     # TikTok gets the same piece as a fast reel
-    video = V.reel_video(V.reel_script(reel_of if reel_of in ("picks_dia", "resultados") else "texto", rows, tx, wfn, facts.get("record")), f"{tag}_reel")
+    video = V.reel_video(V.reel_script(reel_of if reel_of in ("picks_dia", "resultados", "nba") else "texto", rows, tx, wfn,
+                                       facts.get("record")), f"{tag}_reel")
     return {"feed": feed, "story": None, "video": video, "reel": False, "texts": tx, "shown": shown_keys, "shown_rows": shown_rows}
 
 
