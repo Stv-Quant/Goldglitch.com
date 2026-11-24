@@ -357,7 +357,18 @@ def report(opts: list[dict], info: dict) -> str:
 <div class=tot><b>Cuota total {x['odds']:.2f}</b> · probabilidad modelo {x['p_model'] * 100:.0f}% · ajustada a la realidad
 {x['p_real'] * 100:.0f}% · implícita de la cuota {100 / x['odds']:.0f}% ·
 <b class={tone}>valor esperado {x['ev'] * 100:+.0f}%</b></div></section>""")
-    body = "".join(cards) or "<p>No encontré combinaciones que cumplan todas las condiciones con las cuotas de ahora.</p>"
+    body = "".join(cards)
+    if not body:
+        bt = math.prod(l["odds"] for l in info.get("best") or []) if info.get("best") else 0
+        body = (f"<p>No encontré combinaciones de {info['max_sel']} selecciones o menos con cuota total mayor a "
+                f"{info['min_odds']:.2f}. Lo máximo posible hoy con estos picks es <b>{bt:.2f}</b>.</p>")
+    if info.get("top"):
+        body += ("<section><h2>Picks con cuota en BetPlay <span>las cuotas más altas</span></h2><table><tr><th>Partido</th>"
+                 "<th>Mercado</th><th class=n>Cuota</th><th class=n>Modelo</th><th class=n>Real</th></tr>" + "".join(
+                     f"<tr><td>{e(l['home'])} vs {e(l['away'])}<div class=s>{e(l['league'])} · {when(l['kickoffAt'])}</div></td>"
+                     f"<td>{e(l['label'])}<div class=s>BetPlay: {e(l['market'])}</div></td><td class=n>{l['odds']:.2f}</td>"
+                     f"<td class=n>{l['p'] * 100:.0f}%</td><td class=n>{l['p_real'] * 100:.0f}%</td></tr>" for l in info["top"])
+                 + "</table></section>")
     stamp = datetime.now(TZ)
     path = os.path.join(OUTDIR, f"combinadas_{stamp.strftime('%Y%m%d_%H%M')}.html")
     open(path, "w", encoding="utf-8").write(f"""<!doctype html><html lang=es><head><meta charset=utf-8>
@@ -403,12 +414,17 @@ def main() -> int:
     by_match: dict[str, dict | None] = {}
     offers: dict = {}
     legs, unmatched, seen = [], 0, set()
+    diag: dict = {"partido_no_encontrado": {}, "mercado_no_encontrado": {}, "mercados_betplay": {}, "sospechosas": []}
     for p in picks:
         if p["matchId"] not in by_match:
             by_match[p["matchId"]] = match_event(p, events)
         ev = by_match[p["matchId"]]
         if not ev:
             unmatched += 1
+            ko = float(p["kickoffAt"]) / 1000
+            near = [f"{e['homeName']} - {e['awayName']}" for e in events
+                    if abs(datetime.fromisoformat(str(e["start"]).replace("Z", "+00:00")).timestamp() - ko) < 3 * 3600][:12]
+            diag["partido_no_encontrado"][f"{p['home']} vs {p['away']} ({p['league']}, {when(p['kickoffAt'])})"] = near
             continue
         if ev["id"] not in offers:
             try:
@@ -420,10 +436,17 @@ def main() -> int:
         hit_o = find_odds(p, ev, offers[ev["id"]])
         if not hit_o:
             unmatched += 1
+            name = f"{ev['homeName']} - {ev['awayName']}"
+            diag["mercado_no_encontrado"].setdefault(name, []).append(p["label"])
+            diag["mercados_betplay"].setdefault(name, sorted({
+                str((b.get("criterion") or {}).get("englishLabel") or (b.get("criterion") or {}).get("label")) + " | " +
+                ",".join(sorted({f"{o.get('type')}@{(o.get('line') or 0) / 1000:g}" for o in b.get("outcomes") or []}))[:160]
+                for b in offers[ev["id"]]}))
             continue
         pr, hn, _ = real_p(p, stats)
         if hit_o[0] * float(p["p"]) > 1.5 or hit_o[0] > 1.0 / max(0.05, float(p["p"]) - 0.3):
             print(f"  descarto cuota sospechosa: {p['home']} vs {p['away']} · {p['label']} @ {hit_o[0]:.2f} ({hit_o[1]})")
+            diag["sospechosas"].append(f"{p['home']} vs {p['away']} · {p['label']} @ {hit_o[0]:.2f} ({hit_o[1]})")
             unmatched += 1
             continue
         key = (ev["id"], hit_o[1], hit_o[0])
@@ -432,8 +455,17 @@ def main() -> int:
         seen.add(key)
         legs.append({**p, "event": ev["id"], "odds": hit_o[0], "market": hit_o[1], "p_real": pr, "hist_n": hn})
     print(f"  {len(legs)} picks con cuota · {sum(1 for v in by_match.values() if v)} de {len(by_match)} partidos encontrados")
+    os.makedirs(OUTDIR, exist_ok=True)
+    with open(os.path.join(OUTDIR, "diagnostico_combinadas.json"), "w", encoding="utf-8") as f:
+        json.dump(diag, f, ensure_ascii=False, indent=1)
     opts = combos(legs, min_odds, max_sel, want)
-    path = report(opts, {"min_p": min_p, "picks": len(picks), "matched": len(legs), "max_sel": max_sel,
+    top = sorted(legs, key=lambda l: -l["odds"])
+    best, used = [], set()
+    for l in top:                                   # the highest total possible with max_sel matches
+        if l["event"] not in used and len(best) < max_sel:
+            best.append(l)
+            used.add(l["event"])
+    path = report(opts, {"top": top[:12], "best": best, "min_p": min_p, "picks": len(picks), "matched": len(legs), "max_sel": max_sel,
                          "min_odds": min_odds, "unmatched": unmatched, "hit": hit})
     for i, x in enumerate(opts, 1):
         print(f"\nOpción {i}: cuota {x['odds']:.2f} · real {x['p_real'] * 100:.0f}% · VE {x['ev'] * 100:+.0f}%")
