@@ -223,20 +223,71 @@ def scene_theme(post: dict, tag: str) -> str:
     return pool[(h // 7) % len(pool)]
 
 
+ART_LIB = os.path.join(HERE, "redes_arte")
+ART_INDEX = os.path.join(ART_LIB, "indice.json")
+
+
+def _late(post: dict) -> bool:
+    try:
+        now = datetime.now(TZ)
+        return (now.hour * 60 + now.minute) - G._mins(post.get("time") or "") > 20
+    except Exception:
+        return False
+
+
+def _feed_from_reel(reel: str, out: str) -> str:
+    """4:5 feed art cut from the 9:16 painting (one painting per piece instead of two: half the time)."""
+    from PIL import Image
+    im = Image.open(reel)
+    w, h = im.size
+    fh = int(w * 1.25)
+    top = max(0, int((h - fh) * 0.42))
+    im.crop((0, top, w, top + fh)).save(out, quality=92)
+    return out
+
+
 def illustrations(post: dict, tx: dict, tag: str) -> tuple[str | None, str | None]:
-    """AI illustrations painted on this PC (feed 4:5 and reel 9:16, 4K) for the piece; (None, None) if not installed."""
+    """AI illustrations painted on this PC (feed 4:5 and reel 9:16, 4K) for the piece; (None, None) if not installed.
+    Speed: one painting per piece (the feed is cut from it), and a library of past paintings by theme that is reused
+    when the day is running late or the theme already has several (REDES_ARTE_REUSO=0.6 by default)."""
+    import random
+    import shutil
     try:
         import goldglitch_ilustrador as IL
         if not IL.available():
             return None, None
-        base = str(tx.get("ilustracion") or "").strip() or {
-            "meme": "two football fans arguing passionately in a luxury sports bar at night, golden light, humorous mood",
-            "picks_dia": "epic night football stadium seen from the stands, golden floodlights, smoke and confetti, anticipation",
-            "resultados": "football players celebrating under golden floodlights, dramatic stadium atmosphere, rain of gold confetti",
-            "reel": "dynamic close-up of a football on the grass of a stadium at night, golden sparks, motion blur",
-        }.get(post["type"], scene_theme(post, tag))
+        theme = scene_theme(post, tag)
+        key = hashlib.md5(f"{post['type'] == 'nba'}|{theme}".encode()).hexdigest()[:10]
+        idx = load_json(ART_INDEX, {})
+        lib = [e for e in idx.get(key, []) if os.path.exists(e.get("reel", "")) and os.path.exists(e.get("feed", ""))]
+        reuse = float(os.environ.get("REDES_ARTE_REUSO", "0.6"))
+        fresh = [e for e in lib if time.time() - float(e.get("used") or 0) > 36 * 3600]
+        if lib and (_late(post) or (len(lib) >= 2 and random.random() < reuse)):
+            e = min(fresh or lib, key=lambda e: float(e.get("used") or 0))
+            e["used"] = time.time()
+            idx[key] = lib
+            save_json(ART_INDEX, idx)
+            log("  [Valeria] Ilustrador: uso un arte de la biblioteca (mismo tema, sin esperar)")
+            return e["feed"], e["reel"]
+        base = str(tx.get("ilustracion") or "").strip() or theme
         log("  [Valeria] Ilustrador: pintando el arte de la pieza…")
-        return IL.scene(post["type"], base, False, f"{tag}_feed"), IL.scene(post["type"], base, True, f"{tag}_reel")
+        reel = IL.scene(post["type"], base, True, f"{tag}_reel")
+        if not reel:
+            return None, None
+        if os.environ.get("REDES_ARTE_DOS") == "1":
+            feed = IL.scene(post["type"], base, False, f"{tag}_feed") or _feed_from_reel(reel, f"{os.path.splitext(reel)[0]}_feed.jpg")
+        else:
+            feed = _feed_from_reel(reel, f"{os.path.splitext(reel)[0]}_feed.jpg")
+        os.makedirs(ART_LIB, exist_ok=True)
+        keep = {}
+        for kind, path in (("reel", reel), ("feed", feed)):
+            dst = os.path.join(ART_LIB, f"{key}_{tag[-20:]}_{kind}{os.path.splitext(path)[1]}")
+            shutil.copy2(path, dst)
+            keep[kind] = dst
+        idx.setdefault(key, []).append({**keep, "used": time.time(), "tema": theme[:80]})
+        idx[key] = idx[key][-8:]
+        save_json(ART_INDEX, idx)
+        return feed, reel
     except Exception as e:
         log(f"  Ilustrador no disponible: {e}")
         return None, None
@@ -640,6 +691,56 @@ def publish_now(posts: list[dict]) -> None:
         drop_lock()
 
 
+def publish_tiktok(n: int, want: str = "") -> None:
+    """Manual TikTok round: n videos, only on TikTok, rotating formats (reel, news, did-you-know, picks, myth vs fact…)."""
+    if not take_lock(wait_s=20 * 60):
+        log("TikTok manual: los agentes siguen ocupados; inténtalo en unos minutos.")
+        return
+    global BROWSER
+    try:
+        _, tt = clients()
+        if not tt:
+            sess = B.brave_sessions(B.load_config())
+            log(f"TikTok manual: no hay sesión de TikTok (Brave: {'sí' if B.uses_brave('tiktok') else 'no'}, "
+                f"sesión: {sess.get('tiktok')}). Corre conectar_tiktok_brave.bat.")
+            return
+        st = load_json(STATE, {})
+        ag = Agents(os.environ.get("ANTHROPIC_API_KEY"))
+        types = [want] if want else G.FILL_TYPES["tiktok"]
+        start = int(st.get("tiktok_manual_i") or 0)
+        ok = 0
+        for i in range(n):
+            now = datetime.now(TZ)
+            today = now.strftime("%Y-%m-%d")
+            t = types[(start + i) % len(types)]
+            post = {"type": t, "time": now.strftime("%H:%M"), "redes": ["tiktok"], "inmediata": True,
+                    "angle": "", "topic": "", "hook": "", "cta": "Datos gratis en el enlace del perfil"}
+            log(f"TikTok manual {i + 1}/{n}: {t}")
+            try:
+                facts = signed("/api/social/feed", {})
+                piece = build(post, facts, ag, now, f"{today}_tt{now:%H%M%S}_{t}", shown_recent(st), st)
+                piece["story"] = None
+                publish(post, piece, None, tt, False)
+                if "tiktok" in (post.get("done") or {}):
+                    ok += 1
+                    remember_shown(st, piece)
+            except SkipPiece as e:
+                log(f"  se omite: {e}")
+            except Exception as e:
+                log(f"  ERROR: {e}")
+            st.setdefault("history", []).append({"day": today, "type": t, "time": post["time"], "inmediata": True,
+                                                "manual_tiktok": True, "done": list(post.get("done", {})),
+                                                "errors": post.get("errors", {})})
+        st["tiktok_manual_i"] = start + n
+        save_json(STATE, st)
+        log(f"TikTok manual: {ok} de {n} publicados")
+    finally:
+        if BROWSER:
+            BROWSER.close()
+            BROWSER = None
+        drop_lock()
+
+
 def week_of(now: datetime) -> str:
     return now.strftime("%G-W%V")
 
@@ -918,6 +1019,11 @@ def main() -> int:
                     if p.get("time") == post.get("time") and p.get("type") == post.get("type"):
                         p["status"] = "done"
                 save_json(STATE, st)
+        elif cmd == "tiktok":               # publish N TikToks now: tiktok [n] [tipo]
+            args = sys.argv[2:]
+            n = int(next((a for a in args if a.isdigit()), "1"))
+            want = next((a for a in args if not a.isdigit()), "")
+            publish_tiktok(min(max(n, 1), 10), want)
         elif cmd == "comunidad":            # one community round now (replies + likes on every connected network)
             clients()
             if AGENT is None:
