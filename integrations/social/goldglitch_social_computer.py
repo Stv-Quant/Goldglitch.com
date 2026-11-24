@@ -550,7 +550,7 @@ class CliScreenAgent:
         task_path, result_path = os.path.join(work, "tarea.json"), os.path.join(work, "resultado.json")
         evidence = os.path.join(ERRDIR, f"{net}_agente_{time.strftime('%Y%m%d_%H%M%S')}.png")
         with open(task_path, "w", encoding="utf-8") as f:
-            json.dump({"start_url": start_url, "files": files, "caption": caption, "rehearsal": rehearsal,
+            json.dump({"start_url": start_url, "files": files, "caption": caption, "rehearsal": rehearsal, "net": net,
                        "result": result_path, "evidence": evidence, "archivos": named_files or {},
                        "final_regex": final_regex, "textos": texts or {}}, f, ensure_ascii=False)
         server = os.path.join(os.path.dirname(os.path.abspath(__file__)), "goldglitch_screen_mcp.py")

@@ -897,6 +897,8 @@ def main() -> int:
             prueba()
         elif cmd == "conectar":
             B.connect()
+        elif cmd == "conectar_brave":       # e.g. conectar_brave tiktok
+            B.connect_brave(sys.argv[2:] or ["tiktok"])
         elif cmd == "ensayo":
             ensayo()
         elif cmd == "tiktok-login":
