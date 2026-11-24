@@ -501,7 +501,7 @@ distinta de las demás: 2 a 4 piezas propias por red, horas 07:00–23:00, 60 mi
 la mañana (07:30) y los resultados de la noche (22:30) los agrega el sistema en todas las redes: no los repitas.
 Instagram: memes, carruseles de datos, reels de picks con otra liga; Facebook: "sabias_que", "noticia", educativo;
 TikTok: "reel" y memes de tendencia; YouTube: "nba", reels de datos con búsqueda real. Al menos 1 "meme" y 1 concepto
-disruptivo de Mía (en "angle"). Un partido mostrado en picks no se repite en 24 h: varía la "liga".""")
+disruptivo de Mía (en "angle"). Un partido mostrado en picks no se repite en 24 h: varía la "liga". Todo es del DÍA DE HOY (hora de Colombia): picks, datos y "angle" solo de partidos que se juegan hoy; los de mañana se publican mañana.""")
             res = self.set_plan(dec.get("plan") or [])
             self.set_art(dec.get("direccion_arte"))
             self.set_seo(dec.get("seo"))

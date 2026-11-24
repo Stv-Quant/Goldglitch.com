@@ -135,6 +135,14 @@ def when(ms: int, now: datetime) -> str:
     return f"{day} {d:%H:%M}"
 
 
+def same_day(r: dict, now: datetime) -> bool:
+    """Only matches played on today's date in Colombia (picks of the 24th on the 24th, never tomorrow's)."""
+    try:
+        return datetime.fromtimestamp(float(r.get("kickoffAt") or 0) / 1000, TZ).date() == now.date()
+    except (TypeError, ValueError, OSError):
+        return False
+
+
 # ------------------------------------------------------------------ pieces
 SHOWN_HOURS = 24          # a match already shown in picks (feed or reel) is not shown again for 24 h
 IG_HASHTAGS = int(os.environ.get("REDES_IG_HASHTAGS", "30") or 30)   # Instagram drops the whole text above 30
@@ -231,20 +239,21 @@ def _build(post: dict, facts: dict, ag: Agents, now: datetime, tag: str, shown: 
     post = {**post, "seo": seo}
     soon = time.time() * 1000 + 20 * 60 * 1000        # never a match that already started (or starts in < 20 min)
     fresh = [r for r in facts.get("upcoming") or [] if match_key(r) not in (shown or set())
-             and float(r.get("kickoffAt") or 0) > soon]
+             and float(r.get("kickoffAt") or 0) > soon and same_day(r, now)]
     if post.get("obligatorio") == "manana" or (t == "picks_dia" and not focus):
         picks = V.famous_picks(fresh, 4)          # fewer than 5, famous teams of Europe, South America and Liga BetPlay
     else:
         picks = V.top_picks(fresh, 4, focus) or V.top_picks(fresh, 4)
-    res = sorted([r for r in facts.get("results") or [] if V.top_league(r.get("league"))],
-                 key=lambda r: (r["status"] != "won", -r["p"])) or sorted(facts.get("results") or [], key=lambda r: (r["status"] != "won", -r["p"]))
+    today_res = [r for r in facts.get("results") or [] if same_day(r, now)]      # tonight: only today's matches
+    res = sorted([r for r in today_res if V.top_league(r.get("league"))],
+                 key=lambda r: (r["status"] != "won", -r["p"])) or sorted(today_res, key=lambda r: (r["status"] != "won", -r["p"]))
     for r in res:
         lg = V.top_league(r.get("league"))
         if lg:
             r["_tag"] = lg[1]
     reel_of = "resultados" if (t == "reel" and (post.get("topic") or "").lower().startswith("result")) else ("picks_dia" if t == "reel" else t)
     if reel_of == "resultados":
-        mine = shown_results(st, facts.get("results") or [])
+        mine = shown_results(st, today_res)
         if mine == []:
             raise SkipPiece("los picks que mostramos todavía no tienen resultado")
         if mine:            # how the engine did with the SAME picks shown earlier (hits and misses)
@@ -257,10 +266,11 @@ def _build(post: dict, facts: dict, ag: Agents, now: datetime, tag: str, shown: 
         data = {"won": sum(r["status"] == "won" for r in rows), "n": len(rows), "historial": facts["record"],
                 "partidos": [f"{r['home']} vs {r['away']}" for r in rows[:6]]}
     elif t == "nba":            # international audience: NBA (and NHL) picks
-        intl = [r for r in facts.get("intl") or [] if float(r.get("kickoffAt") or 0) > soon and match_key(r) not in (shown or set())]
+        intl = [r for r in facts.get("intl") or [] if float(r.get("kickoffAt") or 0) > soon and same_day(r, now)
+                and match_key(r) not in (shown or set())]
         rows = [r for r in intl if r.get("sport") == "basketball"][:4] or intl[:4]
         if not rows:
-            raise SkipPiece("no hay partidos de NBA/NHL próximos")
+            raise SkipPiece("no quedan partidos de NBA/NHL hoy")
         for r in rows:
             r["_tag"] = "nba" if r.get("sport") == "basketball" else "nhl"
         reel_of = "nba"
@@ -288,7 +298,7 @@ def _build(post: dict, facts: dict, ag: Agents, now: datetime, tag: str, shown: 
             pass
     if t in ("picks_dia", "resultados") or (t == "reel" and reel_of != "texto"):
         if not rows:
-            raise SkipPiece("no hay partidos nuevos de ligas top (los de las últimas 24 h ya se mostraron)"
+            raise SkipPiece("no quedan partidos de hoy de ligas top sin mostrar (los de mañana se publican mañana)"
                             if reel_of == "picks_dia" else "no hay partidos de ligas top para esta pieza")
     data["ahora"] = now.strftime("%Y-%m-%d %H:%M (hora de Colombia)")
     try:          # real search phrases (YouTube/Google autocomplete) for natural SEO
