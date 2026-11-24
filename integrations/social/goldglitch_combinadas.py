@@ -68,7 +68,11 @@ def signed(path: str, body: dict) -> dict:
     sig = hmac.new(secret.encode(), f"{ts}.{raw}".encode(), hashlib.sha256).hexdigest()
     r = requests.post(f"{u.scheme}://{u.netloc}{path}", data=raw.encode(), timeout=60, headers={
         "content-type": "application/json", "x-gg-timestamp": ts, "x-gg-signature": sig})
-    j = r.json()
+    try:
+        j = r.json()
+    except ValueError:
+        raise SystemExit(f"La web respondió {r.status_code} sin datos en {path}. Si acabas de actualizar, la web puede "
+                         "tardar unos minutos en publicar el cambio: vuelve a intentar en 5 minutos.")
     if not j.get("ok"):
         raise SystemExit(f"La web respondió {r.status_code}: {j}")
     return j
