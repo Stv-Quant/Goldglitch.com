@@ -287,8 +287,9 @@ VOZ HUMANA, NO DE IA: frases como las escribiría una persona real de la marca; 
 títulos ni en textos de imagen); nada de muletillas repetidas ("o sea", "next level", "literal") en cada pieza, nada de
 listas de emojis ni de frases de plantilla ("¡No te lo pierdas!", "Descubre", "Increíble"). En fb nunca pongas enlaces.
 - concepto: el concepto elegido en máx. 7 palabras.
-- ilustracion: EN INGLÉS, la descripción de la ilustración de fondo que pintará la IA (escena, personajes ficticios,
-  acción, emoción, luz y encuadre), máx. 60 palabras, cinematográfica y de lujo. Nunca personas reales, futbolistas
+- ilustracion: EN INGLÉS, la descripción de la ilustración de fondo que pintará la IA, máx. 60 palabras, cinematográfica
+  y de lujo PERO DEPORTIVA: parte SIEMPRE de "tema_ilustracion" (fútbol, baloncesto, estadio, balón, vestuario…) y
+  ajústalo al tema de la pieza; nada de champaña, yates ni fiestas, y personas solo si el tema las trae. Nunca personas reales, futbolistas
   reales, escudos, logos, marcas ni texto; evita lo que la IA llena de letras falsas (camisetas vistas de espaldas con
   número, marcadores, carteles, pantallas, periódicos): mejor rostros, manos, balón, luces, estadio desenfocado. Si sale EGG: "a stylish young Colombian woman with long dark wavy hair with
   golden highlights and gold hoop earrings".
@@ -388,10 +389,14 @@ Formato: {{"puntajes":{{...}}, "mejorado":{{solo las claves que reescribiste}}}}
                 "tiktok": "TikTok: tendencia del día, ritmo y gancho de 1 segundo.",
                 "youtube": "YouTube: título y descripción con búsquedas reales, más datos."}
         sel = [tips[n] for n in nets if n in tips]
-        extra = ("Esta es la pieza OBLIGATORIA de la mañana: los picks del día (menos de 5, equipos famosos); que se sienta como "
-                 "la cita diaria." if post.get("obligatorio") == "manana" else
-                 "Esta es la pieza OBLIGATORIA de la noche: cómo le fue al modelo con los picks de la mañana, aciertos y fallos "
-                 "con honestidad." if post.get("obligatorio") == "noche" else "")
+        extra = {"manana": "Esta es la cita OBLIGATORIA de la mañana: los picks del día (menos de 5, equipos famosos); que se "
+                           "sienta como la cita diaria.",
+                 "tarde": "Esta es la cita OBLIGATORIA de la tarde: estadísticas de los partidos de hoy que faltan.",
+                 "noche_stats": "Reel/short OBLIGATORIO de la noche: estadísticas de los partidos de esta noche, claras y con ritmo.",
+                 "noche": "Esta es la cita OBLIGATORIA de la noche: cómo le fue al modelo con los picks de hoy, aciertos y "
+                          "fallos con honestidad.",
+                 "noche_reel": "Reel/short OBLIGATORIO de resultados: aciertos y fallos de hoy, con honestidad.",
+                 }.get(post.get("obligatorio") or "", "")
         return ("Redes de esta pieza y su público:\n- " + "\n- ".join(sel) + ("\n" + extra if extra else "")) if sel else extra
 
     @staticmethod

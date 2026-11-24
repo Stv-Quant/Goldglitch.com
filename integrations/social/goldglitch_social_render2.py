@@ -282,34 +282,168 @@ def kit_pattern(name: str) -> str:
     return ("plain", "trim", "panel")[sum(map(ord, n)) % 3]
 
 
+KITS = {   # home kits (approx. 2025-26): pattern, base, colour 2, colour 3, sleeves, collar. Colours only — never crests or sponsors.
+    # Premier League
+    "arsenal": ("plain", "#db0007", "", "", "#ffffff", "#ffffff"), "aston villa": ("plain", "#670e36", "", "", "#95bfe5", "#95bfe5"),
+    "bournemouth": ("stripes", "#da291c", "#111111", "", "", "#111111"), "brentford": ("stripes", "#e30613", "#ffffff", "", "", "#111111"),
+    "brighton": ("stripes", "#0057b8", "#ffffff", "", "", "#0057b8"), "burnley": ("plain", "#6c1d45", "", "", "#99d6ea", "#99d6ea"),
+    "chelsea": ("plain", "#034694", "", "", "", "#ffffff"), "crystal palace": ("stripes", "#c4122e", "#1b458f", "", "", "#1b458f"),
+    "everton": ("plain", "#003399", "", "", "", "#ffffff"), "fulham": ("plain", "#ffffff", "", "", "", "#111111"),
+    "leeds": ("plain", "#ffffff", "", "", "", "#1d428a"), "liverpool": ("plain", "#c8102e", "", "", "", "#c8102e"),
+    "manchester city": ("plain", "#6cabdd", "", "", "", "#1c2c5b"), "manchester united": ("plain", "#da291c", "", "", "", "#111111"),
+    "newcastle": ("stripes", "#111111", "#ffffff", "", "", "#111111"), "nottingham forest": ("plain", "#dd0000", "", "", "", "#ffffff"),
+    "sunderland": ("stripes", "#eb172b", "#ffffff", "", "", "#111111"), "tottenham": ("plain", "#ffffff", "", "", "", "#132257"),
+    "west ham": ("plain", "#7a263a", "", "", "#1bb1e7", "#1bb1e7"), "wolverhampton": ("plain", "#fdb913", "", "", "", "#111111"),
+    "wolves": ("plain", "#fdb913", "", "", "", "#111111"),
+    # LaLiga
+    "real madrid": ("plain", "#ffffff", "", "", "", "#d4af37"), "barcelona": ("stripes", "#a50044", "#004d98", "", "", "#edbb00"),
+    "atletico madrid": ("stripes", "#cb3524", "#ffffff", "", "", "#272e61"), "athletic": ("stripes", "#ee2523", "#ffffff", "", "", "#111111"),
+    "sevilla": ("plain", "#ffffff", "", "", "", "#d71920"), "real betis": ("stripes", "#00954c", "#ffffff", "", "", "#00954c"),
+    "betis": ("stripes", "#00954c", "#ffffff", "", "", "#00954c"), "real sociedad": ("stripes", "#0067b1", "#ffffff", "", "", "#0067b1"),
+    "villarreal": ("plain", "#ffe667", "", "", "", "#005187"), "valencia": ("plain", "#ffffff", "", "", "", "#111111"),
+    "celta": ("plain", "#8ac3ee", "", "", "", "#e5254e"), "girona": ("stripes", "#cd2534", "#ffffff", "", "", "#cd2534"),
+    "osasuna": ("plain", "#d91a21", "", "", "", "#0a346f"), "espanyol": ("stripes", "#007fc8", "#ffffff", "", "", "#007fc8"),
+    "getafe": ("plain", "#005999", "", "", "", "#ffffff"), "mallorca": ("plain", "#e20613", "", "", "", "#111111"),
+    "rayo vallecano": ("sash", "#ffffff", "#e53027", "", "", "#e53027"), "alaves": ("stripes", "#0761af", "#ffffff", "", "", "#0761af"),
+    "levante": ("stripes", "#004d98", "#b4053f", "", "", "#004d98"), "elche": ("band", "#ffffff", "#05642c", "", "", "#05642c"),
+    "real oviedo": ("plain", "#0047ab", "", "", "", "#ffffff"), "las palmas": ("plain", "#ffe400", "", "", "", "#0055a5"),
+    # Serie A
+    "juventus": ("stripes", "#ffffff", "#111111", "", "", "#111111"), "internazionale": ("stripes", "#0068a8", "#111111", "", "", "#111111"),
+    "inter milan": ("stripes", "#0068a8", "#111111", "", "", "#111111"), "inter": ("stripes", "#0068a8", "#111111", "", "", "#111111"),
+    "milan": ("stripes", "#fb090b", "#111111", "", "", "#111111"), "napoli": ("plain", "#12a0d7", "", "", "", "#ffffff"),
+    "roma": ("plain", "#8e1f2f", "", "", "", "#f0bc42"), "lazio": ("plain", "#87d8f7", "", "", "", "#ffffff"),
+    "atalanta": ("stripes", "#1e71b8", "#111111", "", "", "#111111"), "fiorentina": ("plain", "#482e92", "", "", "", "#ffffff"),
+    "bologna": ("stripes", "#a21c26", "#1a2f48", "", "", "#1a2f48"), "torino": ("plain", "#881f19", "", "", "", "#ffffff"),
+    "genoa": ("halves", "#ad1919", "#002a5c", "", "", "#ffffff"), "udinese": ("stripes", "#ffffff", "#111111", "", "", "#111111"),
+    "cagliari": ("halves", "#a8001e", "#002350", "", "", "#ffffff"), "como": ("plain", "#1d4f91", "", "", "", "#ffffff"),
+    "lecce": ("stripes", "#ffdd00", "#e30613", "", "", "#e30613"), "sassuolo": ("stripes", "#00a752", "#111111", "", "", "#111111"),
+    "verona": ("plain", "#002f6c", "", "", "", "#ffd800"), "parma": ("plain", "#ffffff", "", "", "", "#ffd200"),
+    "cremonese": ("stripes", "#e2001a", "#9a9a9a", "", "", "#9a9a9a"), "pisa": ("stripes", "#111111", "#0d47a1", "", "", "#111111"),
+    # Bundesliga
+    "bayern": ("plain", "#dc052d", "", "", "", "#ffffff"), "dortmund": ("plain", "#fde100", "", "", "", "#111111"),
+    "leverkusen": ("plain", "#e32221", "", "", "", "#111111"), "leipzig": ("plain", "#ffffff", "", "", "", "#dd0741"),
+    "stuttgart": ("band", "#ffffff", "#e32219", "", "", "#e32219"), "eintracht frankfurt": ("plain", "#111111", "", "", "", "#e1000f"),
+    "wolfsburg": ("plain", "#65b32e", "", "", "", "#ffffff"), "monchengladbach": ("plain", "#ffffff", "", "", "", "#00a650"),
+    "union berlin": ("plain", "#eb1923", "", "", "", "#ffffff"), "freiburg": ("plain", "#e2001a", "", "", "", "#111111"),
+    "hoffenheim": ("plain", "#1961b5", "", "", "", "#ffffff"), "werder bremen": ("plain", "#1d9053", "", "", "", "#ffffff"),
+    "mainz": ("plain", "#c3141e", "", "", "", "#ffffff"), "hamburg": ("plain", "#ffffff", "", "", "", "#0a3f86"),
+    "koln": ("plain", "#ffffff", "", "", "", "#ed1c24"), "augsburg": ("plain", "#ba3733", "", "", "", "#46714d"),
+    # Ligue 1
+    "paris saint germain": ("centre", "#004170", "#da291c", "#ffffff", "", "#ffffff"), "psg": ("centre", "#004170", "#da291c", "#ffffff", "", "#ffffff"),
+    "marseille": ("plain", "#ffffff", "", "", "", "#2faee0"), "lyon": ("plain", "#ffffff", "", "", "", "#da0812"),
+    "monaco": ("diag", "#e7192d", "#ffffff", "", "", "#ffffff"), "lille": ("plain", "#e01e13", "", "", "", "#20325f"),
+    "lens": ("stripes", "#ffd400", "#e2001a", "", "", "#e2001a"), "nice": ("stripes", "#c8102e", "#111111", "", "", "#111111"),
+    "rennes": ("plain", "#e13327", "", "", "", "#111111"), "nantes": ("plain", "#fcd405", "", "", "", "#0c7a3e"),
+    "strasbourg": ("plain", "#009fe3", "", "", "", "#ffffff"),
+    # Portugal, Netherlands, Scotland, Turkey
+    "benfica": ("plain", "#e83030", "", "", "", "#ffffff"), "porto": ("stripes", "#00428c", "#ffffff", "", "", "#00428c"),
+    "sporting cp": ("hoops", "#008057", "#ffffff", "", "", "#008057"), "sporting lisbon": ("hoops", "#008057", "#ffffff", "", "", "#008057"),
+    "ajax": ("centre", "#ffffff", "#d2122e", "", "", "#d2122e"), "psv": ("stripes", "#ed1c24", "#ffffff", "", "", "#111111"),
+    "feyenoord": ("halves", "#ed1c24", "#ffffff", "", "", "#111111"), "celtic": ("hoops", "#018749", "#ffffff", "", "#ffffff", "#018749"),
+    "rangers": ("plain", "#1b458f", "", "", "", "#ffffff"), "galatasaray": ("halves", "#a90432", "#fdb912", "", "", "#fdb912"),
+    "fenerbahce": ("stripes", "#002d72", "#ffed00", "", "", "#002d72"), "besiktas": ("plain", "#ffffff", "", "", "", "#111111"),
+    # Colombia
+    "atletico nacional": ("stripes", "#0b8a3b", "#ffffff", "", "", "#0b8a3b"), "millonarios": ("plain", "#0a3a8a", "", "", "", "#ffffff"),
+    "america cali": ("plain", "#d3122a", "", "", "", "#ffffff"), "deportivo cali": ("plain", "#0b8a3b", "", "", "", "#ffffff"),
+    "junior": ("stripes", "#d3122a", "#ffffff", "", "", "#0a3a8a"), "atletico junior": ("stripes", "#d3122a", "#ffffff", "", "", "#0a3a8a"),
+    "independiente santa fe": ("plain", "#d3122a", "", "", "#ffffff", "#ffffff"), "santa fe": ("plain", "#d3122a", "", "", "#ffffff", "#ffffff"),
+    "independiente medellin": ("plain", "#d3122a", "", "", "", "#0a3a8a"), "medellin": ("plain", "#d3122a", "", "", "", "#0a3a8a"),
+    "tolima": ("plain", "#7b1f2e", "", "", "", "#f2c230"), "atletico bucaramanga": ("plain", "#ffd100", "", "", "", "#00843d"),
+    "bucaramanga": ("plain", "#ffd100", "", "", "", "#00843d"), "once caldas": ("plain", "#ffffff", "", "", "", "#111111"),
+    "pereira": ("stripes", "#ffd100", "#d3122a", "", "", "#d3122a"), "envigado": ("plain", "#f58220", "", "", "", "#00843d"),
+    "pasto": ("plain", "#d3122a", "", "", "", "#ffd100"), "aguilas doradas": ("plain", "#f2c230", "", "", "", "#111111"),
+    # Argentina
+    "boca juniors": ("band", "#0b2a6f", "#f6c200", "", "", "#f6c200"), "river plate": ("sash", "#ffffff", "#d6001c", "", "", "#d6001c"),
+    "racing club": ("stripes", "#79c3ee", "#ffffff", "", "", "#79c3ee"), "independiente": ("plain", "#d6001c", "", "", "", "#ffffff"),
+    "san lorenzo": ("stripes", "#0a2a6b", "#d6001c", "", "", "#0a2a6b"), "estudiantes": ("stripes", "#d6001c", "#ffffff", "", "", "#d6001c"),
+    "velez": ("chevron", "#ffffff", "#0a3a8a", "", "", "#0a3a8a"), "rosario central": ("stripes", "#0a3a8a", "#ffd100", "", "", "#ffd100"),
+    "newell": ("halves", "#d6001c", "#111111", "", "", "#111111"), "huracan": ("plain", "#ffffff", "", "", "", "#d6001c"),
+    # Brazil
+    "flamengo": ("hoops", "#c8102e", "#111111", "", "", "#111111"), "palmeiras": ("plain", "#006437", "", "", "", "#ffffff"),
+    "corinthians": ("plain", "#ffffff", "", "", "", "#111111"), "sao paulo": ("band", "#ffffff", "#d6001c", "#111111", "", "#111111"),
+    "santos": ("plain", "#ffffff", "", "", "", "#111111"), "fluminense": ("stripes", "#7a1430", "#00843d", "#ffffff", "", "#ffffff"),
+    "vasco": ("sash", "#111111", "#ffffff", "", "", "#ffffff"), "botafogo": ("stripes", "#111111", "#ffffff", "", "", "#111111"),
+    "gremio": ("stripes", "#0d80bf", "#111111", "#ffffff", "", "#111111"), "internacional": ("plain", "#d6001c", "", "", "", "#ffffff"),
+    "atletico mineiro": ("stripes", "#111111", "#ffffff", "", "", "#111111"), "cruzeiro": ("plain", "#003399", "", "", "", "#ffffff"),
+    "bahia": ("plain", "#ffffff", "", "", "", "#0a3a8a"), "fortaleza": ("stripes", "#0a3a8a", "#d6001c", "#ffffff", "", "#ffffff"),
+    "bragantino": ("plain", "#ffffff", "", "", "", "#d6001c"),
+    # Mexico, MLS
+    "america": ("plain", "#ffd100", "", "", "", "#0b2a6f"), "guadalajara": ("stripes", "#d6001c", "#ffffff", "", "", "#0a2a6b"),
+    "chivas": ("stripes", "#d6001c", "#ffffff", "", "", "#0a2a6b"), "tigres": ("plain", "#fdb913", "", "", "", "#0b2a6f"),
+    "monterrey": ("stripes", "#0b2a6f", "#ffffff", "", "", "#0b2a6f"), "cruz azul": ("sash", "#0047bb", "#ffffff", "", "", "#ffffff"),
+    "pumas": ("plain", "#ffffff", "", "", "", "#0b2a6f"), "toluca": ("plain", "#d6001c", "", "", "", "#ffffff"),
+    "pachuca": ("stripes", "#0047bb", "#ffffff", "", "", "#0047bb"), "inter miami": ("plain", "#f7b5cd", "", "", "", "#231f20"),
+    "la galaxy": ("sash", "#ffffff", "#00245d", "", "", "#00245d"), "los angeles galaxy": ("sash", "#ffffff", "#00245d", "", "", "#00245d"),
+    "los angeles fc": ("plain", "#111111", "", "", "", "#c39e6d"), "lafc": ("plain", "#111111", "", "", "", "#c39e6d"),
+}
+NBA = {"lakers", "celtics", "warriors", "bulls", "heat", "knicks", "nets", "bucks", "76ers", "sixers", "raptors", "cavaliers",
+       "pistons", "pacers", "hawks", "hornets", "magic", "wizards", "nuggets", "timberwolves", "thunder", "trail blazers",
+       "jazz", "suns", "clippers", "kings", "mavericks", "rockets", "grizzlies", "pelicans", "spurs"}
+
+
+def kit(name: str) -> tuple[str, str, str, str, str, str] | None:
+    n = _norm(name)
+    for k in sorted(KITS, key=len, reverse=True):
+        if re.search(rf"\b{re.escape(k)}\b", n):
+            return KITS[k]
+    return None
+
+
 def badge(name: str, size: int) -> str:
-    """A shirt in the club's real colours and a kit layout like theirs (stripes, sash, hoops…). Never a crest or logo."""
-    c1, c2 = club_colors(name)
-    if c2.lower() == c1.lower():
-        c2 = "#f5f5f4" if _lum(c1) < 0.6 else "#111111"
-    pat = kit_pattern(name)
+    """The club's home kit drawn as a shirt: real colours and layout (stripes, hoops, sash, sleeves, collar).
+    NBA teams get a basketball tank top. Never a crest, a sponsor or a number."""
+    k = kit(name)
+    if k:
+        pat, c1, c2, c3, sleeves, collar = k
+    else:
+        c1, c2 = club_colors(name)
+        if c2.lower() == c1.lower():
+            c2 = "#f5f5f4" if _lum(c1) < 0.6 else "#111111"
+        pat, c3, sleeves, collar = (kit_pattern(name) if any(re.search(rf"\b{re.escape(c)}\b", str(name).lower())
+                                                            for cs in KIT_PATTERN.values() for c in cs) else "plain"), "", "", c2
+    c2 = c2 or collar or ("#111111" if _lum(c1) > 0.6 else "#ffffff")
+    c3 = c3 or c2
     uid = abs(hash((name, size))) % 999999
-    body = "M30 14 L42 9 Q50 17 58 9 L70 14 L91 29 L81 46 L72 40 L72 91 Q50 95 28 91 L28 40 L19 46 L9 29 Z"
+    tank = any(re.search(rf"\b{t}\b", _norm(name)) for t in NBA)
+    if tank:
+        torso = "M34 8 L42 7 Q50 22 58 7 L66 8 Q65 27 77 33 L77 93 Q50 97 23 93 L23 33 Q35 27 34 8 Z"
+        sleeve_paths = ""
+        trims = (f"<path d='M42 7 Q50 22 58 7' fill='none' stroke='{collar}' stroke-width='4'/>"
+                 f"<path d='M34 8 Q35 27 23 33 M66 8 Q65 27 77 33' fill='none' stroke='{collar}' stroke-width='4'/>")
+    else:
+        torso = "M30 14 L42 9 Q50 17 58 9 L70 14 L72 40 L72 91 Q50 95 28 91 L28 40 Z"
+        sc = sleeves or c1
+        sleeve_paths = (f"<path d='M30 14 L9 29 L19 46 L28 40 Z M70 14 L91 29 L81 46 L72 40 Z' fill='{sc}'/>"
+                        f"<path d='M9 29 L19 46 L21.5 44.5 L11.6 27.6 Z M91 29 L81 46 L78.5 44.5 L88.4 27.6 Z' fill='{collar}'/>"
+                        f"<path d='M9 29 L19 46 L28 40 L30 14 Z M91 29 L81 46 L72 40 L70 14 Z' fill='url(#s{uid})'/>")
+        trims = f"<path d='M42 9 Q50 19 58 9' fill='none' stroke='{collar}' stroke-width='3.6' stroke-linecap='round'/>"
+    w = 7
     deco = {
-        "stripes": "".join(f"<rect x='{x}' y='0' width='7' height='100' fill='{c2}'/>" for x in (33, 47, 61)),
-        "sash": f"<path d='M20 30 L36 14 L82 82 L68 96 Z' fill='{c2}'/>",
-        "band": f"<rect x='0' y='44' width='100' height='15' fill='{c2}'/>",
-        "hoops": "".join(f"<rect x='0' y='{y}' width='100' height='8' fill='{c2}'/>" for y in (26, 42, 58, 74)),
+        "stripes": "".join(f"<rect x='{x}' y='0' width='{w}' height='100' fill='{(c2, c3)[i % 2]}'/>"
+                           for i, x in enumerate(range(22 + w, 80, 2 * w))),
+        "hoops": "".join(f"<rect x='0' y='{y}' width='100' height='8' fill='{c2}'/>" for y in range(20, 96, 16)),
+        "sash": f"<path d='M26 14 L40 10 L78 88 L64 94 Z' fill='{c2}'/>",
+        "band": f"<rect x='0' y='42' width='100' height='14' fill='{c2}'/>" + (
+            f"<rect x='0' y='56' width='100' height='5' fill='{c3}'/>" if c3 != c2 else ""),
         "halves": f"<rect x='50' y='0' width='50' height='100' fill='{c2}'/>",
-        "panel": f"<rect x='28' y='38' width='6' height='60' fill='{c2}'/><rect x='66' y='38' width='6' height='60' fill='{c2}'/>",
+        "centre": (f"<rect x='{40 if c3 != c2 else 41}' y='0' width='{20 if c3 != c2 else 18}' height='100' fill='{c3}'/>"
+                   f"<rect x='43' y='0' width='14' height='100' fill='{c2}'/>"),
+        "diag": f"<path d='M0 100 L100 30 L100 100 Z' fill='{c2}'/>",
+        "chevron": f"<path d='M28 22 L50 50 L72 22 L72 34 L50 62 L28 34 Z' fill='{c2}'/>",
         "trim": f"<rect x='0' y='84' width='100' height='12' fill='{c2}' opacity='.9'/>",
+        "panel": f"<rect x='28' y='38' width='6' height='60' fill='{c2}'/><rect x='66' y='38' width='6' height='60' fill='{c2}'/>",
         "plain": "",
-    }[pat]
+    }.get(pat, "")
     return f"""<svg width='{size}' height='{size}' viewBox='0 0 100 100' style='flex:none;filter:drop-shadow(0 {max(3, size // 18)}px {max(6, size // 7)}px rgba(0,0,0,.6))'>
-<defs><clipPath id='k{uid}'><path d='{body}'/></clipPath>
-<linearGradient id='s{uid}' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='#fff' stop-opacity='.28'/><stop offset='.45' stop-color='#fff' stop-opacity='0'/>
-<stop offset='1' stop-color='#000' stop-opacity='.32'/></linearGradient></defs>
+<defs><clipPath id='k{uid}'><path d='{torso}'/></clipPath>
+<linearGradient id='s{uid}' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='#fff' stop-opacity='.26'/><stop offset='.45' stop-color='#fff' stop-opacity='0'/>
+<stop offset='1' stop-color='#000' stop-opacity='.30'/></linearGradient></defs>
+{sleeve_paths}
 <g clip-path='url(#k{uid})'><rect width='100' height='100' fill='{c1}'/>{deco}
-<path d='M9 29 L19 46 L28 40 L28 36 L14 24 Z M91 29 L81 46 L72 40 L72 36 L86 24 Z' fill='{c2}' opacity='.95'/>
 <path d='M36 30 Q40 60 34 92 M64 30 Q60 60 66 92' stroke='#000' stroke-opacity='.12' stroke-width='1.6' fill='none'/>
-<rect width='100' height='100' fill='url(#s{uid})'/></g>
-<path d='M42 9 Q50 19 58 9' fill='none' stroke='{c2}' stroke-width='3.4' stroke-linecap='round'/>
-<path d='{body}' fill='none' stroke='rgba(0,0,0,.45)' stroke-width='1.2'/></svg>"""
+<rect width='100' height='100' fill='url(#s{uid})'/></g>{trims}
+<path d='{torso}' fill='none' stroke='rgba(0,0,0,.45)' stroke-width='1.1'/>
+{"" if tank else "<path d='M30 14 L9 29 L19 46 L28 40 M70 14 L91 29 L81 46 L72 40' fill='none' stroke='rgba(0,0,0,.45)' stroke-width='1.1'/>"}</svg>"""
 
 
 def _old_badge(name: str, size: int) -> str:
