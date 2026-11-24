@@ -110,9 +110,11 @@ Las decisiones son ECONÓMICAS: cada publicación es inventario escaso que se as
 (rendimiento marginal), con incentivos positivos y éticos, datos, experimentos y revisión de si se acertó.
 CITAS FIJAS EN TODAS LAS REDES (el sistema las agrega, no las planees): 07:30 estadísticas de la mañana, 14:00
 estadísticas de la tarde, 19:30 reel/short de las estadísticas de la noche, 22:00 resultados y 22:45 reel/short de
-resultados. Fuera de esas, CADA publicación es para UNA sola red y es distinta: "redes" lleva una sola red. Planea 8 a 10
-piezas propias por red al día (32 a 40 en total: al menos 8 en Instagram, 8 en Facebook, 8 en TikTok y 8 en YouTube),
-separadas al menos 45 min dentro de la misma red y de las citas fijas (redes distintas pueden coincidir). Con estadísticas reales.
+resultados. Fuera de esas, CADA publicación es para UNA sola red y es distinta: "redes" lleva una sola red. TIKTOK ES LA RED
+PRINCIPAL (la más usada por nuestro público): 16 a 20 piezas propias en TikTok al día, cada 35-45 min, todo en video:
+noticias de fútbol, datos de los partidos de hoy, estadísticas, picks, sabías que, mito vs dato, memes de tendencia y NBA.
+Instagram, Facebook y YouTube: 8 a 10 piezas propias cada una (al menos 40 en total), separadas al menos 45 min dentro de
+la misma red (35 en TikTok) y de las citas fijas (redes distintas pueden coincidir). Con estadísticas reales.
 En Instagram y Facebook cada publicación lleva además su HISTORIA (el sistema la hace y la sube).
 AUDIENCIAS POR RED:
 - Instagram: público joven que viene por los PICKS. Cada día ABRE con "picks_dia" (menos de 5 picks de los equipos más
@@ -150,7 +152,7 @@ y prioriza lo que genera guardados, compartidos y comentarios.
 Cómo trabajas en la reunión:
 1. Mira las métricas y el historial (ver_metricas, ver_historial).
 2. Consulta a los especialistas que aporten (consultar). La empresa son 10 agentes fijos: no contrates ni despidas.
-3. Decide el plan de HOY con definir_plan: 32 a 40 publicaciones repartidas por red (al menos 8 por red) (cada una con su "redes" de UNA red) (volumen alto: el objetivo es crecer rápido), al menos 3 de
+3. Decide el plan de HOY con definir_plan: 40 a 50 publicaciones repartidas por red (16 a 20 en TikTok, al menos 8 en cada una de las demás) (cada una con su "redes" de UNA red) (volumen alto: el objetivo es crecer rápido), al menos 3 de
    ellas "reel" (video vertical de ritmo rápido, el formato que más alcance orgánico da; topic "resultados" para un reel
    de resultados, si no son picks), solo equipos de ligas top, horas 07:00–23:00 separadas al menos 45 min en la misma red,
    cada una con gancho, ángulo, tema y llamado a la acción. Al menos 1 "meme" al día (idea de Valeria). Los picks no se
@@ -364,7 +366,7 @@ class Committee:
         earliest = (now_co() + __import__("datetime").timedelta(minutes=10)).strftime("%H:%M")
         self.now_posts = []
         per_net: dict[str, list[int]] = {}
-        for p in posts[:44]:
+        for p in posts[:56]:
             t, hhmm = p.get("type"), str(p.get("time", ""))
             if hhmm.strip().lower() in ("ahora", "ya", "now"):
                 text = " ".join(str(p.get(k, "")) for k in ("angle", "topic", "hook", "cta"))
@@ -389,8 +391,8 @@ class Committee:
                 continue
             m = int(hhmm[:2]) * 60 + int(hhmm[3:])
             net = _redes(p.get("redes"), t)[0]                   # one network per piece: each network has its own content
-            if any(abs(m - x) < SPACING for x in per_net.get(net, [])):
-                problems.append(f"{t} {hhmm}: menos de {SPACING} min de otra publicación en {net}")
+            if any(abs(m - x) < spacing(net) for x in per_net.get(net, [])):
+                problems.append(f"{t} {hhmm}: menos de {spacing(net)} min de otra publicación en {net}")
                 continue
             per_net.setdefault(net, []).append(m)
             times.append(m)
@@ -429,7 +431,6 @@ class Committee:
         st = self.state or {}
         done_today = {p.get("obligatorio") for p in (st.get("plan") or []) if st.get("day") == today and p.get("status") == "done"}
         out = [p for p in ok if not p.get("obligatorio") and p["type"] != "resultados"]
-        MIN = SPACING
         for key, slot, t, angle, topic, cta in self.SLOTS:
             if key in done_today:
                 continue
@@ -438,7 +439,8 @@ class Committee:
                     slot = earliest
                 else:
                     continue
-            out = [p for p in out if p.get("obligatorio") or abs(_mins(p["time"]) - _mins(slot)) >= MIN]
+            out = [p for p in out if p.get("obligatorio") or p.get("time") == "ahora" or
+                   abs(_mins(p["time"]) - _mins(slot)) >= spacing((p.get("redes") or [None])[0] if len(p.get("redes") or []) == 1 else None)]
             out.append({"type": t, "time": slot, "obligatorio": key, "redes": list(ALL_NETS), "angle": angle,
                         "topic": topic, "hook": "", "cta": cta})
         return sorted(out, key=lambda p: p["time"])
@@ -509,12 +511,12 @@ PASO 2: decide. Formato:
 poner 2 memes si hay tendencias fuertes, y si una tendencia explota justo ahora, el meme puede ir con "time":"ahora")
 (opcional: UNA publicación del plan puede llevar "time":"ahora" si debe salir apenas termine la reunión)
 "aprendizajes":[{{"miembro":"clave de quien lo aprendió","texto":"..."}}], "acta":"qué viste, qué decidiste, qué experimento corre y cómo se mide"}}
-32 a 40 publicaciones (al menos 8 por red), CADA UNA PARA UNA SOLA RED ("redes": ["instagram"] o ["facebook"] o ["tiktok"] o ["youtube"]) y
-distinta de las demás: 8 a 10 piezas propias por red, horas 07:00–23:00, 45 min
+40 a 50 publicaciones (TikTok es la red principal: 16 a 20; las demás al menos 8), CADA UNA PARA UNA SOLA RED ("redes": ["instagram"] o ["facebook"] o ["tiktok"] o ["youtube"]) y
+distinta de las demás, horas 07:00–23:00, 45 min (35 en TikTok)
 entre piezas de la MISMA red y lejos de las citas fijas. Las citas fijas las agrega el sistema en todas las redes (07:30 y
 14:00 estadísticas, 19:30 reel de estadísticas, 22:00 resultados, 22:45 reel de resultados): no las repitas.
 Instagram: memes, carruseles de datos, reels de picks con otra liga; Facebook: "sabias_que", "noticia", educativo;
-TikTok: "reel" y memes de tendencia; YouTube: "nba", reels de datos con búsqueda real. Al menos 1 "meme" y 1 concepto
+TikTok (la principal, todo en video): "reel", "noticia", "sabias_que", "picks_dia" de otra liga, "mito_dato", "nba" y memes de tendencia; YouTube: "nba", reels de datos con búsqueda real. Al menos 1 "meme" y 1 concepto
 disruptivo de Mía (en "angle"). Un partido mostrado en picks no se repite en 24 h: varía la "liga". Todo es del DÍA DE HOY (hora de Colombia): picks, datos y "angle" solo de partidos que se juegan hoy; los de mañana se publican mañana.""")
             res = self.set_plan(dec.get("plan") or [])
             self.set_art(dec.get("direccion_arte"))
@@ -785,6 +787,11 @@ def seo_for(today: str) -> dict:
 
 ALL_NETS = ("instagram", "facebook", "tiktok", "youtube")
 SPACING = 45            # minutes between two pieces on the same network
+NET_SPACING = {"tiktok": 35}     # TikTok is the main network: more pieces, closer together
+
+
+def spacing(net: str | None) -> int:
+    return NET_SPACING.get(net or "", SPACING)
 
 
 def with_mandatory(plan: list[dict], today: str, state: dict) -> list[dict]:
@@ -799,13 +806,14 @@ NET_DEFAULT = {"sabias_que": ["facebook"], "noticia": ["facebook"], "nba": ["you
 FILL_TYPES = {   # what each network gets when the committee planned fewer than the daily minimum
     "instagram": ["meme", "mito_dato", "pregunta", "reel", "meme", "picks_dia", "mito_dato", "reel"],
     "facebook": ["sabias_que", "noticia", "educativo", "pregunta", "sabias_que", "reel", "noticia", "educativo"],
-    "tiktok": ["reel", "meme", "mito_dato", "reel", "meme", "pregunta", "reel", "meme"],
+    "tiktok": ["reel", "noticia", "meme", "sabias_que", "picks_dia", "mito_dato", "reel", "nba", "pregunta", "noticia",
+               "reel", "meme", "sabias_que", "mito_dato", "reel", "noticia"],
     "youtube": ["reel", "nba", "educativo", "reel", "mito_dato", "reel", "sabias_que", "reel"],
 }
-MIN_PER_NET = 8
+MIN_PER_NET = {"tiktok": 16, "instagram": 8, "facebook": 8, "youtube": 8}   # TikTok is where our audience lives
 
 
-def fill_per_network(plan: list[dict], today: str, minimum: int = MIN_PER_NET) -> list[dict]:
+def fill_per_network(plan: list[dict], today: str, minimum: dict | None = None) -> list[dict]:
     """Guarantee at least `minimum` own pieces per network today (besides the fixed appointments), evenly spread
     from now to 23:00 and at least SPACING minutes from anything else on that network."""
     live = now_co().strftime("%Y-%m-%d") == today
@@ -816,23 +824,33 @@ def fill_per_network(plan: list[dict], today: str, minimum: int = MIN_PER_NET) -
         own = [p for p in out if not p.get("obligatorio") and net in (p.get("redes") or [])]
         if live:
             own = [p for p in own if p.get("time", "") > now_co().strftime("%H:%M") or p.get("status") == "done"]
-        need = minimum - len(own)
-        if need <= 0 or end - start < SPACING:
+        gap = spacing(net)
+        need = (minimum or MIN_PER_NET).get(net, 8) - len(own)
+        if need <= 0 or end - start < gap:
             continue
         busy = [_mins(p["time"]) for p in out if net in (p.get("redes") or []) and re.fullmatch(r"\d{2}:\d{2}", str(p.get("time")))]
-        step = max(SPACING, (end - start) // (need + 1))
+        step = max(gap, (end - start) // (need + 1))
         types = FILL_TYPES[net]
         k = len(own)
         t = start + step // 2
         while need > 0 and t <= end:
-            m = min(range(t, min(end, t + step) + 1, 5), key=lambda x: (any(abs(x - b) < SPACING for b in busy), abs(x - t)))
-            if not any(abs(m - b) < SPACING for b in busy):
+            m = min(range(t, min(end, t + step) + 1, 5), key=lambda x: (any(abs(x - b) < gap for b in busy), abs(x - t)))
+            if not any(abs(m - b) < gap for b in busy):
                 out.append({"type": types[k % len(types)], "time": f"{m // 60:02d}:{m % 60:02d}", "redes": [net],
                             "angle": "", "topic": "", "hook": "", "cta": "", "relleno": True})
                 busy.append(m)
                 k += 1
                 need -= 1
             t += step
+        for m in range(start, end + 1, 5):          # still short: any free slot left in the day
+            if need <= 0:
+                break
+            if not any(abs(m - b) < gap for b in busy):
+                out.append({"type": types[k % len(types)], "time": f"{m // 60:02d}:{m % 60:02d}", "redes": [net],
+                            "angle": "", "topic": "", "hook": "", "cta": "", "relleno": True})
+                busy.append(m)
+                k += 1
+                need -= 1
     return sorted(out, key=lambda p: p["time"])
 
 
