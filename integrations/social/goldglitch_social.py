@@ -193,8 +193,34 @@ def illustrations(post: dict, tx: dict, tag: str) -> tuple[str | None, str | Non
         return None, None
 
 
+STORY_KICKER = {"picks_dia": "Picks del día", "resultados": "Así le fue al modelo", "meme": "Meme del día",
+                "sabias_que": "¿Sabías que…?", "noticia": "Noticia del día", "nba": "NBA", "pregunta": "Tu turno",
+                "mito_dato": "Mito vs dato", "educativo": "Aprende a leer datos", "reel": "Nuevo reel"}
+
+
+def story_of(post: dict, piece: dict, tag: str) -> str | None:
+    """Instagram/Facebook story that announces the new post (1080×1920). Off with REDES_HISTORIAS=0."""
+    if os.environ.get("REDES_HISTORIAS", "1") == "0" or not ({"instagram", "facebook"} & set(post.get("redes") or ["instagram", "facebook"])):
+        return None
+    try:
+        tx, is_video = piece["texts"], bool(piece.get("reel")) or not piece.get("feed")
+        thumb = V.video_frame(piece["video"]) if is_video and piece.get("video") else (piece.get("feed") or [None])[0]
+        head = str(tx.get("story_title") or tx.get("cover_title") or tx.get("reel_hook") or "Nuevo dato")[:70]
+        return R.render([V.story(thumb, head, STORY_KICKER.get(post["type"], ""), is_video)], 1080, 1920, f"{tag}_historia")[0]
+    except Exception as e:
+        log(f"  historia: no se pudo armar ({e})")
+        return None
+
+
 def build(post: dict, facts: dict, ag: Agents, now: datetime, tag: str, shown: set[str] | None = None,
           st: dict | None = None) -> dict:
+    piece = _build(post, facts, ag, now, tag, shown, st)
+    piece["story"] = story_of(post, piece, tag)
+    return piece
+
+
+def _build(post: dict, facts: dict, ag: Agents, now: datetime, tag: str, shown: set[str] | None = None,
+           st: dict | None = None) -> dict:
     """Texts + images + video for one planned post. Returns {feed:[jpg], story:None, video:mp4, reel:bool, texts}.
 
     Picks come only from top first-division leagues of LATAM and Europe (and their continental cups)."""
@@ -390,12 +416,14 @@ def publish(post: dict, piece: dict, meta: Meta | None, tt: TikTok | None, dry: 
     elif meta and meta.ig:
         jobs.append(("instagram", lambda: meta.ig_carousel([src(p) for p in piece["feed"]], caption(tx, "ig"))
                      if len(piece["feed"]) > 1 else meta.ig_image(src(piece["feed"][0]), caption(tx, "ig"))))
-        if piece["story"] and not local:
-            jobs.append(("instagram_historia", lambda: meta.ig_story(upload(piece["story"]))))
+    if meta and meta.ig and piece.get("story"):          # story pointing to the new post
+        jobs.append(("instagram_historia", lambda: meta.ig_story(src(piece["story"]))))
     if meta and getattr(meta, "fb", True) and (piece.get("reel") or (post["type"] == "sabias_que" and piece.get("video"))):
         jobs.append(("facebook", lambda: meta.fb_video(piece["video"], caption(tx, "fb"), tx.get("cover_title", ""))))
     elif meta and getattr(meta, "fb", True):
         jobs.append(("facebook", lambda: meta.fb_photos(piece["feed"], caption(tx, "fb"))))
+    if meta and getattr(meta, "fb", True) and piece.get("story") and hasattr(meta, "fb_story"):
+        jobs.append(("facebook_historia", lambda: meta.fb_story(src(piece["story"]))))
     if tt:
         jobs.append(("tiktok", lambda: tt.video(piece["video"], caption(tx, "tiktok"))))
     if YT is not None and piece.get("video"):
@@ -405,8 +433,8 @@ def publish(post: dict, piece: dict, meta: Meta | None, tt: TikTok | None, dry: 
     nets = post.get("redes") or ["instagram", "facebook", "tiktok", "youtube"]   # each network's audience (plan)
     jobs = [(n, f) for n, f in jobs if n.split("_")[0] in nets]
     for net, fn in jobs:
-        if net in done:
-            continue
+        if net in done or (net.endswith("_historia") and net.split("_")[0] not in done and not dry):
+            continue        # a story only goes up once its post is on the profile
         if dry:
             log(f"  (dry-run) {net}: listo para publicar")
             continue

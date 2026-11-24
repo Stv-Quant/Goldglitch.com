@@ -139,6 +139,26 @@ MEME_FORMATS = {
 }   # one text card (+ CTA in the vertical version)
 
 
+NET_VOICE = {
+    "instagram": "INSTAGRAM (público joven, 18-30): estético, rápido, carrusel o meme que se guarda y se comparte por DM; "
+                 "portada que detiene el scroll, lenguaje de calle sin vulgaridad.",
+    "facebook": "FACEBOOK (público adulto, 30-55): conversación y nostalgia futbolera, datos explicados con calma, "
+                "pregunta que invite a opinar con argumentos; frases completas, sin jerga juvenil.",
+    "tiktok": "TIKTOK: entretenimiento primero; gancho en el primer segundo, tendencia del momento, remate inesperado.",
+    "youtube": "YOUTUBE SHORTS: búsqueda real (título con lo que la gente escribe), público internacional, datos claros "
+               "que se entiendan sin sonido.",
+}
+
+
+def red_destino(post: dict) -> str:
+    """Pieces made for one network get that network's voice; the two daily pieces (picks and results) go everywhere."""
+    nets = [n for n in (post.get("redes") or []) if n in NET_VOICE]
+    if not nets or len(nets) > 1:
+        return "todas las redes (pieza obligatoria del día: picks de la mañana o resultados de la noche)"
+    return (f"SOLO {NET_VOICE[nets[0]]} Esta pieza es exclusiva de esa red: escríbela pensando en ese público (los "
+            "textos de las otras redes pueden ser breves).")
+
+
 class Agents:
     def __init__(self, api_key: str | None, offline: bool = False):
         import goldglitch_claude_cli as CLI
@@ -224,6 +244,7 @@ Tipo: {post['type']} — {POST_TYPES[post['type']]}
 Ángulo: {post.get('angle')}  Tema: {post.get('topic') or '—'}
 Gancho pedido por el comité de crecimiento: {post.get('hook') or '—'}
 Llamado a la acción pedido por el comité: {post.get('cta') or 'ver todas las estadísticas gratis creando la cuenta'}
+Red de destino: {red_destino(post)}
 Datos (únicos números permitidos): {json.dumps(data, ensure_ascii=False)}
 
 Entrega:
