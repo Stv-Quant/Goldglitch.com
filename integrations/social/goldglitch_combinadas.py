@@ -118,7 +118,7 @@ def real_p(pick: dict, stats: dict, k: float = 20) -> tuple[float, int, float | 
 # ------------------------------------------------------------------ BetPlay odds (Kambi public offering API)
 def _norm(s: str) -> str:
     s = unicodedata.normalize("NFKD", str(s or "")).encode("ascii", "ignore").decode().lower()
-    s = re.sub(r"\b(fc|cf|sc|ac|afc|cd|club|deportivo|de|futbol|sad|ss|us|rj|sp|mg)\b", " ", s)
+    s = re.sub(r"\b(fc|cf|sc|ac|afc|cd|club|futbol|sad|ss|us|rj|sp|mg)\b", " ", s)
     return " ".join(re.sub(r"[^a-z0-9 ]", " ", s).split())
 
 
@@ -228,7 +228,7 @@ def match_event(pick: dict, events: list[dict]) -> dict | None:
     return best
 
 
-BAD = re.compile(r"half|1st|2nd|first|second|period|interval|minute|exact|odd|even|handicap|asian|race|player|both|"
+BAD = re.compile(r"\d+:\d+|half|1st|2nd|first|second|period|interval|minute|exact|odd|even|handicap|asian|race|player|both|"
                  r"&| and |3-way|three|win to nil|clean|margin|method|first to|last|next|scorer|range", re.I)
 
 
@@ -259,13 +259,15 @@ def find_odds(pick: dict, ev: dict, offers: list[dict]) -> tuple[float, str] | N
             if BAD.search(rest):
                 continue
             nl, nh, na = _norm(lab), _norm(ev["homeName"]), _norm(ev["awayName"])
-            is_team = any(x in low for x in (" by ", "home team", "away team")) or (nh and nh in nl) or (na and na in nl)
+            names = [n for n in (nh, na, _norm(pick["home"]), _norm(pick["away"])) if n]
+            is_team = any(x in low for x in (" by ", "home team", "away team")) or any(n in nl for n in names) or \
+                bool(re.search(r" - [a-z]", rest))
             if side is None and is_team:
                 continue
             if side is not None:
                 if not is_team:
                     continue
-                who = lab.split(" by ", 1)[1] if " by " in lab else lab
+                who = lab.split(" by ", 1)[1] if " by " in lab else lab.rsplit(" - ", 1)[-1]
                 if "home team" in low or "away team" in low:
                     offer_side = "home" if "home team" in low else "away"
                 else:
@@ -307,7 +309,7 @@ def combos(legs: list[dict], min_odds: float, max_sel: int, want: int) -> list[d
     out = []
     for k in range(1, max_sel + 1):
         for c in itertools.combinations(legs, k):
-            if len({l["matchId"] for l in c}) < k:
+            if len({l["event"] for l in c}) < k:
                 continue                                  # one selection per match (BetPlay does not combine them)
             odds = math.prod(l["odds"] for l in c)
             if odds <= min_odds:
@@ -350,7 +352,7 @@ def report(opts: list[dict], info: dict) -> str:
             f"<div class=s>{'historial ' + str(l['hist_n']) if l['hist_n'] else 'sin historial'}</div></td></tr>"
             for l in x["legs"])
         tone = "pos" if x["ev"] > 0 else "neg"
-        cards.append(f"""<section><h2>Opción {i} <span>{len(x['legs'])} selección{'es' if len(x['legs']) > 1 else ''}</span></h2>
+        cards.append(f"""<section><h2>Opción {i} <span>{len(x['legs'])} {'selecciones' if len(x['legs']) > 1 else 'selección'}</span></h2>
 <table><tr><th>Partido</th><th>Mercado</th><th class=n>Cuota</th><th class=n>Modelo</th><th class=n>Real</th></tr>{rows}</table>
 <div class=tot><b>Cuota total {x['odds']:.2f}</b> · probabilidad modelo {x['p_model'] * 100:.0f}% · ajustada a la realidad
 {x['p_real'] * 100:.0f}% · implícita de la cuota {100 / x['odds']:.0f}% ·
@@ -400,7 +402,7 @@ def main() -> int:
     print(f"  {len(events)} partidos de fútbol en BetPlay")
     by_match: dict[str, dict | None] = {}
     offers: dict = {}
-    legs, unmatched = [], 0
+    legs, unmatched, seen = [], 0, set()
     for p in picks:
         if p["matchId"] not in by_match:
             by_match[p["matchId"]] = match_event(p, events)
@@ -420,7 +422,15 @@ def main() -> int:
             unmatched += 1
             continue
         pr, hn, _ = real_p(p, stats)
-        legs.append({**p, "odds": hit_o[0], "market": hit_o[1], "p_real": pr, "hist_n": hn})
+        if hit_o[0] * float(p["p"]) > 1.5 or hit_o[0] > 1.0 / max(0.05, float(p["p"]) - 0.3):
+            print(f"  descarto cuota sospechosa: {p['home']} vs {p['away']} · {p['label']} @ {hit_o[0]:.2f} ({hit_o[1]})")
+            unmatched += 1
+            continue
+        key = (ev["id"], hit_o[1], hit_o[0])
+        if key in seen:                     # the same BetPlay selection twice (duplicated pick rows)
+            continue
+        seen.add(key)
+        legs.append({**p, "event": ev["id"], "odds": hit_o[0], "market": hit_o[1], "p_real": pr, "hist_n": hn})
     print(f"  {len(legs)} picks con cuota · {sum(1 for v in by_match.values() if v)} de {len(by_match)} partidos encontrados")
     opts = combos(legs, min_odds, max_sel, want)
     path = report(opts, {"min_p": min_p, "picks": len(picks), "matched": len(legs), "max_sel": max_sel,
