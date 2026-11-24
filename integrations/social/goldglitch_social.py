@@ -403,8 +403,17 @@ def _build(post: dict, facts: dict, ag: Agents, now: datetime, tag: str, shown: 
     except Exception:
         pass
     data["tema_ilustracion"] = scene_theme(post, tag)
-    if anchor:          # every video revolves around one 85%+ stat of today
-        data["pick_ancla"] = {k: anchor[k] for k in ("league", "home", "away", "label", "p")} | {"cuando": when(anchor["kickoffAt"], now)}
+    modo = piece_mode(post, tag)
+    data["modo"] = modo
+    if anchor:          # every piece revolves around one 85%+ stat of today
+        x12 = {n: round(q * 100) for n, q, _ in V.x12_parts(anchor)}
+        data["pick_ancla"] = ({k: anchor[k] for k in ("league", "home", "away", "p")} | {"cuando": when(anchor["kickoffAt"], now),
+                              "quien_gana_pct": x12 or None})
+        if modo == "fomo":
+            data["pick_ancla"] |= {"mercado": "OCULTO: no lo reveles, está en el enlace del perfil",
+                                   "datos_extra_del_partido": max(0, int(anchor.get("more") or 0) - 1)}
+        else:
+            data["pick_ancla"]["mercado"] = anchor["label"]
     tx = ag.write(post, data)
     for k in ("cover_title", "cover_subtitle", "reel_hook", "reel_sub", "edu_title", "edu_body"):
         if isinstance(tx.get(k), str):
@@ -432,6 +441,8 @@ def _build(post: dict, facts: dict, ag: Agents, now: datetime, tag: str, shown: 
 
     wfn = lambda r: when(r["kickoffAt"], now) if r.get("kickoffAt") else ""
     tx["_ancla"] = anchor
+    tx["_modo"] = modo
+    V.set_stats(anchor, modo == "fomo")
     V.set_bg(*illustrations(post, tx, tag))
     shown_keys = [match_key(r) for r in rows] if reel_of in ("picks_dia", "nba") else []
     shown_rows = [{k: r.get(k) for k in ("matchId", "league", "home", "away", "label", "p", "kickoffAt")}
@@ -470,6 +481,19 @@ def _build(post: dict, facts: dict, ag: Agents, now: datetime, tag: str, shown: 
 
 
 ANCHOR_P = float(os.environ.get("REDES_ANCLA_P", "0.85"))
+FOMO_SHARE = {"tiktok": 0.7}        # TikTok: mostly curiosity pieces; elsewhere 35 %
+
+
+def piece_mode(post: dict, tag: str) -> str:
+    """'pick' shows the pick; 'fomo' shows the match's numbers but hides the market, to make people want the rest.
+    The daily appointments (picks, results, NBA) always show the picks."""
+    if post["type"] in ("picks_dia", "resultados", "nba") or post.get("obligatorio"):
+        return "pick"
+    if post.get("modo") in ("pick", "fomo"):
+        return post["modo"]
+    nets = post.get("redes") or []
+    share = FOMO_SHARE.get(nets[0], 0.35) if len(nets) == 1 else 0.3
+    return "fomo" if int(hashlib.md5(f"modo|{tag}".encode()).hexdigest()[:4], 16) / 65535 < share else "pick"
 
 
 def anchor_pick(facts: dict, now: datetime, soon: float, shown: set[str] | None, tag: str) -> dict | None:

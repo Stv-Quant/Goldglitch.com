@@ -248,7 +248,12 @@ Gancho pedido por el comité de crecimiento: {post.get('hook') or '—'}
 Llamado a la acción pedido por el comité: {post.get('cta') or 'ver todas las estadísticas gratis creando la cuenta'}
 Red de destino: {red_destino(post)}
 Dato ancla (pick de 85%+ de hoy): {json.dumps(data.get('pick_ancla'), ensure_ascii=False) if data.get('pick_ancla') else 'no hay'}
-— si hay dato ancla, el VIDEO gira en torno a él: nómbralo en reel_hook o voz_hook y conéctalo con el tema de la pieza.
+— si hay dato ancla, TODA la pieza (imagen, video y texto) gira en torno a él: nómbralo en reel_hook o voz_hook, usa
+  sus porcentajes de quién gana y conéctalo con el tema (un meme del partido, una noticia de esos equipos…).
+Modo: {data.get('modo', 'pick')} — "pick": muestra el pick y su mercado con claridad. "fomo": genera CURIOSIDAD y ganas
+  de saber más: muestra quién gana según el modelo y el porcentaje del pick, pero NO reveles el mercado (está oculto en
+  el enlace del perfil); urgencia real (el partido es hoy), invita a comentar "DATO" o a ir al perfil. Nada de promesas
+  falsas, ni dinero, ni "fijas".
 Datos (únicos números permitidos): {json.dumps(data, ensure_ascii=False)}
 
 Entrega:

@@ -617,12 +617,69 @@ def results(rows: list[dict], won: int, n: int, w: int, h: int) -> str:
       </div><div style='margin-top:26px'>{items}</div>{FOOT}""", w, h, watermark="resultados")
 
 
+STATS: dict = {}
+
+
+def set_stats(row: dict | None, fomo: bool = False) -> None:
+    """The match whose numbers go with this piece (every post carries a stat); fomo hides the pick's market."""
+    STATS.clear()
+    if row:
+        STATS.update(row=row, fomo=fomo)
+
+
+LOCK = ("<svg width='{s}' height='{s}' viewBox='0 0 24 24' style='vertical-align:-0.12em'><path fill='#d4af37' d='M6 10V8a6 6 0 1 1 12 "
+        "0v2h1a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V11a1 1 0 0 1 1-1h1Zm2 0h8V8a4 4 0 1 0-8 0v2Z'/></svg>")
+
+
+def x12_parts(r: dict) -> list[tuple[str, float, str]]:
+    x = r.get("x12") or []
+    if len(x) != 3 or x[0] is None or x[2] is None:
+        return []
+    parts = [(r["home"], float(x[0]), "#00e5a0")]
+    if x[1] is not None and float(x[1]) > 0.01:
+        parts.append(("Empate", float(x[1]), "#9b927f"))
+    parts.append((r["away"], float(x[2]), "#00b3ff"))
+    tot = sum(p for _, p, _ in parts) or 1
+    return [(n, p / tot, c) for n, p, c in parts]
+
+
+def stats_panel(w: int) -> str:
+    """'What the data says' strip: win/draw/win split of the match and its strongest pick (hidden in FOMO pieces)."""
+    r, fomo = STATS.get("row"), STATS.get("fomo")
+    if not r:
+        return ""
+    parts = x12_parts(r)
+    fs = int(w * .026)
+    bar = ""
+    if parts:
+        bar = ("<div style='display:flex;height:22px;border-radius:99px;overflow:hidden;margin-top:16px'>" + "".join(
+            f"<div style='width:{p * 100:.1f}%;background:{c}'></div>" for _, p, c in parts) + "</div>"
+               "<div style='display:flex;justify-content:space-between;gap:12px;margin-top:12px'>" + "".join(
+            f"<div style='font-size:{fs}px;font-weight:700;color:{c}'>{esc(n[:18])} <span style='color:#f3ecdc'>{round(p * 100)}%</span></div>"
+            for n, p, c in parts) + "</div>")
+    p = float(r.get("p") or 0)
+    more = int(r.get("more") or 0)
+    if fomo:
+        pick = (f"<div style='display:flex;align-items:center;gap:14px;margin-top:16px;font-size:{int(w * .03)}px;font-weight:800'>"
+                f"{LOCK.format(s=int(w * .034))}<span>Pick de <span class='gold'>{round(p * 100)}%</span> en este partido · "
+                f"mercado oculto</span></div><div style='font-size:{fs}px;color:#b9ad92;margin-top:6px'>"
+                f"{'+' + str(max(1, more - 1)) + ' datos más · ' if more > 1 else ''}todo en el enlace del perfil</div>")
+    else:
+        pick = (f"<div style='margin-top:16px;font-size:{int(w * .03)}px;font-weight:800'>Pick <span class='gold'>{round(p * 100)}%</span> · "
+                f"{esc(r.get('label') or '')}</div>")
+    return (f"<div style='margin-top:22px;background:rgba(5,4,3,.72);border:1px solid rgba(212,175,55,.35);border-radius:26px;"
+            f"padding:22px 28px'><div style='display:flex;align-items:center;gap:14px'>{badge(r['home'], int(w * .05))}"
+            f"<div style='font-family:JetBrains Mono,monospace;font-size:{int(w * .02)}px;letter-spacing:.14em;color:#d4af37;"
+            f"text-transform:uppercase;flex:1'>Lo que dicen los datos · {esc(r['home'][:16])} vs {esc(r['away'][:16])}</div>"
+            f"{badge(r['away'], int(w * .05))}</div>{bar}{pick}</div>")
+
+
 def text_card(title: str, body: str, eyebrow: str, w: int, h: int) -> str:
     lines = "".join(f"<div style='display:flex;gap:18px;margin-top:26px'><div style='width:10px;border-radius:9px;background:#d4af37;flex:none'></div>"
                     f"<div style='font-size:{int(w * .036)}px;line-height:1.35;color:#e9e1cf'>{esc(x)}</div></div>"
                     for x in body.split("\n") if x.strip())
     return base(f"""{top_bar(eyebrow)}
-      <div style='margin:auto 0'><div class='anton' style='font-size:{int(w * .092)}px;line-height:1'>{esc(title)}</div>{lines}</div>{FOOT}""",
+      <div style='margin:auto 0'><div class='anton' style='font-size:{int(w * .092)}px;line-height:1'>{esc(title)}</div>{lines}</div>{stats_panel(w)}{FOOT}""",
                 w, h, watermark="datos")
 
 
@@ -742,7 +799,7 @@ def meme(fmt: str, m: dict, w: int, h: int) -> str:
                                  f"<div style='font-size:{int(w * .13)}px'>{e}</div><div style='font-size:{int(w * .058)}px;font-weight:800;"
                                  f"line-height:1.2;color:{c}'>{esc(txt)}</div></div>")
         body = f"<div style='margin:auto 0'>{row('NO', m.get('no') or '', '#9a9384')}{row('SÍ', m.get('si') or '', '#f3ecdc')}</div>"
-    return base(f"{top_bar('Meme EGG')}{body}{FOOT}", w, h, watermark="meme")
+    return base(f"{top_bar('Meme EGG')}{body}{stats_panel(w)}{FOOT}", w, h, watermark="meme")
 
 
 def meme_lines(fmt: str, m: dict) -> list[tuple[str, str]]:
@@ -903,6 +960,8 @@ def reel_script(kind: str, rows: list[dict], tx: dict, when_fn, record: dict | N
     hook = strip_emoji(tx.get("reel_hook") or "")
     if kind in ("picks_dia", "reel", "nba") and rows:
         rows = rows[:4]
+        fomo_reel = tx.get("_modo") == "fomo" and len(rows) > 1
+        locked = max(rows, key=lambda r: float(r["p"])) if fomo_reel else None
         intl = kind == "nba"
         f.append((reel_frame(hook or "LOS DATOS DE HOY", strip_emoji(tx.get("reel_sub") or ""), host="shock",
                              kicker=("NBA · esta noche" if intl else f"Top {len(rows)} · ligas grandes")), 2.2, "punch",
@@ -919,6 +978,11 @@ def reel_script(kind: str, rows: list[dict], tx: dict, when_fn, record: dict | N
                                  badge_names=(r["home"], r["away"]), top=r["league"], tilt=8, kicker=f"Pick {i + 1} de {len(rows)}"),
                       2.3, "punch", f"{r['home']} contra {r['away']}, {when}."))
             fail = max(2, round(1 / max(1e-6, 1 - p)))
+            if fomo_reel and r is locked:
+                f.append((reel_frame(f"{round(p * 100)}%", "el más fuerte del día · mercado oculto", color=pcolor(p), accent=acc,
+                                     top=r["league"], kicker="Pick bloqueado"), 2.8, "shake",
+                          f"Y este es el más fuerte del día: {_say_pct(p)}. El mercado lo dejé en el enlace del perfil."))
+                continue
             f.append((reel_frame(f"{round(p * 100)}%", r["label"], color=pcolor(p), accent=acc, top=r["league"],
                                  kicker=r.get("group") or "Probabilidad",
                                  bars=[(r["label"][:28], p, pcolor(p)), ("No pasa", 1 - p, "#5a544a")]), 2.6, "slide",
@@ -956,6 +1020,7 @@ def reel_script(kind: str, rows: list[dict], tx: dict, when_fn, record: dict | N
         for line in [x for x in (tx.get("edu_body") or tx.get("cover_subtitle") or "").split("\n") if x.strip()][:4]:
             f.append((reel_frame(line, "", glitch=False, tilt=4), 2.6, "slide", strip_emoji(line)))
     anc = tx.get("_ancla")
+    fomo = tx.get("_modo") == "fomo"
     if anc and kind not in ("picks_dia", "reel", "nba"):          # every video revolves around one 85%+ stat
         p = float(anc["p"])
         when = when_fn(anc)
@@ -963,11 +1028,23 @@ def reel_script(kind: str, rows: list[dict], tx: dict, when_fn, record: dict | N
         scenes = [(reel_frame(f"{anc['home']} vs {anc['away']}", f"{anc.get('league', '')} · {when}", accent=acc, glitch=False,
                               badge_names=(anc["home"], anc["away"]), top=anc.get("league"), tilt=8,
                               kicker="El dato de hoy" if kind != "resultados" else "Lo que viene hoy"),
-                   2.3, "punch", f"{'El dato de hoy' if kind != 'resultados' else 'Y lo que viene'}: {anc['home']} contra {anc['away']}, {when}."),
-                  (reel_frame(f"{round(p * 100)}%", anc["label"], color=pcolor(p), accent=acc, top=anc.get("league"),
-                              kicker="Probabilidad del modelo",
-                              bars=[(anc["label"][:28], p, pcolor(p)), ("No pasa", 1 - p, "#5a544a")]), 2.6, "slide",
-                   f"{anc['label']}: {_say_pct(p)}.")]
+                   2.3, "punch", f"{'El dato de hoy' if kind != 'resultados' else 'Y lo que viene'}: {anc['home']} contra {anc['away']}, {when}.")]
+        parts = x12_parts(anc)
+        if parts:
+            scenes.append((reel_frame("¿QUIÉN GANA?", "según el modelo", kicker="Probabilidades", accent=acc,
+                                      bars=[(n[:24], q, c) for n, q, c in parts]), 2.6, "slide",
+                           "Según el modelo: " + ", ".join(f"{n} {_say_pct(q)}" for n, q, _ in parts) + "."))
+        if fomo:
+            more = int(anc.get("more") or 0)
+            scenes.append((reel_frame(f"{round(p * 100)}%", "hay un pick así en este partido · mercado oculto", color=pcolor(p),
+                                      accent=acc, kicker="Pick bloqueado", glitch=True), 2.8, "shake",
+                           f"Y hay un pick de {_say_pct(p)} en este partido. ¿Cuál es? Está en el enlace del perfil"
+                           + (f", junto con {more - 1} datos más." if more > 1 else ".")))
+        else:
+            scenes.append((reel_frame(f"{round(p * 100)}%", anc["label"], color=pcolor(p), accent=acc, top=anc.get("league"),
+                                      kicker="Probabilidad del modelo",
+                                      bars=[(anc["label"][:28], p, pcolor(p)), ("No pasa", 1 - p, "#5a544a")]), 2.6, "slide",
+                           f"{anc['label']}: {_say_pct(p)}."))
         at = len(f) if kind == "resultados" else min(1, len(f))
         f[at:at] = scenes
     f.append((reel_frame("ENLACE EN EL PERFIL", "todas las probabilidades, gratis", color="#d4af37", kicker="EGG · Goldglitch Stats",

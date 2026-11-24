@@ -113,6 +113,9 @@ estadísticas de la tarde, 19:30 reel/short de las estadísticas de la noche, 22
 resultados. Fuera de esas, CADA publicación es para UNA sola red y es distinta: "redes" lleva una sola red. TIKTOK ES LA RED
 PRINCIPAL (la más usada por nuestro público): 16 a 20 piezas propias en TikTok al día, cada 35-45 min, todo en video:
 noticias de fútbol, datos de los partidos de hoy, estadísticas, picks, sabías que, mito vs dato, memes de tendencia y NBA.
+TODA pieza lleva una estadística (el sistema le pone un pick de 85%+ de hoy y quién gana según el modelo). Decide en cada
+pieza "modo": "pick" (muestra el pick) o "fomo" (muestra los números del partido pero oculta el mercado, para crear ganas
+de saber más). En TikTok la mayoría "fomo" (~70%); en las demás redes más "pick".
 Instagram, Facebook y YouTube: 8 a 10 piezas propias cada una (al menos 40 en total), separadas al menos 45 min dentro de
 la misma red (35 en TikTok) y de las citas fijas (redes distintas pueden coincidir). Con estadísticas reales.
 En Instagram y Facebook cada publicación lleva además su HISTORIA (el sistema la hace y la sube).
