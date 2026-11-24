@@ -37,7 +37,7 @@ mcp = FastMCP("pantalla")
 
 def _page():
     if S["pg"] is None:
-        br = Browser()
+        br = Browser(net=TASK.get("net"))
         pg = br.page()
         pg.set_viewport_size({"width": W, "height": H})
 

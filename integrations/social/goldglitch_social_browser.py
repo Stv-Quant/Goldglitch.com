@@ -53,6 +53,36 @@ def save_config(cfg: dict) -> None:
         json.dump(cfg, f, ensure_ascii=False, indent=1)
 
 
+BRAVE_PROFILE = os.path.join(HERE, "redes_perfil_brave")
+BRAVE_PORT = int(os.environ.get("REDES_BRAVE_PUERTO", "9333"))
+
+
+def brave_exe() -> str | None:
+    for base in (os.environ.get("PROGRAMFILES", r"C:\Program Files"), os.environ.get("PROGRAMFILES(X86)", r"C:\Program Files (x86)"),
+                 os.environ.get("LOCALAPPDATA", "")):
+        p = os.path.join(base or "", "BraveSoftware", "Brave-Browser", "Application", "brave.exe")
+        if base and os.path.exists(p):
+            return p
+    return None
+
+
+def uses_brave(net: str | None) -> bool:
+    """Networks that run in Brave (a normal Brave window driven over its debugging port: TikTok refuses the
+    Playwright-launched Chrome but works in Brave)."""
+    if os.environ.get("REDES_NAVEGADOR", "").lower() == "brave":
+        return True
+    return bool(net) and net in (load_config().get("brave_redes") or [])
+
+
+def _brave_up() -> bool:
+    import urllib.request
+    try:
+        urllib.request.urlopen(f"http://127.0.0.1:{BRAVE_PORT}/json/version", timeout=2).read()
+        return True
+    except Exception:
+        return False
+
+
 def profile_ready() -> bool:
     return os.path.isdir(PROFILE) and bool(load_config().get("connected"))
 
@@ -60,9 +90,32 @@ def profile_ready() -> bool:
 class Browser:
     """One persistent browser for the whole tick (opened on first use, closed at the end)."""
 
-    def __init__(self, visible: bool = False, rehearsal: bool = False):
+    def __init__(self, visible: bool = False, rehearsal: bool = False, net: str | None = None):
         self.visible, self.rehearsal = visible or rehearsal, rehearsal
-        self._pw = self._ctx = None
+        self.net = net
+        self._pw = self._ctx = self._cdp = None
+        self._mine: list = []
+
+    def _brave(self):
+        """Start (or reuse) a real Brave window with its own profile and attach to it. No automation flags at all."""
+        import subprocess
+        exe = brave_exe()
+        if not exe:
+            raise PlatformError("No encontré Brave instalado (BraveSoftware\\Brave-Browser\\Application\\brave.exe)")
+        if not _brave_up():
+            args = [exe, f"--user-data-dir={BRAVE_PROFILE}", f"--remote-debugging-port={BRAVE_PORT}", "--no-first-run",
+                    "--no-default-browser-check", "--window-size=1320,960"]
+            if not self.visible:
+                args.append("--window-position=-2400,0")
+            subprocess.Popen(args, creationflags=getattr(subprocess, "DETACHED_PROCESS", 0) | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0))
+            for _ in range(40):
+                if _brave_up():
+                    break
+                time.sleep(0.5)
+            else:
+                raise PlatformError("Brave no abrió su puerto de control (¿hay otro Brave con este perfil abierto?)")
+        self._cdp = self._pw.chromium.connect_over_cdp(f"http://127.0.0.1:{BRAVE_PORT}")
+        return self._cdp.contexts[0] if self._cdp.contexts else self._cdp.new_context()
 
     # --- lifecycle
     def context(self):
@@ -70,6 +123,14 @@ class Browser:
             return self._ctx
         from playwright.sync_api import sync_playwright
         self._pw = sync_playwright().start()
+        if uses_brave(self.net):
+            try:
+                self._ctx = self._brave()
+            except Exception as e:
+                self.close()
+                raise e if isinstance(e, PlatformError) else PlatformError(f"No se pudo conectar con Brave: {e}")
+            self._ctx.set_default_timeout(30_000)
+            return self._ctx
         args = ["--disable-blink-features=AutomationControlled", "--no-first-run", "--no-default-browser-check"]
         if not self.visible:
             args.append("--window-position=-2400,0")      # real window (sites treat headless as a bot), just off-screen
@@ -93,16 +154,25 @@ class Browser:
     def page(self):
         ctx = self.context()
         pg = ctx.new_page()
+        self._mine.append(pg)
         return pg
 
     def close(self) -> None:
         try:
-            if self._ctx:
+            if self._cdp:                       # Brave stays open (signed in); only our tabs close
+                for pg in self._mine:
+                    try:
+                        pg.close()
+                    except Exception:
+                        pass
+                self._cdp.close()
+            elif self._ctx:
                 self._ctx.close()
         finally:
             if self._pw:
                 self._pw.stop()
-            self._ctx = self._pw = None
+            self._ctx = self._pw = self._cdp = None
+            self._mine = []
 
     def signed_in(self) -> dict[str, bool]:
         cookies = self.context().cookies()
@@ -475,6 +545,40 @@ class BrowserTikTok:
 
 
 # ------------------------------------------------------------------ one-time sign-in
+def connect_brave(nets: list[str]) -> None:
+    """Sign in to these networks in Brave (its own profile); from then on the agents use Brave for them."""
+    nets = [n for n in nets if n in SESSION_COOKIES] or ["tiktok"]
+    if not brave_exe():
+        print("No encontré Brave instalado en este PC.")
+        return
+    urls = {"tiktok": "https://www.tiktok.com/login", "instagram": IG, "facebook": FB, "youtube": "https://studio.youtube.com/"}
+    br = Browser(visible=True, net=nets[0])
+    cfg = load_config()
+    cfg["brave_redes"] = sorted(set(cfg.get("brave_redes") or []) | set(nets))
+    save_config(cfg)
+    ctx = br.context()
+    for n in nets:
+        try:
+            br.page().goto(urls[n], wait_until="domcontentloaded", timeout=60_000)
+        except Exception:
+            pass
+    br._mine = []                                # leave the tabs open for you
+    print(f"""
+Se abrió Brave (un perfil aparte, solo para los agentes) con: {", ".join(nets)}.
+  Inicia sesión con la cuenta de Goldglitch (marca "recordar" si aparece). Tus contraseñas no pasan por este programa.
+  No cierres esa ventana de Brave mientras los agentes trabajan; si la cierras, se vuelve a abrir sola.
+""")
+    input("Cuando hayas iniciado sesión, presiona Enter aquí... ")
+    status = {net: any(c["name"] == name and dom in c["domain"] for c in ctx.cookies())
+              for net, (dom, name) in SESSION_COOKIES.items() if net in nets}
+    br.close()
+    cfg = load_config()
+    cfg.update({"connected": True, "sessions": {**(cfg.get("sessions") or {}), **status}})
+    save_config(cfg)
+    for net, ok in status.items():
+        print(f"  {net:10s} {'conectado en Brave' if ok else 'SIN sesión (vuelve a intentarlo)'}")
+
+
 def connect() -> None:
     """Visible browser with the three sites; you sign in yourself (passwords never pass through this program)."""
     br = Browser(visible=True)
