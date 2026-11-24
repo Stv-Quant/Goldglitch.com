@@ -696,13 +696,14 @@ def _tick(dry: bool) -> None:
                 log(f"El comité no pudo reunirse ({e}); planea el Estratega")
         plan = plan or ag.plan(f"{now:%A %d/%m/%Y}", facts, memory)
         plan = G.with_mandatory(plan, today, st)        # morning picks + night results always go
+        plan = G.fill_per_network(plan, today)          # at least 8 own pieces per network
         st = {**st, "day": today, "plan": plan, "plan_v": G.plan_version(today), "history": (st.get("history") or [])[-60:]}
         log("Plan de hoy: " + ", ".join(f"{p['time']} {p['type']}" for p in plan))
         save_json(STATE, st)
     elif st.get("day") == today and G.plan_version(today) > float(st.get("plan_v") or 0):
         # an extraordinary meeting changed today's plan: keep what already went out, take the new pending posts
         kept = [p for p in st.get("plan") or [] if p.get("status") in ("done", "skipped")]
-        new = [p for p in G.plan_for(today) or [] if p["time"] > now.strftime("%H:%M")]
+        new = [p for p in G.fill_per_network(G.plan_for(today) or [], today) if p["time"] > now.strftime("%H:%M")]
         st["plan"], st["plan_v"] = kept + new, G.plan_version(today)
         log("Plan actualizado por reunión extraordinaria: " + ", ".join(f"{p['time']} {p['type']}" for p in new))
         save_json(STATE, st)
