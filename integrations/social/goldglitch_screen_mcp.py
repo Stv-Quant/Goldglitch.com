@@ -76,6 +76,45 @@ async def _run(fn, *args):
     return await asyncio.get_running_loop().run_in_executor(EXEC, fn, *args)
 
 
+def _ask_person(motivo: str) -> list:
+    """Bring the window to the screen, beep, and give the person up to 2 minutes (they solve captchas, not the agent)."""
+    pg = _page()
+    try:
+        cdp = pg.context.new_cdp_session(pg)
+        win = cdp.send("Browser.getWindowForTarget")["windowId"]
+        cdp.send("Browser.setWindowBounds", {"windowId": win, "bounds": {"windowState": "normal"}})
+        cdp.send("Browser.setWindowBounds", {"windowId": win, "bounds": {"left": 60, "top": 40, "width": 1320, "height": 960}})
+        pg.bring_to_front()
+    except Exception:
+        pass
+    try:
+        import ctypes
+        for _ in range(3):
+            ctypes.windll.user32.MessageBeep(0x30)
+            time.sleep(0.4)
+        ctypes.windll.user32.FlashWindow(ctypes.windll.user32.GetForegroundWindow(), True)
+    except Exception:
+        pass
+    S["state"]["persona"] = S["state"].get("persona", 0) + 1
+    first = S["agent"]._shot(pg)
+    for _ in range(24):                     # up to 2 minutes, returns early when the screen changes a lot
+        time.sleep(5)
+        now = S["agent"]._shot(pg)
+        if now["source"]["data"][-4000:] != first["source"]["data"][-4000:]:
+            time.sleep(3)
+            break
+    return [_img(S["agent"]._shot(pg)), f"Se esperó a la persona por: {motivo}. Revisa la captura: si el captcha ya no está, sigue."]
+
+
+@mcp.tool()
+async def esperar_persona(motivo: str = "captcha") -> list:
+    """Cuando aparezca un captcha, rompecabezas o verificación: NO lo resuelvas. Esta herramienta pone la ventana a la
+    vista, avisa con un sonido y espera hasta 2 minutos a que la persona lo resuelva. Puedes usarla hasta 3 veces."""
+    if S["state"].get("persona", 0) >= 3:
+        return ["Ya se esperó 3 veces: termina con estado bloqueado."]
+    return await _run(_ask_person, motivo)
+
+
 @mcp.tool()
 async def captura() -> list:
     """Captura de la pantalla actual (1280×800). Las coordenadas de las demás herramientas usan esta imagen."""
