@@ -336,6 +336,9 @@ def _build(post: dict, facts: dict, ag: Agents, now: datetime, tag: str, shown: 
         picks = V.famous_picks(fresh, 4)          # fewer than 5, famous teams of Europe, South America and Liga BetPlay
     else:
         picks = V.top_picks(fresh, 4, focus) or V.top_picks(fresh, 4)
+    strong = [r for r in picks if float(r.get("p") or 0) >= ANCHOR_P]
+    picks = strong or picks                       # videos show 85%+ picks whenever there are any
+    anchor = anchor_pick(facts, now, soon, shown, tag)
     today_res = [r for r in facts.get("results") or [] if same_day(r, now)]      # tonight: only today's matches
     res = sorted([r for r in today_res if V.top_league(r.get("league"))],
                  key=lambda r: (r["status"] != "won", -r["p"])) or sorted(today_res, key=lambda r: (r["status"] != "won", -r["p"]))
@@ -400,6 +403,8 @@ def _build(post: dict, facts: dict, ag: Agents, now: datetime, tag: str, shown: 
     except Exception:
         pass
     data["tema_ilustracion"] = scene_theme(post, tag)
+    if anchor:          # every video revolves around one 85%+ stat of today
+        data["pick_ancla"] = {k: anchor[k] for k in ("league", "home", "away", "label", "p")} | {"cuando": when(anchor["kickoffAt"], now)}
     tx = ag.write(post, data)
     for k in ("cover_title", "cover_subtitle", "reel_hook", "reel_sub", "edu_title", "edu_body"):
         if isinstance(tx.get(k), str):
@@ -426,6 +431,7 @@ def _build(post: dict, facts: dict, ag: Agents, now: datetime, tag: str, shown: 
         tx["fb"] += f"\n\nhttps://easygoldglitch.com/?ref=fb_{tag}"
 
     wfn = lambda r: when(r["kickoffAt"], now) if r.get("kickoffAt") else ""
+    tx["_ancla"] = anchor
     V.set_bg(*illustrations(post, tx, tag))
     shown_keys = [match_key(r) for r in rows] if reel_of in ("picks_dia", "nba") else []
     shown_rows = [{k: r.get(k) for k in ("matchId", "league", "home", "away", "label", "p", "kickoffAt")}
@@ -461,6 +467,22 @@ def _build(post: dict, facts: dict, ag: Agents, now: datetime, tag: str, shown: 
     video = V.reel_video(V.reel_script(reel_of if reel_of in ("picks_dia", "resultados", "nba") else "texto", rows, tx, wfn,
                                        facts.get("record")), f"{tag}_reel")
     return {"feed": feed, "story": None, "video": video, "reel": False, "texts": tx, "shown": shown_keys, "shown_rows": shown_rows}
+
+
+ANCHOR_P = float(os.environ.get("REDES_ANCLA_P", "0.85"))
+
+
+def anchor_pick(facts: dict, now: datetime, soon: float, shown: set[str] | None, tag: str) -> dict | None:
+    """The 85%+ pick of today that a video is built around: top leagues first, not shown yet if possible, and varied
+    between videos (one of the five strongest)."""
+    pool = [r for r in facts.get("upcoming") or [] if float(r.get("p") or 0) >= ANCHOR_P
+            and float(r.get("kickoffAt") or 0) > soon and same_day(r, now)]
+    pool = [r for r in pool if V.top_league(r.get("league"))] or pool
+    if not pool:
+        return None
+    unshown = [r for r in pool if match_key(r) not in (shown or set())]
+    best = sorted(unshown or pool, key=lambda r: -float(r["p"]))[:5]
+    return best[int(hashlib.md5(tag.encode()).hexdigest()[:6], 16) % len(best)]
 
 
 class SkipPiece(RuntimeError):

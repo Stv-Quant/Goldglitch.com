@@ -955,6 +955,21 @@ def reel_script(kind: str, rows: list[dict], tx: dict, when_fn, record: dict | N
         f.append((reel_frame(hook or title, "", kicker="Dato"), 2.2, "punch", tx.get("voz_hook") or hook or title))
         for line in [x for x in (tx.get("edu_body") or tx.get("cover_subtitle") or "").split("\n") if x.strip()][:4]:
             f.append((reel_frame(line, "", glitch=False, tilt=4), 2.6, "slide", strip_emoji(line)))
+    anc = tx.get("_ancla")
+    if anc and kind not in ("picks_dia", "reel", "nba"):          # every video revolves around one 85%+ stat
+        p = float(anc["p"])
+        when = when_fn(anc)
+        acc = ACCENT.get(anc.get("league"), "#d4af37")
+        scenes = [(reel_frame(f"{anc['home']} vs {anc['away']}", f"{anc.get('league', '')} · {when}", accent=acc, glitch=False,
+                              badge_names=(anc["home"], anc["away"]), top=anc.get("league"), tilt=8,
+                              kicker="El dato de hoy" if kind != "resultados" else "Lo que viene hoy"),
+                   2.3, "punch", f"{'El dato de hoy' if kind != 'resultados' else 'Y lo que viene'}: {anc['home']} contra {anc['away']}, {when}."),
+                  (reel_frame(f"{round(p * 100)}%", anc["label"], color=pcolor(p), accent=acc, top=anc.get("league"),
+                              kicker="Probabilidad del modelo",
+                              bars=[(anc["label"][:28], p, pcolor(p)), ("No pasa", 1 - p, "#5a544a")]), 2.6, "slide",
+                   f"{anc['label']}: {_say_pct(p)}.")]
+        at = len(f) if kind == "resultados" else min(1, len(f))
+        f[at:at] = scenes
     f.append((reel_frame("ENLACE EN EL PERFIL", "todas las probabilidades, gratis", color="#d4af37", kicker="EGG · Goldglitch Stats",
                          host="wink"), 2.4, "punch", tx.get("voz_cierre") or "Todas las probabilidades, gratis, en el enlace del perfil."))
     return f

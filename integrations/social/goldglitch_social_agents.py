@@ -247,6 +247,8 @@ Tipo: {post['type']} — {POST_TYPES[post['type']]}
 Gancho pedido por el comité de crecimiento: {post.get('hook') or '—'}
 Llamado a la acción pedido por el comité: {post.get('cta') or 'ver todas las estadísticas gratis creando la cuenta'}
 Red de destino: {red_destino(post)}
+Dato ancla (pick de 85%+ de hoy): {json.dumps(data.get('pick_ancla'), ensure_ascii=False) if data.get('pick_ancla') else 'no hay'}
+— si hay dato ancla, el VIDEO gira en torno a él: nómbralo en reel_hook o voz_hook y conéctalo con el tema de la pieza.
 Datos (únicos números permitidos): {json.dumps(data, ensure_ascii=False)}
 
 Entrega:
@@ -282,6 +284,8 @@ HOOKS (los mejores, probados en Shorts/Reels/TikTok; el gancho decide todo en el
 - El gancho dice algo concreto (equipo, número, partido) en máx. 8 palabras; nada de saludos ni de "mira esto".
 - No uses la palabra "parche" en ganchos ni títulos (máximo una vez en el texto, y solo si suena natural).
 - voz_hook: la misma idea dicha en voz alta, natural (máx. 16 palabras). voz_cierre: cierre hablado (máx. 12 palabras).
+  La voz es un RELATOR ARGENTINO apasionado por el fútbol: voseo rioplatense ("mirá", "vos", "tenés", "fijate", "che",
+  "no sabés lo que es esto"), exclamaciones y energía de relato, sin groserías.
 SEO NATURAL: en los datos vienen "busquedas_reales" (lo que la gente escribe en YouTube/Google). Usa 1 o 2 de esas frases
 tal cual en el título de YouTube y en la primera línea de ig/tiktok, de forma natural; los hashtags salen de esas
 búsquedas, de la liga, los equipos y el mercado.
