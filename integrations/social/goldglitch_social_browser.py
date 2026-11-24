@@ -40,6 +40,19 @@ def rx(*words: str) -> re.Pattern:
     return re.compile("|".join(re.escape(w) for w in words), re.I)
 
 
+def brave_sessions(cfg: dict) -> dict:
+    """Networks that run in Brave: read their session straight from the agents' Brave profile, so a sign-in done there
+    (or copied from your Brave) counts without reconnecting."""
+    out = dict(cfg.get("sessions") or {})
+    for net in cfg.get("brave_redes") or []:
+        if net in SESSION_COOKIES and not out.get(net):
+            dom, name = SESSION_COOKIES[net]
+            n = _has_session(os.path.join(BRAVE_PROFILE, "Default"), dom, name)
+            if n > 0 or (n < 0 and _brave_up()):          # locked = the agents' Brave is open with that profile
+                out[net] = True
+    return out
+
+
 def load_config() -> dict:
     try:
         with open(CONFIG, encoding="utf-8") as f:
@@ -573,7 +586,7 @@ def _has_session(profile_dir: str, dom: str, name: str) -> int:
                     return db.execute("SELECT count(*) FROM cookies WHERE host_key LIKE ? AND name = ?",
                                       (f"%{dom}", name)).fetchone()[0]
             except Exception:
-                return 0
+                return -1           # locked by a running Brave: cannot tell
     return 0
 
 

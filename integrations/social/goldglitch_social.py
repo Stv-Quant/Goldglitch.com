@@ -525,7 +525,7 @@ def clients(rehearsal: bool = False) -> tuple[Meta | B.BrowserMeta | None, TikTo
             log("Modo navegador sin sesión: ejecuta conectar_redes.bat (una vez).")
             return None, None
         cfg = B.load_config()
-        sess = cfg.get("sessions") or {}
+        sess = B.brave_sessions(cfg)
         BROWSER = B.Browser(rehearsal=rehearsal)
         key = os.environ.get("ANTHROPIC_API_KEY")
         if key and os.environ.get("REDES_AGENTE_PANTALLA", "1") != "0":
@@ -763,7 +763,7 @@ def _tick(dry: bool) -> None:
     every = float(os.environ.get("REDES_COMUNIDAD_HORAS", "4") or 4)
     if AGENT is not None and not dry and 10 <= now.hour < 22 and time.time() - float(st.get("community_at") or 0) > every * 3600:
         import goldglitch_social_computer as C
-        sess = B.load_config().get("sessions") or {}
+        sess = B.brave_sessions(B.load_config())
         nets = [n for n in ("youtube", "instagram", "facebook", "tiktok") if sess.get(n, n != "youtube")]
         res = C.community_round(AGENT, nets, B.load_config().get("facebook_page"), log)
         st["community_at"] = time.time()
@@ -928,7 +928,7 @@ def main() -> int:
                 log("Comunidad: los agentes están ocupados; inténtalo en unos minutos.")
                 return 1
             try:
-                sess = B.load_config().get("sessions") or {}
+                sess = B.brave_sessions(B.load_config())
                 nets = [n for n in ("youtube", "instagram", "facebook", "tiktok") if sess.get(n, n != "youtube")]
                 for net, (r, d) in C.community_round(AGENT, nets, B.load_config().get("facebook_page"), log).items():
                     log(f"Comunidad · {net}: {r} — {d[:400]}")
