@@ -545,13 +545,93 @@ class BrowserTikTok:
 
 
 # ------------------------------------------------------------------ one-time sign-in
+def _brave_user_data() -> str:
+    return os.path.join(os.environ.get("LOCALAPPDATA", ""), "BraveSoftware", "Brave-Browser", "User Data")
+
+
+def _brave_running() -> bool:
+    import subprocess
+    try:
+        out = subprocess.run(["tasklist", "/FI", "IMAGENAME eq brave.exe"], capture_output=True, text=True).stdout
+        return "brave.exe" in out.lower()
+    except Exception:
+        return False
+
+
+def _has_session(profile_dir: str, dom: str, name: str) -> int:
+    """How many session cookies of `dom` this Brave profile has (host and name are not encrypted)."""
+    import shutil
+    import sqlite3
+    import tempfile
+    for rel in (os.path.join("Network", "Cookies"), "Cookies"):
+        src = os.path.join(profile_dir, rel)
+        if os.path.exists(src):
+            tmp = os.path.join(tempfile.mkdtemp(), "c.db")
+            try:
+                shutil.copy2(src, tmp)
+                with sqlite3.connect(tmp) as db:
+                    return db.execute("SELECT count(*) FROM cookies WHERE host_key LIKE ? AND name = ?",
+                                      (f"%{dom}", name)).fetchone()[0]
+            except Exception:
+                return 0
+    return 0
+
+
+SKIP = {"Cache", "Code Cache", "GPUCache", "DawnCache", "DawnGraphiteCache", "DawnWebGPUCache", "GrShaderCache",
+        "ShaderCache", "CacheStorage", "ScriptCache", "Login Data", "Login Data-journal", "Login Data For Account",
+        "Login Data For Account-journal", "Web Data", "Web Data-journal", "History", "History-journal", "Top Sites",
+        "Visited Links", "Favicons", "Favicons-journal", "Shortcuts", "Media History", "BrowserMetrics", "Crashpad"}
+
+
+def adopt_brave(nets: list[str]) -> bool:
+    """Copy the session of your installed Brave (where you are already signed in) into the agents' Brave profile.
+    Passwords, history and autofill are NOT copied. Brave must be closed while copying (its files are locked)."""
+    import shutil
+    src_root = _brave_user_data()
+    if not os.path.isdir(src_root):
+        print("No encontré tu perfil de Brave.")
+        return False
+    dom, name = SESSION_COOKIES[nets[0]]
+    cands = [d for d in os.listdir(src_root) if d == "Default" or d.startswith("Profile ")]
+    scored = sorted(((_has_session(os.path.join(src_root, d), dom, name), d) for d in cands), reverse=True)
+    if not scored or scored[0][0] == 0:
+        print(f"En tu Brave no encontré una sesión de {nets[0]} iniciada.")
+        return False
+    prof = scored[0][1]
+    print(f"Tu Brave tiene la sesión de {nets[0]} en el perfil '{prof}'. La copio al Brave de los agentes "
+          "(sin contraseñas, historial ni autocompletar).")
+    for _ in range(3):
+        if not _brave_running():
+            break
+        ans = input("Brave está abierto y sus archivos están bloqueados. Ciérralo por completo (también desde la bandeja) "
+                    "y presiona Enter, o escribe C para que lo cierre yo: ").strip().lower()
+        if ans == "c":
+            import subprocess
+            subprocess.run(["taskkill", "/IM", "brave.exe", "/F"], capture_output=True)
+            time.sleep(2)
+    if _brave_running():
+        print("Brave sigue abierto: no se pudo copiar la sesión.")
+        return False
+    if os.path.isdir(BRAVE_PROFILE):
+        shutil.rmtree(BRAVE_PROFILE, ignore_errors=True)
+    os.makedirs(BRAVE_PROFILE, exist_ok=True)
+    shutil.copy2(os.path.join(src_root, "Local State"), os.path.join(BRAVE_PROFILE, "Local State"))
+    shutil.copytree(os.path.join(src_root, prof), os.path.join(BRAVE_PROFILE, "Default"),
+                    ignore=lambda d, names: [n for n in names if n in SKIP], dirs_exist_ok=True)
+    cfg = load_config()
+    cfg["brave_redes"] = sorted(set(cfg.get("brave_redes") or []) | set(nets))
+    save_config(cfg)
+    return True
+
+
 def connect_brave(nets: list[str]) -> None:
     """Sign in to these networks in Brave (its own profile); from then on the agents use Brave for them."""
     nets = [n for n in nets if n in SESSION_COOKIES] or ["tiktok"]
     if not brave_exe():
         print("No encontré Brave instalado en este PC.")
         return
-    urls = {"tiktok": "https://www.tiktok.com/login", "instagram": IG, "facebook": FB, "youtube": "https://studio.youtube.com/"}
+    urls = {"tiktok": "https://www.tiktok.com/", "instagram": IG, "facebook": FB, "youtube": "https://studio.youtube.com/"}
+    adopted = adopt_brave(nets)
     br = Browser(visible=True, net=nets[0])
     cfg = load_config()
     cfg["brave_redes"] = sorted(set(cfg.get("brave_redes") or []) | set(nets))
@@ -568,7 +648,10 @@ Se abrió Brave (un perfil aparte, solo para los agentes) con: {", ".join(nets)}
   Inicia sesión con la cuenta de Goldglitch (marca "recordar" si aparece). Tus contraseñas no pasan por este programa.
   No cierres esa ventana de Brave mientras los agentes trabajan; si la cierras, se vuelve a abrir sola.
 """)
-    input("Cuando hayas iniciado sesión, presiona Enter aquí... ")
+    if adopted:
+        time.sleep(6)
+        print("Revisa en esa ventana que TikTok aparezca con la cuenta de Goldglitch iniciada.")
+    input("Cuando veas la sesión iniciada (si no, inicia sesión ahí), presiona Enter aquí... ")
     status = {net: any(c["name"] == name and dom in c["domain"] for c in ctx.cookies())
               for net, (dom, name) in SESSION_COOKIES.items() if net in nets}
     br.close()
