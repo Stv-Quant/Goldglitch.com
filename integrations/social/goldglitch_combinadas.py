@@ -1,7 +1,7 @@
 """Combinadas de BetPlay con los picks del modelo: reporte PRIVADO para ti (no se publica y no apuesta nada).
 
 Qué hace:
-  1. Trae de la web todos los picks de fútbol con 85 % o más de las próximas 48 h (todos los mercados de cada partido)
+  1. Trae de la web todos los picks de fútbol con 80 % o más de las próximas 48 h (todos los mercados de cada partido)
      y el historial de cómo le ha ido al modelo en ese rango, por familia de mercado.
   2. Lee las cuotas PÚBLICAS de BetPlay (las mismas que ve cualquiera sin iniciar sesión; BetPlay usa la plataforma
      Kambi). Nunca entra a tu cuenta ni toca tu saldo.
@@ -11,7 +11,7 @@ Tú revisas el reporte y, si quieres, armas la apuesta en BetPlay. Es informaci�
 
     python goldglitch_combinadas.py                # reporte en reportes\\combinadas_FECHA.html (se abre solo)
 Ajustes opcionales en el .env:
-    COMB_MIN_P=0.85  COMB_MIN_CUOTA=2.0  COMB_MAX_SEL=3  COMB_OPCIONES=5  COMB_HORAS=48
+    COMB_MIN_P=0.80  COMB_MIN_CUOTA=2.0  COMB_MAX_SEL=3  COMB_OPCIONES=5  COMB_HORAS=48
     BETPLAY_KAMBI=betplay     (código de BetPlay en Kambi; si falla, se detecta solo abriendo betplay.com.co)
 """
 from __future__ import annotations
@@ -396,7 +396,7 @@ Calibración general del modelo en picks de {info['min_p'] * 100:.0f}%+: {info['
 # ------------------------------------------------------------------ main
 def main() -> int:
     load_env()
-    min_p, min_odds = env_f("COMB_MIN_P", 0.85), env_f("COMB_MIN_CUOTA", 2.0)
+    min_p, min_odds = env_f("COMB_MIN_P", 0.80), env_f("COMB_MIN_CUOTA", 2.0)
     max_sel, want, hours = int(env_f("COMB_MAX_SEL", 3)), int(env_f("COMB_OPCIONES", 5)), env_f("COMB_HORAS", 48)
     print(f"Picks de {min_p * 100:.0f}% o más de las próximas {hours:.0f} h…")
     data = signed("/api/social/candidatos", {"min": min_p, "hours": hours})
