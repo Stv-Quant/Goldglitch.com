@@ -144,7 +144,9 @@ NET_VOICE = {
                  "portada que detiene el scroll, lenguaje de calle sin vulgaridad.",
     "facebook": "FACEBOOK (público adulto, 30-55): conversación y nostalgia futbolera, datos explicados con calma, "
                 "pregunta que invite a opinar con argumentos; frases completas, sin jerga juvenil.",
-    "tiktok": "TIKTOK: entretenimiento primero; gancho en el primer segundo, tendencia del momento, remate inesperado.",
+    "tiktok": "TIKTOK, nuestra red PRINCIPAL (la que más usa nuestro público): entretenimiento primero; gancho en el "
+              "primer segundo, tendencia del momento, dato que sorprende y remate inesperado; que provoque comentar y "
+              "compartir.",
     "youtube": "YOUTUBE SHORTS: búsqueda real (título con lo que la gente escribe), público internacional, datos claros "
                "que se entiendan sin sonido.",
 }
