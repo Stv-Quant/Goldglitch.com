@@ -344,8 +344,25 @@ class AgentMeta:
     def ig_reel(self, path: str, caption: str) -> str:
         return self._ig([path], caption, "un reel (video)")
 
+    def _story(self, path: str, where: str, net: str) -> str:
+        other = "la página de Facebook" if where == "instagram" else "Instagram"
+        task = (f"Sube una HISTORIA (story) solo en {'Instagram (cuenta easygoldglitch)' if where == 'instagram' else 'la página de Facebook Easy gold glitch'} "
+                "con la imagen vertical adjunta, usando Meta Business Suite. Normalmente: en business.facebook.com botón "
+                "'Crear historia' (en Inicio o en 'Contenido' > 'Crear' > 'Historia'); en 'Publicar en' / 'Ubicaciones' deja "
+                f"marcada SOLO {'la cuenta de Instagram' if where == 'instagram' else 'la página de Facebook'} y desmarca {other}; "
+                "'Agregar medio' > 'Subir desde el ordenador' (el archivo se adjunta solo); no escribas texto ni agregues "
+                "stickers; 'Compartir historia' / 'Publicar'. Si Business Suite pide elegir la cuenta comercial, elige Easy gold "
+                "glitch. Si no existe la opción de historia para esa cuenta, termina con estado error y explica qué viste.")
+        if where == "facebook":
+            task += (" Si Business Suite no deja, usa la página en facebook.com: 'Crear historia' > 'Crear una historia con "
+                     "foto' actuando como la página.")
+        return self.agent.run(task, "https://business.facebook.com/latest/home", [path], "", self.rehearsal, net)
+
     def ig_story(self, path: str) -> str:
-        raise PlatformError("instagram: historias no disponibles desde el escritorio (se omite)")
+        return self._story(path, "instagram", "instagram")
+
+    def fb_story(self, path: str) -> str:
+        return self._story(path, "facebook", "facebook")
 
     def fb_photos(self, paths: list[str], caption: str) -> str:
         task = ("Publica en la PÁGINA de Facebook 'Easy gold glitch' (no en un perfil personal) una publicación con "

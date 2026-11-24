@@ -672,6 +672,37 @@ def cta(w: int, h: int) -> str:
       </div>{FOOT}""", w, h, watermark="gratis")
 
 
+# ------------------------------------------------------------------ stories (1080×1920): teaser of the new post
+def video_frame(video: str, at: float = 1.6) -> str | None:
+    """One still from a reel (for the story teaser)."""
+    import imageio_ffmpeg
+    out = os.path.splitext(video)[0] + "_frame.jpg"
+    r = subprocess.run([imageio_ffmpeg.get_ffmpeg_exe(), "-y", "-ss", str(at), "-i", video, "-frames:v", "1", "-q:v", "3", out],
+                       capture_output=True)
+    return out if r.returncode == 0 and os.path.exists(out) else None
+
+
+def story(thumb: str | None, headline: str, kicker: str, is_video: bool, w: int = 1080, h: int = 1920) -> str:
+    """The post, tilted like a printed page, under 'Nuevo en el feed'. Meant to send story viewers to the post."""
+    label = "Nuevo reel" if is_video else "Nuevo en el feed"
+    card_h = int(w * .62 * (16 / 9 if is_video else 1.25))
+    card = (f"<div style='margin:46px auto 0;width:{int(w * .62)}px;height:{card_h}px;border-radius:26px;overflow:hidden;"
+            f"transform:rotate(-3deg);box-shadow:0 40px 90px rgba(0,0,0,.75),0 0 0 3px rgba(212,175,55,.55);"
+            f"background:#111 url({_data_uri(thumb, 1200)}) center/cover no-repeat;position:relative'>"
+            + ("<div style='position:absolute;left:50%;top:50%;width:150px;height:150px;margin:-75px 0 0 -75px;border-radius:50%;"
+               "background:rgba(5,4,3,.55);border:3px solid #f3ecdc'><div style='position:absolute;left:58px;top:42px;width:0;height:0;"
+               "border-left:52px solid #f3ecdc;border-top:33px solid transparent;border-bottom:33px solid transparent'></div></div>"
+               if is_video else "") + "</div>") if thumb and os.path.exists(thumb) else ""
+    return base(f"""{top_bar(label)}
+      <div style='margin:auto 0;text-align:center'>
+        <div class='chip' style='border:2px solid #d4af37;color:#d4af37;font-size:26px'>{esc(strip_emoji(kicker) or label)}</div>
+        <div class='anton' style='font-size:{int(w * .088)}px;line-height:1;margin-top:30px'>{esc(strip_emoji(headline))}</div>
+        {card}
+        <div class='anton' style='margin:70px auto 0;display:inline-block;background:#d4af37;color:#050403;border-radius:99px;
+          padding:24px 46px;font-size:{int(w * .046)}px;letter-spacing:.04em'>Míralo en el perfil</div>
+      </div>{FOOT}""", w, h)
+
+
 # ------------------------------------------------------------------ reel frames (1080×1920)
 def reel_frame(big: str, small: str = "", color: str = "#f3ecdc", accent: str | None = None, glitch: bool = True,
                badge_names: tuple[str, str] | None = None, top: str = "", kicker: str = "", tilt: int = 8,
