@@ -44,3 +44,5 @@ integrations/social/.venv_voz/
 integrations/social/redes_voz.json
 integrations/social/voz_referencia.wav
 integrations/social/redes.log
+integrations/social/reportes/
+integrations/social/betplay_kambi.json
