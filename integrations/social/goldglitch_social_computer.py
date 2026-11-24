@@ -479,7 +479,8 @@ COMMUNITY_TASKS = {
     "youtube": ("https://studio.youtube.com/", "En YouTube Studio > 'Comentarios' (menú izquierdo), pestaña 'Sin respuesta' / "
                 "'No respondidos': responde y da me gusta (corazón de creador) a los comentarios recientes. Si el último "
                 "video o Short no tiene comentario fijado, deja uno de la marca con una pregunta que invite a comentar y "
-                "fíjalo ('Fijar'). Si existe la pestaña 'Comunidad' del canal y hoy no hay publicación, publica una encuesta "
+                "fíjalo ('Fijar'); si al fijar YouTube pide 'verificación' (One-time verification), NO esperes a nadie: deja el "
+                "comentario sin fijar y sigue. Si existe la pestaña 'Comunidad' del canal y hoy no hay publicación, publica una encuesta "
                 "corta de fútbol (pregunta + 2 a 4 opciones)."),
     "instagram": ("https://www.instagram.com/", "En Instagram abre las notificaciones (corazón / 'Notificaciones') o las "
                   "últimas publicaciones del perfil de easygoldglitch y responde los comentarios recientes sin respuesta "
