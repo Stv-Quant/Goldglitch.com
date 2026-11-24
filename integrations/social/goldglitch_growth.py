@@ -108,9 +108,11 @@ del consumidor e incentivos positivos) dirigen; debajo hay 2 especialistas por r
 (Martha y Jorge), TikTok (Mía y Mateo) y YouTube (Laura y Andrés). No se contrata a nadie más.
 Las decisiones son ECONÓMICAS: cada publicación es inventario escaso que se asigna donde más cuentas creadas y pagos produce
 (rendimiento marginal), con incentivos positivos y éticos, datos, experimentos y revisión de si se acertó.
-CONTENIDO PROPIO POR RED: salvo las 2 piezas obligatorias (picks de la mañana y resultados de la noche, que salen en
-todas), CADA publicación es para UNA sola red y es distinta: "redes" lleva una sola red. Planea 2 a 4 piezas propias por
-red al día (hasta 16 en total), separadas al menos 60 min dentro de la misma red (redes distintas pueden coincidir).
+CITAS FIJAS EN TODAS LAS REDES (el sistema las agrega, no las planees): 07:30 estadísticas de la mañana, 14:00
+estadísticas de la tarde, 19:30 reel/short de las estadísticas de la noche, 22:00 resultados y 22:45 reel/short de
+resultados. Fuera de esas, CADA publicación es para UNA sola red y es distinta: "redes" lleva una sola red. Planea 3 a 5
+piezas propias por red al día (12 a 20 en total; YouTube y Facebook al menos 4 cada una, Instagram 4 a 5), separadas al
+menos 60 min dentro de la misma red y de las citas fijas (redes distintas pueden coincidir). Con estadísticas reales.
 En Instagram y Facebook cada publicación lleva además su HISTORIA (el sistema la hace y la sube).
 AUDIENCIAS POR RED:
 - Instagram: público joven que viene por los PICKS. Cada día ABRE con "picks_dia" (menos de 5 picks de los equipos más
@@ -148,7 +150,7 @@ y prioriza lo que genera guardados, compartidos y comentarios.
 Cómo trabajas en la reunión:
 1. Mira las métricas y el historial (ver_metricas, ver_historial).
 2. Consulta a los especialistas que aporten (consultar). La empresa son 10 agentes fijos: no contrates ni despidas.
-3. Decide el plan de HOY con definir_plan: 8 a 16 publicaciones repartidas por red (cada una con su "redes" de UNA red) (volumen alto: el objetivo es crecer rápido), al menos 3 de
+3. Decide el plan de HOY con definir_plan: 12 a 20 publicaciones repartidas por red (cada una con su "redes" de UNA red) (volumen alto: el objetivo es crecer rápido), al menos 3 de
    ellas "reel" (video vertical de ritmo rápido, el formato que más alcance orgánico da; topic "resultados" para un reel
    de resultados, si no son picks), solo equipos de ligas top, horas 07:00–23:00 separadas al menos 60 min,
    cada una con gancho, ángulo, tema y llamado a la acción. Al menos 1 "meme" al día (idea de Valeria). Los picks no se
@@ -362,7 +364,7 @@ class Committee:
         earliest = (now_co() + __import__("datetime").timedelta(minutes=10)).strftime("%H:%M")
         self.now_posts = []
         per_net: dict[str, list[int]] = {}
-        for p in posts[:18]:
+        for p in posts[:24]:
             t, hhmm = p.get("type"), str(p.get("time", ""))
             if hhmm.strip().lower() in ("ahora", "ya", "now"):
                 text = " ".join(str(p.get(k, "")) for k in ("angle", "topic", "hook", "cta"))
@@ -404,30 +406,41 @@ class Committee:
         self.plan = sorted(ok, key=lambda p: p["time"])
         return "Plan guardado." + (f" Descartadas: {'; '.join(problems)}" if problems else "")
 
-    MORNING, NIGHT = "07:30", "22:30"
+    MORNING, NIGHT = "07:30", "22:00"
+    # the daily appointments, on EVERY network: stats twice a day, results at night, and two night reels/shorts
+    SLOTS = (
+        ("manana", "07:30", "picks_dia", "Los picks del día: menos de 5, equipos famosos de Europa, Sudamérica y Liga BetPlay",
+         "picks del día", "Todas las probabilidades, gratis, en el enlace del perfil"),
+        ("tarde", "14:00", "picks_dia", "Estadísticas de la tarde: los partidos de hoy que faltan, con sus probabilidades",
+         "picks de la tarde", "Todas las probabilidades, gratis, en el enlace del perfil"),
+        ("noche_stats", "19:30", "reel", "Reel/short de las estadísticas de los partidos de esta noche",
+         "picks de la noche", "Todas las probabilidades, gratis, en el enlace del perfil"),
+        ("noche", "22:00", "resultados", "Cómo le fue al modelo con los picks de hoy: aciertos y fallos",
+         "resultados", "Historial público en el enlace del perfil"),
+        ("noche_reel", "22:45", "reel", "Reel/short de los resultados del día: aciertos y fallos del modelo",
+         "resultados del día", "Historial público en el enlace del perfil"),
+    )
+    MUST_GO = {"manana": "13:00", "noche": "23:30"}      # if the PC was off, these still go (until that hour)
 
     def mandatory(self, ok: list[dict], earliest: str) -> list[dict]:
-        """Every day opens with the picks (fewer than 5, famous teams) and closes with how the model did."""
+        """Every day: morning and afternoon stats, night results, and two night reels — all on every network."""
         today = getattr(self, "today", "")
         live_today = now_co().strftime("%Y-%m-%d") == today and getattr(self, "mode", "normal") != "extra_noche"
         st = self.state or {}
-        done_today = {p.get("type") for p in (st.get("plan") or []) if st.get("day") == today and p.get("status") == "done"}
-        morning_open = not live_today or self.MORNING >= earliest
-        out = [p for p in ok if p["type"] != "picks_dia" or p["time"] > "11:00"]
+        done_today = {p.get("obligatorio") for p in (st.get("plan") or []) if st.get("day") == today and p.get("status") == "done"}
+        out = [p for p in ok if not p.get("obligatorio") and p["type"] != "resultados"]
         MIN = 60
-        if "picks_dia" not in done_today:
-            slot = self.MORNING if morning_open else (earliest if earliest <= "21:00" else None)
-            if slot:
-                out = [p for p in out if p["time"] >= slot and abs(_mins(p["time"]) - _mins(slot)) >= MIN]
-                out.append({"type": "picks_dia", "time": slot, "obligatorio": "manana", "redes": list(ALL_NETS),
-                            "angle": "Los picks del día: menos de 5, equipos famosos de Europa, Sudamérica y Liga BetPlay",
-                            "topic": "picks del día", "hook": "", "cta": "Todas las probabilidades, gratis, en el enlace del perfil"})
-        out = [p for p in out if p["time"] < self.NIGHT and abs(_mins(p["time"]) - _mins(self.NIGHT)) >= MIN
-               or p["type"] == "resultados" and p.get("obligatorio")]
-        out = [p for p in out if not (p["type"] == "resultados" and not p.get("obligatorio"))] + \
-            [{"type": "resultados", "time": self.NIGHT, "obligatorio": "noche", "redes": list(ALL_NETS),
-              "angle": "Cómo le fue al modelo con los picks de la mañana: aciertos y fallos", "topic": "resultados",
-              "hook": "", "cta": "Historial público en el enlace del perfil"}]
+        for key, slot, t, angle, topic, cta in self.SLOTS:
+            if key in done_today:
+                continue
+            if live_today and slot < earliest:
+                if key in self.MUST_GO and earliest <= self.MUST_GO[key]:
+                    slot = earliest
+                else:
+                    continue
+            out = [p for p in out if p.get("obligatorio") or abs(_mins(p["time"]) - _mins(slot)) >= MIN]
+            out.append({"type": t, "time": slot, "obligatorio": key, "redes": list(ALL_NETS), "angle": angle,
+                        "topic": topic, "hook": "", "cta": cta})
         return sorted(out, key=lambda p: p["time"])
 
     ART_OPTS = {"acento": ("oro", "esmeralda", "rubi", "zafiro", "violeta", "champana"),
@@ -496,9 +509,10 @@ PASO 2: decide. Formato:
 poner 2 memes si hay tendencias fuertes, y si una tendencia explota justo ahora, el meme puede ir con "time":"ahora")
 (opcional: UNA publicación del plan puede llevar "time":"ahora" si debe salir apenas termine la reunión)
 "aprendizajes":[{{"miembro":"clave de quien lo aprendió","texto":"..."}}], "acta":"qué viste, qué decidiste, qué experimento corre y cómo se mide"}}
-8 a 16 publicaciones, CADA UNA PARA UNA SOLA RED ("redes": ["instagram"] o ["facebook"] o ["tiktok"] o ["youtube"]) y
-distinta de las demás: 2 a 4 piezas propias por red, horas 07:00–23:00, 60 min entre piezas de la MISMA red. Los picks de
-la mañana (07:30) y los resultados de la noche (22:30) los agrega el sistema en todas las redes: no los repitas.
+12 a 20 publicaciones, CADA UNA PARA UNA SOLA RED ("redes": ["instagram"] o ["facebook"] o ["tiktok"] o ["youtube"]) y
+distinta de las demás: 3 a 5 piezas propias por red (YouTube y Facebook al menos 4 cada una), horas 07:00–23:00, 60 min
+entre piezas de la MISMA red y lejos de las citas fijas. Las citas fijas las agrega el sistema en todas las redes (07:30 y
+14:00 estadísticas, 19:30 reel de estadísticas, 22:00 resultados, 22:45 reel de resultados): no las repitas.
 Instagram: memes, carruseles de datos, reels de picks con otra liga; Facebook: "sabias_que", "noticia", educativo;
 TikTok: "reel" y memes de tendencia; YouTube: "nba", reels de datos con búsqueda real. Al menos 1 "meme" y 1 concepto
 disruptivo de Mía (en "angle"). Un partido mostrado en picks no se repite en 24 h: varía la "liga". Todo es del DÍA DE HOY (hora de Colombia): picks, datos y "angle" solo de partidos que se juegan hoy; los de mañana se publican mañana.""")

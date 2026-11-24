@@ -182,6 +182,47 @@ def shown_results(st: dict | None, results: list[dict]) -> list[dict] | None:
             or match_key(r) + "|" + (r.get("label") or "").lower() in keys]
 
 
+SPORT_SCENES = {   # luxury, but about the sport — rotated so the feed is not always the same person with champagne
+    "futbol": [
+        "a football resting on wet grass in the centre circle of a huge empty stadium at night, golden floodlights, light rain, shallow depth of field",
+        "silhouette of a striker striking a football mid-air, golden sparks around the ball, night stadium haze, dramatic backlight",
+        "goalkeeper diving full stretch in the rain, golden rim light, water droplets frozen in the air, blurred floodlights",
+        "black marble locker room with gold-trimmed lockers, a pair of football boots and a ball on a leather bench, warm spotlight",
+        "players' tunnel leading to a bright pitch, golden light at the end, smoke, cinematic symmetry, no signage",
+        "aerial drone view of a football stadium glowing at blue hour, city lights around, golden floodlight beams",
+        "close-up of football boots on the white line of a pitch, morning dew, golden sunrise backlight",
+        "corner flag fluttering at sunset in a premium stadium, golden hour, crowd softly blurred",
+        "luxury VIP box overlooking a packed night stadium, leather seats and warm lamps, no people in focus",
+        "supporters' silhouettes with golden flares and smoke in a stadium stand at night, epic atmosphere",
+        "a golden-trimmed football on a black velvet pedestal under a single spotlight, dark museum ambience",
+    ],
+    "basket": [
+        "basketball swishing through the net in a dark arena, golden spotlight, sparks of light, slow motion",
+        "silhouette of a player dunking against bright arena lights, golden haze, dramatic low angle",
+        "empty courtside leather seats beside polished hardwood, golden reflections, arena lights above",
+        "basketball sneakers on glossy hardwood with a golden rim light, shallow depth of field",
+        "a basketball on the free-throw line of an empty premium arena, single golden spotlight",
+    ],
+    "persona": [
+        "a stylish young Colombian woman with long dark wavy hair with golden highlights and gold hoop earrings, cheering in a "
+        "premium stadium seat at night, golden floodlights",
+        "a well-dressed young man celebrating a goal with friends in a luxury rooftop sports lounge at night, golden light",
+    ],
+}
+
+
+def scene_theme(post: dict, tag: str) -> str:
+    """The theme of the background art for this piece: football or basketball scenes; people only once in a while."""
+    h = int(hashlib.md5(tag.encode()).hexdigest()[:8], 16)
+    if post["type"] == "nba":
+        pool = SPORT_SCENES["basket"]
+    elif post["type"] == "meme" or h % 5 == 0:
+        pool = SPORT_SCENES["persona"] + SPORT_SCENES["futbol"][:3]
+    else:
+        pool = SPORT_SCENES["futbol"] + (SPORT_SCENES["basket"][:2] if h % 3 == 0 else [])
+    return pool[(h // 7) % len(pool)]
+
+
 def illustrations(post: dict, tx: dict, tag: str) -> tuple[str | None, str | None]:
     """AI illustrations painted on this PC (feed 4:5 and reel 9:16, 4K) for the piece; (None, None) if not installed."""
     try:
@@ -193,7 +234,7 @@ def illustrations(post: dict, tx: dict, tag: str) -> tuple[str | None, str | Non
             "picks_dia": "epic night football stadium seen from the stands, golden floodlights, smoke and confetti, anticipation",
             "resultados": "football players celebrating under golden floodlights, dramatic stadium atmosphere, rain of gold confetti",
             "reel": "dynamic close-up of a football on the grass of a stadium at night, golden sparks, motion blur",
-        }.get(post["type"], "a stylish young woman analyzing football statistics on holographic golden screens, luxury penthouse at night")
+        }.get(post["type"], scene_theme(post, tag))
         log("  [Valeria] Ilustrador: pintando el arte de la pieza…")
         return IL.scene(post["type"], base, False, f"{tag}_feed"), IL.scene(post["type"], base, True, f"{tag}_reel")
     except Exception as e:
@@ -307,6 +348,7 @@ def _build(post: dict, facts: dict, ag: Agents, now: datetime, tag: str, shown: 
         data["busquedas_reales"] = T.search_phrases(seeds)
     except Exception:
         pass
+    data["tema_ilustracion"] = scene_theme(post, tag)
     tx = ag.write(post, data)
     for k in ("cover_title", "cover_subtitle", "reel_hook", "reel_sub", "edu_title", "edu_body"):
         if isinstance(tx.get(k), str):
