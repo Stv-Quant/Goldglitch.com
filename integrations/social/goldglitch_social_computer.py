@@ -407,11 +407,22 @@ class AgentTikTok:
     audio_vibe = ""
 
     def video(self, path: str, title: str) -> str:
+        # Pasted hashtags stay plain text in TikTok's editor: each one is typed and picked from the suggestion list
+        tags = re.findall(r"(?<![\w&])#([^\W\d][\w]*)", title)[:8]
+        body = re.sub(r"[ \t]*(?<![\w&])#[^\W\d][\w]*", "", title).rstrip()
+        steps = ("Después escribe las etiquetas UNA POR UNA al final de la descripción (tecla End para ir al final, luego "
+                 "un espacio): para cada una usa escribir con el texto exacto, espera 2 segundos a que salga la lista de "
+                 "sugerencias de TikTok y haz clic en la sugerencia que coincide EXACTAMENTE con esa etiqueta (queda resaltada "
+                 "como etiqueta); si no aparece la lista, escribe un espacio y sigue. Etiquetas, en este orden: "
+                 + " ".join("#" + t for t in tags) + ". Al terminar, amplía el cuadro de descripción y comprueba que las "
+                 "etiquetas se ven como etiquetas (resaltadas), no como texto normal. ") if tags else ""
         task = ("Publica este video en TikTok con la descripción preparada. En TikTok Studio (Cargar): 'Seleccionar video' "
                 "(el archivo se adjunta solo), espera a que termine de subir, borra el texto que aparezca en la descripción "
-                "(clic en el cuadro, ctrl+a, Delete), usa escribir_texto_preparado, deja la privacidad en 'Todos', y Publicar. "
+                "(clic en el cuadro, ctrl+a, Delete), usa escribir_texto_preparado. " + steps +
+                "Deja la privacidad en 'Todos', y Publicar. "
                 + trending_audio_step("TikTok Studio ('Editar video' > 'Sonidos')", "TikTok", self.audio_vibe))
-        return self.agent.run(task, "https://www.tiktok.com/tiktokstudio/upload?from=webapp", [path], title, self.rehearsal, "tiktok")
+        return self.agent.run(task, "https://www.tiktok.com/tiktokstudio/upload?from=webapp", [path], body or title,
+                              self.rehearsal, "tiktok")
 
 
 class AgentYouTube:

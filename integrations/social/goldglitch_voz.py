@@ -131,8 +131,26 @@ def install_eleven() -> int:
     return 0
 
 
+VOSEO = [(r"\bmira\b", "mirá"), (r"\bMira\b", "Mirá"), (r"\btienes\b", "tenés"), (r"\bpuedes\b", "podés"),
+         (r"\bsabes\b", "sabés"), (r"\bquieres\b", "querés"), (r"\beres\b", "sos"), (r"\bimagina\b", "imaginá"),
+         (r"\bescucha\b", "escuchá"), (r"\bfíjate\b", "fijate"), (r"\bFíjate\b", "Fijate"), (r"\bpiensa\b", "pensá"),
+         (r"\bdime\b", "decime"), (r"\bDime\b", "Decime"), (r"\bcomenta\b", "comentá"), (r"\bsigue\b", "seguí"),
+         (r"\btú\b", "vos"), (r"\bTú\b", "Vos"), (r"\bcrees\b", "creés"), (r"\bvienes\b", "venís")]
+
+
+def rioplatense(text: str) -> str:
+    """Argentine football-narrator flavour for the voice-over (voseo). Off with REDES_VOZ_ACENTO=neutro."""
+    import re
+    if os.environ.get("REDES_VOZ_ACENTO", "argentino") != "argentino":
+        return text
+    for pat, rep in VOSEO:
+        text = re.sub(pat, rep, text)
+    return text
+
+
 def say_many(items: list[tuple[str, str]]) -> list:
     """Narrate several lines at once [(text, wav_path)] → [(path, seconds) | None]. One model load per reel."""
+    items = [(rioplatense(t) if t else t, p) for t, p in items]
     if engine() == "elevenlabs":
         need = sum(len(t) for t, _ in items if t)
         if eleven_left() >= need:
@@ -156,7 +174,8 @@ def say_many(items: list[tuple[str, str]]) -> list:
     fd, spec = tempfile.mkstemp(suffix=".json")
     with os.fdopen(fd, "w", encoding="utf-8") as f:
         json.dump({"jobs": jobs, "ref": REF if os.path.exists(REF) else None,
-                   "exaggeration": float(os.environ.get("REDES_VOZ_EMOCION", "0.6"))}, f, ensure_ascii=False)
+                   "exaggeration": float(os.environ.get("REDES_VOZ_EMOCION", "0.8")),     # passionate
+                   "cfg": float(os.environ.get("REDES_VOZ_RITMO", "0.35"))}, f, ensure_ascii=False)
     try:
         r = subprocess.run([VPY, os.path.join(HERE, "goldglitch_voz_worker.py"), spec], capture_output=True, text=True,
                            encoding="utf-8", errors="replace", timeout=1800, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
@@ -171,6 +190,37 @@ def say_many(items: list[tuple[str, str]]) -> list:
         os.remove(spec)
     it = iter(durs)
     return [((p, d) if (d := next(it)) else None) if t else None for t, p in items]
+
+
+GUION = ("¡Atención, eh! Mirá este dato, que es una locura: el modelo le da noventa por ciento a este partido. "
+         "¿Vos lo viste venir? Yo te lo cuento todo, che. ¡Golazo de estadística! ¡Vamos, vamos!")
+
+
+def record(seconds: int = 16) -> int:
+    """Record the reference voice (the voice every video will use): 16 s from the microphone. Only someone who agrees
+    to be the voice of EGG — you or a friend — should record it."""
+    try:
+        import sounddevice as sd
+        import soundfile as sf
+    except ImportError:
+        subprocess.run([sys.executable, "-m", "pip", "install", "sounddevice", "soundfile"])
+        import sounddevice as sd
+        import soundfile as sf
+    print("\nLee este texto en voz alta, como relator argentino apasionado (sin ruido de fondo, cerca del micrófono):\n")
+    print("   " + GUION + "\n")
+    input("Presiona Enter y empieza a leer… ")
+    sr = 24000
+    audio = sd.rec(int(seconds * sr), samplerate=sr, channels=1)
+    for i in range(seconds, 0, -1):
+        print(f"  grabando… {i:2d}", end="\r")
+        sd.sleep(1000)
+    sd.wait()
+    sf.write(REF, audio, sr)
+    print(f"\nGuardado: {REF}")
+    out = say_many([("Mirá, este es el dato de hoy: noventa por ciento. ¿Lo viste venir? ¡Vamos!",
+                     os.path.join(HERE, "redes_salida", "voz_prueba_referencia.wav"))])[0]
+    print(f"Prueba con tu voz de referencia: {out[0] if out else 'falló (¿instalaste la voz natural?)'}")
+    return 0
 
 
 def install_natural() -> int:
@@ -251,4 +301,4 @@ if __name__ == "__main__":
                 os.environ.setdefault(_k.strip(), _v.strip().strip('"').strip("'"))
     cmd = (sys.argv[1:] or ["prueba"])[0]
     sys.exit(install() if cmd == "instalar" else install_natural() if cmd == "instalar_natural" else
-             install_eleven() if cmd == "elevenlabs" else (0 if test() else 1))
+             install_eleven() if cmd == "elevenlabs" else record() if cmd == "grabar" else (0 if test() else 1))
