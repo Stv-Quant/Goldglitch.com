@@ -496,8 +496,18 @@ def house() -> str:
     return ACCENTS.get(STYLE["acento"], "#d4af37")
 
 
+SAFE: dict = {"on": False}     # TikTok-bound piece: statistics wording, no betting words
+
+
+def set_safe(on: bool) -> None:
+    SAFE["on"] = bool(on)
+
+
 def base(body: str, w: int, h: int, accent: str | None = None, watermark: str = "") -> str:
     accent = accent or house()
+    if SAFE["on"]:
+        from goldglitch_lenguaje import safe_text
+        body, watermark = safe_text(body), safe_text(watermark)
     wm = (f"<div style='position:absolute;right:-40px;top:38%;font-family:Anton;font-size:{int(w * .26)}px;line-height:.85;"
           f"color:rgba(255,255,255,.035);text-transform:uppercase;transform:rotate(-8deg);white-space:nowrap'>{esc(watermark)}</div>") if watermark else ""
     return f"""<!doctype html><html><head><meta charset='utf-8'><style>{FONTS}
@@ -1116,6 +1126,9 @@ def _voiceover(frames: list[tuple], name: str) -> list:
     except Exception:
         return [None] * len(frames)
     items = [(strip_emoji(fr[3] or "").strip(), os.path.join(OUT, f"{name}_voz_{i}.wav")) for i, fr in enumerate(frames)]
+    if SAFE["on"]:
+        from goldglitch_lenguaje import safe_text
+        items = [(safe_text(t) if t else t, p) for t, p in items]
     return VZ.say_many(items)
 
 

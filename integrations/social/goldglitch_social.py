@@ -324,6 +324,10 @@ def _build(post: dict, facts: dict, ag: Agents, now: datetime, tag: str, shown: 
     """Texts + images + video for one planned post. Returns {feed:[jpg], story:None, video:mp4, reel:bool, texts}.
 
     Picks come only from top first-division leagues of LATAM and Europe (and their continental cups)."""
+    from goldglitch_lenguaje import nice_label
+    facts = {k: ([{**r, "label": nice_label(r["label"])} if isinstance(r, dict) and r.get("label") else r for r in v]
+                 if isinstance(v, list) else v) for k, v in (facts or {}).items()}     # statistics wording, not betting
+    V.set_safe("tiktok" in (post.get("redes") or ["tiktok"]))
     t = post["type"]
     V.set_style(G.art_for(now.strftime("%Y-%m-%d")))       # Martina's art direction for today
     focus = (post.get("liga") or "").strip()
@@ -538,6 +542,9 @@ def caption(tx: dict, key: str) -> str:
         if h and h.lower() not in seen:
             seen.add(h.lower())
             tags.append(h)
+    if key == "tiktok":   # TikTok flags betting language: statistics words only, no betting tags
+        from goldglitch_lenguaje import safe_tags, safe_text
+        body, tags = safe_text(body), safe_tags(tags)
     if key == "tiktok":   # TikTok rewards a few broad tags first
         big = [t for t in tags if t.lower() in ("fyp", "parati", "viral", "futbol", "football", "soccer")]
         tags = big + [t for t in tags if t not in big]

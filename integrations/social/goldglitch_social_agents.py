@@ -152,8 +152,17 @@ NET_VOICE = {
 }
 
 
+SAFE_RULE = (" REGLA TIKTOK (su política prohíbe promover apuestas): habla como analista de estadística deportiva. NUNCA "
+             "'pick', 'apuesta', 'cuota', 'mercado', 'parlay', 'fija', 'stake', '+18' ni 'entra o no entra'; di 'dato', "
+             "'probabilidad', 'el modelo dice', '¿se cumple o no?'. Nada que invite a apostar.")
+
+
 def red_destino(post: dict) -> str:
     """Pieces made for one network get that network's voice; the two daily pieces (picks and results) go everywhere."""
+    return _red_destino(post) + (SAFE_RULE if "tiktok" in (post.get("redes") or ["tiktok"]) else "")
+
+
+def _red_destino(post: dict) -> str:
     nets = [n for n in (post.get("redes") or []) if n in NET_VOICE]
     if not nets or len(nets) > 1:
         return "todas las redes (pieza obligatoria del día: picks de la mañana o resultados de la noche)"
