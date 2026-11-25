@@ -908,7 +908,7 @@ def story(thumb: str | None, headline: str, kicker: str, is_video: bool, w: int 
 def reel_frame(big: str, small: str = "", color: str = "#f3ecdc", accent: str | None = None, glitch: bool = True,
                badge_names: tuple[str, str] | None = None, top: str = "", kicker: str = "", tilt: int = 8,
                bars: list[tuple[str, float, str]] | None = None, host: str | None = None,
-               face: tuple[str, str] | None = None, split_chars: bool = False, foot: str = "") -> str:
+               face: tuple[str, str] | None = None, split_chars: bool = False, foot: str = "", countdown: bool = False) -> str:
     """One scene. Depth: blurred giant echo of the text behind, 3D tilt, glow and floating light.
     host: mood of EGG's avatar presenting the scene (bottom-left), e.g. shock | smug | wink | laugh."""
     accent = accent or house()
@@ -942,7 +942,7 @@ def reel_frame(big: str, small: str = "", color: str = "#f3ecdc", accent: str | 
     return base(f"""{top_bar(top or "Goldglitch", accent)}
       <div style='margin:auto 0;text-align:center;position:relative'>{echo}{kick}{badges}
         <div data-m='stage' style='transform:perspective(1400px) rotateX({tilt // 2}deg)'>
-          <div data-m='big' {"data-split='chars'" if split_chars else ""} class='anton' style='font-size:{size}px;line-height:.98;color:{color};{shadow}'>{esc(big)}</div>
+          <div data-m='big' {"data-split='chars'" if split_chars else ""} {"data-countdown='1'" if countdown else ""} class='anton' style='font-size:{size}px;line-height:.98;color:{color};{shadow}'>{esc(big)}</div>
           <div data-m='small' style='font-size:58px;font-weight:800;margin-top:44px;color:#e9e1cf;line-height:1.2;text-shadow:0 8px 30px rgba(0,0,0,.7)'>{esc(small)}</div>
         </div>{chart}
       </div>
@@ -963,6 +963,11 @@ def _say_pct(p: float) -> str:
 
 
 FOLLOW = {"tiktok": "SEGUÍ LA CUENTA", "youtube": "SUSCRIBITE", "instagram": "SEGUINOS", "facebook": "SEGUÍ LA PÁGINA"}
+
+
+def countdown_frame(line: str = "el dato que estabas esperando") -> tuple:
+    """3 · 2 · 1 before the big reveal (anticipation is the dopamine, the number is the reward)."""
+    return (reel_frame("3", line, color="#e7c25a", kicker="Atento", glitch=False, countdown=True, tilt=0), 1.7, "countdown", "")
 
 
 def brand_intro() -> tuple:
@@ -987,11 +992,11 @@ def reel_script(kind: str, rows: list[dict], tx: dict, when_fn, record: dict | N
     rate = _rate(record)
     hook = strip_emoji(tx.get("reel_hook") or "")
     if kind in ("picks_dia", "reel", "nba") and rows:
-        rows = rows[:4]
+        rows = sorted(rows[:4], key=lambda r: float(r["p"]))      # the strongest goes last: the payoff of the open loop
         fomo_reel = tx.get("_modo") == "fomo" and len(rows) > 1
         locked = max(rows, key=lambda r: float(r["p"])) if fomo_reel else None
         intl = kind == "nba"
-        f.append((reel_frame(hook or "LOS DATOS DE HOY", strip_emoji(tx.get("reel_sub") or ""), host="shock",
+        f.append((reel_frame(hook or "LOS DATOS DE HOY", strip_emoji(tx.get("reel_sub") or "") or "quedate: el más fuerte va al final", host="shock",
                              kicker=("NBA · esta noche" if intl else f"Top {len(rows)} · ligas grandes")), 2.2, "punch",
                   tx.get("voz_hook") or hook))
         if rate:
@@ -1006,6 +1011,8 @@ def reel_script(kind: str, rows: list[dict], tx: dict, when_fn, record: dict | N
                                  badge_names=(r["home"], r["away"]), top=r["league"], tilt=8, kicker=f"Pick {i + 1} de {len(rows)}"),
                       2.3, "punch", f"{r['home']} contra {r['away']}, {when}."))
             fail = max(2, round(1 / max(1e-6, 1 - p)))
+            if r is max(rows, key=lambda x: float(x["p"])) and i == len(rows) - 1:
+                f.append(countdown_frame("el más fuerte del día"))
             if fomo_reel and r is locked:
                 f.append((reel_frame(f"{round(p * 100)}%", "el más fuerte del día · mercado oculto", color=pcolor(p), accent=acc,
                                      top=r["league"], kicker="Pick bloqueado"), 2.8, "shake",
@@ -1013,7 +1020,7 @@ def reel_script(kind: str, rows: list[dict], tx: dict, when_fn, record: dict | N
                 continue
             f.append((reel_frame(f"{round(p * 100)}%", r["label"], color=pcolor(p), accent=acc, top=r["league"],
                                  kicker=r.get("group") or "Probabilidad",
-                                 bars=[(r["label"][:28], p, pcolor(p)), ("No pasa", 1 - p, "#5a544a")]), 2.6, "slide",
+                                 bars=[(r["label"][:28], p, pcolor(p)), ("No pasa", 1 - p, "#5a544a")]), 2.8, "reveal",
                       f"{r['label']}: {_say_pct(p)}. Una de cada {fail} veces no pasa."))
         best = max(rows, key=lambda r: float(r["p"]))
         f.append((reel_frame("EL MÁS FUERTE", "de hoy", kicker="Ranking",
@@ -1062,6 +1069,7 @@ def reel_script(kind: str, rows: list[dict], tx: dict, when_fn, record: dict | N
             scenes.append((reel_frame("¿QUIÉN GANA?", "según el modelo", kicker="Probabilidades", accent=acc,
                                       bars=[(n[:24], q, c) for n, q, c in parts]), 2.6, "slide",
                            "Según el modelo: " + ", ".join(f"{n} {_say_pct(q)}" for n, q, _ in parts) + "."))
+        scenes.append(countdown_frame("el dato de este partido"))
         if fomo:
             more = int(anc.get("more") or 0)
             scenes.append((reel_frame(f"{round(p * 100)}%", "hay un pick así en este partido · mercado oculto", color=pcolor(p),
@@ -1071,7 +1079,7 @@ def reel_script(kind: str, rows: list[dict], tx: dict, when_fn, record: dict | N
         else:
             scenes.append((reel_frame(f"{round(p * 100)}%", anc["label"], color=pcolor(p), accent=acc, top=anc.get("league"),
                                       kicker="Probabilidad del modelo",
-                                      bars=[(anc["label"][:28], p, pcolor(p)), ("No pasa", 1 - p, "#5a544a")]), 2.6, "slide",
+                                      bars=[(anc["label"][:28], p, pcolor(p)), ("No pasa", 1 - p, "#5a544a")]), 2.8, "reveal",
                            f"{anc['label']}: {_say_pct(p)}."))
         at = len(f) if kind == "resultados" else min(1, len(f))
         f[at:at] = scenes
@@ -1102,12 +1110,22 @@ def beat(path: str, seconds: float, bpm: int = 148, cuts: list[tuple[float, str]
     whoosh = lambda t: (rnd.random() * 2 - 1) * math.sin(math.pi * min(t / 0.22, 1)) * 0.34
     impact = lambda t: (math.sin(2 * math.pi * (38 + 90 * math.exp(-t * 18)) * t) * 1.1 + (rnd.random() * 2 - 1) * math.exp(-t * 35) * .5) * math.exp(-t * 5)
     zap = lambda t: math.sin(2 * math.pi * (1800 - 1500 * t / .12) * t) * math.exp(-t * 25) * 0.25
+    tick = lambda t: math.sin(2 * math.pi * 2200 * t) * math.exp(-t * 60) * 0.35
+    chime = lambda t: (math.sin(2 * math.pi * 1318.5 * t) + 0.6 * math.sin(2 * math.pi * 1975.5 * t) + 0.3 * math.sin(2 * math.pi * 2637 * t)) * math.exp(-t * 4.5) * 0.22
+    scratch = lambda t: (rnd.random() * 2 - 1) * (0.5 + 0.5 * math.sin(2 * math.pi * 23 * t)) * math.exp(-t * 3) * 0.12
     for t0, fx in (cuts or []):
         add(max(0.0, t0 - 0.11), whoosh, 0.24)
         if fx in ("shake", "punch"):
             add(t0, impact, 0.6)
         if fx == "flash":
             add(t0, zap, 0.12)
+        if fx == "countdown":                       # tick, tick, tick… ding
+            for k in range(3):
+                add(t0 + 0.4 * k, tick, 0.08)
+            add(t0 + 1.2, chime, 0.9)
+        if fx == "reveal":                          # the number lands: sparkle + chime
+            add(t0 + 0.3, scratch, 0.5)
+            add(t0 + 1.35, chime, 0.9)
     i = 0
     while i * step < seconds:
         t, s16 = i * step, i % 16
