@@ -1155,7 +1155,7 @@ def beat(path: str, seconds: float, bpm: int = 148, cuts: list[tuple[float, str]
 
 TRANSITIONS = ["zoomin", "slideup", "smoothleft", "circleopen", "fadewhite", "slidedown", "radial", "smoothup"]
 LOOK: dict = {}
-LOOKS = ("club", "stmoritz", "esmeralda", "bbc", "noche")
+LOOKS = ("senal",)        # the landing's particles: noise that turns into the number (karaoke, terminal, slow)
 LOOK_TRANSITIONS = {
     "diario": ["slideleft", "wipeleft", "slideup", "wiperight"], "cuaderno": ["slideup", "wipeup", "slidedown", "smoothleft"],
     "trapo": ["squeezeh", "wipeleft", "slideright", "squeezev"], "cartel": ["hlslice", "vuslice", "slideleft", "zoomin"],
@@ -1204,7 +1204,9 @@ def reel_video(frames: list[tuple[str, float, str]], name: str) -> str:
     voice = _voiceover(frames, name)            # [(path, seconds) | None] per scene
     T = 0.14                                                # transition length
     pace = {"muy_rapido": 0.9, "elegante": 1.2}.get(STYLE["ritmo"], 1.0)
-    lens = [max(10, int((max(secs * pace, (voice[i][1] + 0.45) if voice[i] else 0) + T) * 30)) / 30
+    calm = (LOOK.get("look") or "") == "senal"            # slower rhythm: time for the dust to land and to read
+    pace, tail = (max(pace, 1.3), 1.1) if calm else (pace, 0.45)
+    lens = [max(10, int((max(secs * pace, (voice[i][1] + tail) if voice[i] else 0) + T) * 30)) / 30
             for i, (_, secs, _fx, _s) in enumerate(frames)]   # a scene lasts at least as long as its line
     try:
         import goldglitch_motion as M
@@ -1244,12 +1246,25 @@ def _motion_video(frames, lens, voice, name, M, T) -> str:
     spin, drop, slices and gold light leaks, each on a speed ramp, cut on the beat. Falls back to xfade."""
     look = LOOK.get("look") or "terminal"
     d = os.path.join(OUT, f"{name}_motion")
-    dirs = M.render_scenes([f[0] for f in frames], lens, d, look)
+    from goldglitch_lenguaje import brand_clean, safe_text
+    clean = (lambda x: safe_text(brand_clean(x))) if SAFE["on"] else brand_clean
+    meta = [{"say": clean(strip_emoji(f[3] or "").strip()), "vd": (voice[i][1] if voice[i] else 0.0)} for i, f in enumerate(frames)]
+    dirs = M.render_scenes([f[0] for f in frames], lens, d, look, meta)
     fps = M.fps_for(look)
     try:
         import goldglitch_cuts as C
     except Exception:
         C = None
+    if look in getattr(M, "SIG_LOOKS", ()):              # the dust carries over between scenes: plain joins, no cuts
+        inputs, parts, order = [], [], []
+        for i, dd in enumerate(dirs):
+            inputs += ["-framerate", str(fps), "-i", os.path.join(dd, "%04d.jpg")]
+            parts.append(f"[{i}:v]fps=30,scale=1080:1920,format=yuv420p,setsar=1,trim=duration={lens[i]:.3f},setpts=PTS-STARTPTS[v{i}]")
+            order.append(f"[v{i}]")
+        out = _assemble(inputs, parts, lens, frames, voice, name, 0.0, len(dirs), concat=order)
+        import shutil as _sh
+        _sh.rmtree(d, ignore_errors=True)
+        return out
     if C is None or len(dirs) < 2:
         inputs, parts = [], []
         for i, (dd, (_, _secs, fx, _say)) in enumerate(zip(dirs, frames)):

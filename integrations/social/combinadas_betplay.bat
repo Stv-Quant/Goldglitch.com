@@ -1,7 +1,8 @@
 @echo off
 chcp 65001 >nul
 REM COMBINADAS: picks del modelo de 80%+ cruzados con las cuotas PUBLICAS de BetPlay (no entra a tu cuenta, no apuesta).
-REM Deja al menos 5 opciones de 1 a 3 selecciones con cuota total mayor a 2 en reportes\ y abre el reporte.
+REM Busca primero 2-3 selecciones de UN MISMO partido con cuota total mayor a 2; si no hay, combina partidos.
+REM Maximo 3 opciones. Deja el reporte en reportes\ y lo abre.
 cd /d "%~dp0"
 set PY=python
 if exist .venv\Scripts\python.exe set PY=.venv\Scripts\python.exe

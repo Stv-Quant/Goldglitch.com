@@ -480,10 +480,12 @@ class AgentYouTube:
     def first_comment(self, net: str, ref, text: str) -> str:
         if self.rehearsal:          # a rehearsal never comments
             return "ensayo"
-        task = ("En YouTube, abre el canal de EGG > pestaña 'Shorts', abre el Short MÁS RECIENTE, abre los comentarios, "
+        task = ("Estás en la pestaña 'Shorts' del canal de EGG (@EasyGold-Glitch; NO busques otro canal llamado EGG). Abre el "
+                "Short MÁS RECIENTE (el primero), abre los comentarios, "
                 "haz clic en 'Agrega un comentario…', usa escribir_texto_preparado y pulsa 'Comentar'. Si YouTube pide "
                 "verificar el teléfono para fijar, NO lo fijes. " + "Después fíjalo: pasa el cursor sobre TU comentario, abre su menú '…' y elige 'Fijar' / 'Pin' (si no existe esa opción, déjalo así). No publiques nada más, no respondas a nadie y no cambies nada del video.")
-        return self.agent.run(task, "https://www.youtube.com/", [], text, self.rehearsal, "youtube")
+        channel = os.environ.get("YOUTUBE_CANAL", "https://www.youtube.com/@EasyGold-Glitch").rstrip("/")
+        return self.agent.run(task, channel + "/shorts", [], text, self.rehearsal, "youtube")
 
 
 COMMUNITY_SYSTEM = """Eres el community manager de EGG (Goldglitch Stats), la amiga gomela caleña que sabe más fútbol que todo el

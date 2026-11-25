@@ -152,36 +152,45 @@ window.__egg(0,1);
 """
 
 
-def inject(html: str, look: str = "terminal", scene: tuple[int, int] = (0, 1)) -> str:
-    eng = (f"<script>window.__look={look!r};window.__scene=[{scene[0]},{scene[1]}];</script>" + ENGINE
-           + (SOUL if look in SOUL_LOOKS else "") + (LUX if look in LUX_LOOKS else ""))
+def inject(html: str, look: str = "terminal", scene: tuple[int, int] = (0, 1), meta: dict | None = None,
+           prev: list | None = None) -> str:
+    import json as _json
+    ctx = (f"<script>window.__look={look!r};window.__scene=[{scene[0]},{scene[1]}];"
+           f"window.__meta={_json.dumps(meta or {}, ensure_ascii=False)};"
+           f"window.__sigPrev={_json.dumps([round(v, 1) for v in prev]) if prev else 'null'};</script>")
+    eng = (ctx + ENGINE + (SOUL if look in SOUL_LOOKS else "") + (LUX if look in LUX_LOOKS else "")
+           + (SIGNAL if look in SIG_LOOKS else ""))
     return html.replace("</body>", eng + "</body>", 1) if "</body>" in html else html + eng
 
 
-def scene_frames(pg, html: str, seconds: float, out_dir: str, look: str = "terminal", scene: tuple[int, int] = (0, 1)) -> int:
+def scene_frames(pg, html: str, seconds: float, out_dir: str, look: str = "terminal", scene: tuple[int, int] = (0, 1),
+                 meta: dict | None = None, prev: list | None = None) -> int:
     """Render one animated scene into out_dir/0001.jpg… Returns the number of frames."""
     shutil.rmtree(out_dir, ignore_errors=True)
     os.makedirs(out_dir, exist_ok=True)
-    pg.set_content(inject(html, look, scene), wait_until="networkidle")
+    pg.set_content(inject(html, look, scene, meta, prev), wait_until="networkidle")
     pg.evaluate("document.fonts.ready.then(()=>1)")
     fps = fps_for(look)
     n = max(2, int(round(seconds * fps)))
     for i in range(n):
-        pg.evaluate(f"window.__egg({i / fps:.4f},{seconds:.4f});window.__soul&&window.__soul({i / fps:.4f},{seconds:.4f},{i});window.__lux&&window.__lux({i / fps:.4f},{seconds:.4f})")
+        pg.evaluate(f"window.__egg({i / fps:.4f},{seconds:.4f});window.__soul&&window.__soul({i / fps:.4f},{seconds:.4f},{i});window.__lux&&window.__lux({i / fps:.4f},{seconds:.4f});window.__sig&&window.__sig({i / fps:.4f},{seconds:.4f})")
         pg.screenshot(path=os.path.join(out_dir, f"{i + 1:04d}.jpg"), type="jpeg", quality=84)
     return n
 
 
-def render_scenes(htmls: list[str], seconds: list[float], base_dir: str, look: str = "terminal") -> list[str]:
-    """All scenes of a video, one browser. Returns the frame folders (ffmpeg pattern dir/%04d.jpg)."""
+def render_scenes(htmls: list[str], seconds: list[float], base_dir: str, look: str = "terminal",
+                  meta: list[dict] | None = None) -> list[str]:
+    """All scenes of a video, one browser. Returns the frame folders (ffmpeg pattern dir/%04d.jpg).
+    meta[i] = {"say": line spoken in scene i, "vd": its voice seconds} (karaoke captions in the "señal" look)."""
     from playwright.sync_api import sync_playwright
-    dirs = []
+    dirs, prev = [], None
     with sync_playwright() as pw:
         b = pw.chromium.launch()
         pg = b.new_page(viewport={"width": 1080, "height": 1920}, device_scale_factor=1)
         for i, (h, s) in enumerate(zip(htmls, seconds)):
             d = os.path.join(base_dir, f"s{i + 1:02d}")
-            scene_frames(pg, h, s, d, look, (i, len(htmls)))
+            scene_frames(pg, h, s, d, look, (i, len(htmls)), (meta[i] if meta and i < len(meta) else None), prev)
+            prev = pg.evaluate("window.__sigEnd||null") if look in SIG_LOOKS else None   # dust carries over
             dirs.append(d)
         b.close()
     return dirs
@@ -486,3 +495,142 @@ function choreo(t){
 })();
 </script>
 """
+
+
+# ------------------------------------------------------------------ "Señal": the landing's particles, on video
+# The site's hero is dust that turns from noise into a signal. Videos now speak the same language:
+#   - ~3200 particles: the big line (team names, the %) is drawn BY the dust, which assembles from noise
+#   - particles carry over between scenes (each scene starts where the last one ended), so there are no cuts:
+#     the previous number dissolves into the next one
+#   - karaoke captions word by word, a terminal window with a typed command, a stamp and a hand-drawn circle
+#   - slower rhythm: one idea per scene, time to read
+SIG_LOOKS = ("senal",)
+SIG_N = 3200
+SIGNAL = r"""
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=JetBrains+Mono:wght@400;700&display=block">
+<style>
+html,body{background:#0a0907!important}
+body.sig{background:#0a0907!important}
+body.sig .grain,body.sig .streak,body.sig [data-m=echo],body.sig [data-m=art],body.sig [data-m=shade],
+body.sig .m-foil,body.sig .m-cf,body.sig .m-beam,body.sig > div[style*='rotate(-8deg)']{display:none!important}
+body.sig [data-m=stage]{transform:none!important}
+body.sig [data-m=big],body.sig [data-m=big] .m-w{color:transparent!important;text-shadow:none!important;-webkit-text-fill-color:transparent!important;
+ background:none!important;filter:none!important;transform:none!important;opacity:1!important}
+body.sig [data-m=small]{font-family:'Space Grotesk',sans-serif!important;font-weight:500!important;color:#ede6d6!important;font-size:44px!important;text-shadow:none!important}
+body.sig [data-m=kick]{font-family:'JetBrains Mono',monospace!important;font-size:24px!important;letter-spacing:.28em!important;color:#d4af37!important;
+ border:1px solid rgba(212,175,55,.55)!important;background:rgba(10,9,7,.6)!important;text-transform:uppercase}
+body.sig .foot,body.sig .top,body.sig .rule{font-family:'JetBrains Mono',monospace!important}
+#sg{position:fixed;inset:0;z-index:0;pointer-events:none}
+body.sig .wrap{position:relative;z-index:2}
+.sg-win{position:fixed;z-index:1;border:1.5px solid rgba(237,230,214,.28);border-radius:26px;background:rgba(10,9,7,.18);pointer-events:none}
+.sg-bar{position:absolute;left:0;right:0;top:0;height:58px;border-bottom:1px solid rgba(237,230,214,.18);display:flex;align-items:center;gap:12px;padding:0 22px;
+ font:500 22px 'JetBrains Mono',monospace;color:#ede6d6;letter-spacing:.04em}
+.sg-dot{width:12px;height:12px;border-radius:50%;border:1.5px solid rgba(237,230,214,.5)}
+.sg-pill{margin-left:auto;border:1.5px solid #d4af37;color:#d4af37;border-radius:999px;padding:4px 14px;font-size:18px}
+.sg-term{position:absolute;left:24px;bottom:20px;font:400 26px 'JetBrains Mono',monospace;color:#ede6d6;white-space:nowrap}
+.sg-term b{color:#d4af37;font-weight:400}
+.sg-cur{display:inline-block;width:14px;height:28px;background:#d4af37;vertical-align:-5px;margin-left:4px}
+.sg-cap{position:fixed;z-index:3;left:60px;right:60px;top:250px;text-align:center;font:700 62px/1.15 'Space Grotesk',sans-serif;color:#8c8576}
+.sg-cap span{display:inline-block;margin:0 .14em;padding:0 .14em;border-radius:6px}
+.sg-cap .on{color:#ede6d6;box-shadow:0 0 0 3px #d4af37;background:rgba(212,175,55,.12)}
+.sg-cap .past{color:#ede6d6}
+.sg-stamp{position:fixed;z-index:4;border:7px solid #ff3b1f;color:#ff3b1f;border-radius:16px;padding:6px 26px;font:700 64px 'JetBrains Mono',monospace;
+ letter-spacing:.06em;text-transform:uppercase;opacity:0;mix-blend-mode:screen}
+.sg-ring{position:fixed;inset:0;z-index:4;pointer-events:none}
+.sg-ring path{fill:none;stroke:#ff3b1f;stroke-width:7;stroke-linecap:round}
+</style>
+<script>
+(function(){
+document.body.classList.add('sig');
+const W=1080,H=1920,N=""" + str(SIG_N) + r""";
+const M=window.__meta||{},PREV=window.__sigPrev;
+const sc=(window.__scene||[0,1])[0];
+let seed=(sc+1)*9973+((M.say||'').length*131);const R=()=>{seed=(seed*16807)%2147483647;return (seed-1)/2147483646};
+const cl=x=>Math.min(1,Math.max(0,x)),E=x=>{x=cl(x);return x<.5?4*x*x*x:1-Math.pow(-2*x+2,3)/2},S=x=>{x=cl(x);return x*x*(3-2*x)};
+const cv=document.createElement('canvas');cv.id='sg';cv.width=W;cv.height=H;document.body.prepend(cv);const ctx=cv.getContext('2d');
+// ambient dust: a slow volumetric cloud (noise)
+const ax=new Float32Array(N),ay=new Float32Array(N),az=new Float32Array(N),ph=new Float32Array(N),col=new Uint8Array(N);
+for(let i=0;i<N;i++){const a=R()*6.283,r=Math.pow(R(),.6)*760;ax[i]=W/2+Math.cos(a)*r*0.75+(R()-.5)*260;ay[i]=H/2+Math.sin(a)*r*1.1+(R()-.5)*300;
+ az[i]=R();ph[i]=R()*6.283;col[i]=R()<0.03?2:0}
+const sx=new Float32Array(N),sy=new Float32Array(N);
+for(let i=0;i<N;i++){if(PREV&&PREV.length===2*N){sx[i]=PREV[2*i];sy[i]=PREV[2*i+1]}else{sx[i]=ax[i]+(R()-.5)*400;sy[i]=ay[i]+(R()-.5)*600}}
+// targets: the big line drawn by the dust
+let tx=null,ty=null,nt=0,dl=new Float32Array(N),bigBox=null;
+function sample(){
+ const bigs=[...document.querySelectorAll('[data-m=big]')];if(!bigs.length)return;
+ const saved=bigs.map(b=>b.dataset.count?[b,b.textContent]:null).filter(Boolean);saved.forEach(([b])=>{b.textContent=b.dataset.n+'%'});
+ const oc=document.createElement('canvas');oc.width=W;oc.height=H;const o=oc.getContext('2d');o.fillStyle='#fff';o.textBaseline='alphabetic';
+ let x0=W,y0=H,x1=0,y1=0;
+ bigs.forEach(b=>{const cs=getComputedStyle(b),fs=parseFloat(cs.fontSize);o.font=cs.fontWeight+' '+fs+'px '+cs.fontFamily;
+  const parts=b.dataset.count?[[b,b.dataset.n+'%']]:[...b.querySelectorAll('.m-w')].map(w=>[w,w.textContent]);
+  (parts.length?parts:[[b,b.textContent]]).forEach(([el,txt])=>{const rg=document.createRange();rg.selectNodeContents(el);const r=rg.getBoundingClientRect();if(r.width<2)return;
+   const m=o.measureText(txt),asc=m.actualBoundingBoxAscent||fs*.72,dsc=m.actualBoundingBoxDescent||0;
+   const sx2=r.width/Math.max(1,m.width);o.save();o.translate(r.left,r.top+(r.height-(asc+dsc))/2+asc);o.scale(Math.min(1.15,sx2),1);o.fillText(txt,0,0);o.restore();
+   x0=Math.min(x0,r.left);y0=Math.min(y0,r.top);x1=Math.max(x1,r.right);y1=Math.max(y1,r.bottom)})});
+ saved.forEach(([b,t0])=>{b.textContent=t0});
+ bigBox=[x0,y0,x1,y1];
+ const d=o.getImageData(0,0,W,H).data;let step=6,pts=[];
+ for(let k=0;k<6;k++){pts=[];for(let y=Math.max(0,Math.floor(y0-10));y<Math.min(H,y1+10);y+=step)for(let x=Math.max(0,Math.floor(x0-10));x<Math.min(W,x1+10);x+=step)if(d[(y*W+x)*4+3]>128)pts.push([x,y]);
+  if(pts.length<=N*0.86)break;step+=1}
+ for(let i=pts.length-1;i>0;i--){const j=Math.floor(R()*(i+1));[pts[i],pts[j]]=[pts[j],pts[i]]}
+ nt=pts.length;tx=new Float32Array(nt);ty=new Float32Array(nt);
+ for(let i=0;i<nt;i++){tx[i]=pts[i][0]+(R()-.5)*1.2;ty[i]=pts[i][1]+(R()-.5)*1.2;dl[i]=0.15+0.55*((tx[i]-x0)/Math.max(1,x1-x0))+R()*0.25}
+}
+// karaoke: the line said in this scene, word by word, in chunks of up to 3 words
+const cap=document.createElement('div');cap.className='sg-cap';document.body.appendChild(cap);
+const say=(M.say||'').replace(/\s+/g,' ').trim(),vd=+M.vd||0,wordsS=say?say.split(' '):[];
+const tot=wordsS.reduce((a,w)=>a+w.length+1,0)||1;let acc=0;const wt=wordsS.map(w=>{const t=0.12+vd*(acc/tot);acc+=w.length+1;return t});
+const chunks=[];{let c=[];wordsS.forEach((w,i)=>{c.push(i);if(c.length===3||/[.,;:!?…]$/.test(w)){chunks.push(c);c=[]}});if(c.length)chunks.push(c)}
+// terminal window around the stage, with a typed command
+const st=document.querySelector('[data-m=stage]'),kickEl=document.querySelector('[data-m=kick]');
+const win=document.createElement('div');win.className='sg-win';
+const cmd=(kickEl?kickEl.textContent:'el dato').trim().toLowerCase().replace(/\s+/g,'_').slice(0,22);
+win.innerHTML="<div class='sg-bar'><span class='sg-dot'></span><span class='sg-dot'></span><span class='sg-dot'></span><span>egg / el-dato</span><span class='sg-pill'>easygoldglitch.com</span></div><div class='sg-term'></div>";
+document.body.appendChild(win);const term=win.querySelector('.sg-term'),full=">>> egg.dato('"+cmd+"')";
+// stamp + hand-drawn ring on the number scenes
+const hero=document.querySelector('[data-m=big][data-count]');
+const stamp=document.createElement('div');stamp.className='sg-stamp';stamp.textContent=hero?'EL DATO':'';document.body.appendChild(stamp);
+const ring=document.createElementNS('http://www.w3.org/2000/svg','svg');ring.setAttribute('class','sg-ring');ring.setAttribute('viewBox','0 0 1080 1920');
+const rp=document.createElementNS('http://www.w3.org/2000/svg','path');ring.appendChild(rp);document.body.appendChild(ring);let rl=0;
+let ready=false;
+function setup(){ready=true;sample();
+ if(st){const r=st.getBoundingClientRect();const top=Math.max(420,r.top-110),bot=Math.min(H-260,r.bottom+110);
+  win.style.left='48px';win.style.right='48px';win.style.top=top+'px';win.style.height=(bot-top)+'px'}
+ if(hero&&bigBox){const [x0,y0,x1,y1]=bigBox,cx=(x0+x1)/2,cy=(y0+y1)/2,rx=(x1-x0)/2+70,ry=(y1-y0)/2+50;let d='';
+  for(let i=0;i<=40;i++){const a=-2.2+i/40*7.0,k=1+0.022*Math.sin(i*1.3);d+=(i?'L':'M')+(cx+Math.cos(a)*rx*k).toFixed(1)+' '+(cy+Math.sin(a)*ry*k).toFixed(1)}
+  rp.setAttribute('d',d);rl=rp.getTotalLength();rp.style.strokeDasharray=rl;rp.style.strokeDashoffset=rl;
+  stamp.style.left=Math.min(W-340,x1-10)+'px';stamp.style.top=(y1-30)+'px'}}
+const px=new Float32Array(N),py=new Float32Array(N);
+window.__sig=function(t,T){
+ if(!ready)setup();
+ const push=1+0.035*S(t/Math.max(1,T));document.documentElement.style.transform='scale('+push+')';document.documentElement.style.transformOrigin='50% 46%';
+ ctx.fillStyle='#0a0907';ctx.fillRect(0,0,W,H);
+ const buckets=[[],[],[],[]];  // dim, gold, flare, bone
+ for(let i=0;i<N;i++){
+  const z=az[i],dr=0.6+z*0.8;
+  const hx=ax[i]+Math.sin(t*0.35*dr+ph[i])*38+Math.cos(t*0.21+ph[i]*2)*22,hy=ay[i]+Math.cos(t*0.3*dr+ph[i])*46-t*6*dr;
+  let x,y,c=col[i],s=2+z*2.6;
+  if(i<nt){const k=E((t-dl[i])/1.5),w=(1-k)*(1-k)*60;
+   x=sx[i]+(tx[i]-sx[i])*k+Math.sin(t*2.1+ph[i])*w+Math.sin(t*3+ph[i])*0.5;y=sy[i]+(ty[i]-sy[i])*k+Math.cos(t*1.7+ph[i])*w+Math.cos(t*2.6+ph[i])*0.5;
+   c=k>0.92?(hero?1:(i%3===0?1:3)):(k>0.35?1:0);s=k>0.9?5:2+k*2.4}
+  else{const k=E((t-0.05-z*0.3)/1.4);x=sx[i]+(hx-sx[i])*k;y=sy[i]+(hy-sy[i])*k}
+  px[i]=x;py[i]=y;buckets[c].push(x,y,s)}
+ const pal=['rgba(170,160,138,0.62)','#d4af37','#ff3b1f','#ede6d6'];
+ for(let c=0;c<4;c++){const b=buckets[c];ctx.fillStyle=pal[c];if(c===2){ctx.shadowColor='#ff3b1f';ctx.shadowBlur=10}else ctx.shadowBlur=0;
+  for(let j=0;j<b.length;j+=3)ctx.fillRect(b[j]-b[j+2]/2,b[j+1]-b[j+2]/2,b[j+2],b[j+2])}
+ ctx.shadowBlur=0;
+ window.__sigEnd=Array.from(px).flatMap((x,i)=>[x,py[i]]);
+ // karaoke
+ let cur=-1;for(let i=0;i<wt.length;i++)if(t>=wt[i])cur=i;
+ if(cur<0||!chunks.length){cap.innerHTML=''}else{const ch=chunks.find(c=>c.includes(cur))||chunks[chunks.length-1];
+  cap.innerHTML=ch.filter(i=>i<=cur).map(i=>"<span class='"+(i===cur?'on':'past')+"'>"+wordsS[i].replace(/&/g,'&amp;').replace(/</g,'&lt;')+"</span>").join('')}
+ // window + terminal
+ win.style.opacity=S(t/0.6);const nch=Math.floor(cl((t-0.3)/1.2)*full.length);
+ term.innerHTML='<b>&gt;&gt;&gt;</b>'+full.slice(3,Math.max(3,nch)).replace(/</g,'&lt;')+"<span class='sg-cur' style='opacity:"+((Math.floor(t*2.2)%2)?0.15:1)+"'></span>";
+ // stamp + ring after the number lands
+ if(hero){const ts=2.0,k=cl((t-ts)/0.28);stamp.style.opacity=k>0?1:0;
+  stamp.style.transform='rotate(-11deg) scale('+(k<1?2.4-1.4*E(k):1+0.04*Math.exp(-(t-ts-0.28)*6)*Math.sin((t-ts)*40))+')';
+  if(rl)rp.style.strokeDashoffset=rl*(1-E((t-ts-0.35)/0.7))}
+};
+})();
+</script>"""
