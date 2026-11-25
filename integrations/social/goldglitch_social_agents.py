@@ -259,6 +259,11 @@ Red de destino: {red_destino(post)}
 Dato ancla (pick de 85%+ de hoy): {json.dumps(data.get('pick_ancla'), ensure_ascii=False) if data.get('pick_ancla') else 'no hay'}
 — si hay dato ancla, TODA la pieza (imagen, video y texto) gira en torno a él: nómbralo en reel_hook o voz_hook, usa
   sus porcentajes de quién gana y conéctalo con el tema (un meme del partido, una noticia de esos equipos…).
+GANCHOS QUE ENGANCHAN (sin mentir, sin dinero, sin apuestas): 1) interrupción en el primer segundo: una frase que
+  choca con lo que todos creen ("nadie cree en…", "el dato que nadie mira"); 2) bucle abierto: promete algo para el final
+  ("el más fuerte va último", "quedate al final") y CÚMPLELO; 3) números concretos (91%, 8 de 10), nunca vaguedades;
+  4) identidad: "si sos de los que miran datos antes del partido…"; 5) pregunta para comentar con una palabra ("¿sí o
+  no?", "comentá DATO"); 6) que el cierre empalme con el inicio para que lo vuelvan a ver.
 Formato visual del video: {data.get('formato_visual') or 'libre'} — escribe reel_hook, reel_sub y la voz con ESE tono; que
   cada pieza se sienta distinta de la anterior.
 Modo: {data.get('modo', 'pick')} — "pick": muestra el pick y su mercado con claridad. "fomo": genera CURIOSIDAD y ganas

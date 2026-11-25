@@ -32,6 +32,15 @@ ENGINE = r"""
 .m-prog b{display:block;height:100%;background:linear-gradient(90deg,#a77c18,#ffe7a3);transform-origin:0 50%}
 .m-w{display:inline-block;transform-origin:50% 100%;backface-visibility:hidden}
 .wrap{perspective:1700px}
+.m-story{position:absolute;left:40px;right:40px;top:22px;display:flex;gap:8px;z-index:9}
+.m-story i{flex:1;height:7px;border-radius:9px;background:rgba(255,255,255,.28);overflow:hidden}
+.m-story i b{display:block;height:100%;background:#ffe7a3;transform-origin:0 50%}
+body.l-diario .m-story i,body.l-cuaderno .m-story i,body.l-album .m-story i{background:rgba(0,0,0,.18)}
+body.l-diario .m-story i b,body.l-cuaderno .m-story i b{background:#15120d}
+.m-foil{position:absolute;z-index:8;border-radius:22px;background:linear-gradient(115deg,#8a6a1c,#f8e6a0 22%,#b8902a 40%,#fff3c4 55%,#9c7a22 72%,#e8cf7a);
+ display:flex;align-items:center;justify-content:center;font-family:'Big Shoulders Display',Anton,sans-serif;font-weight:900;font-size:64px;letter-spacing:.08em;color:rgba(70,50,10,.55);
+ box-shadow:0 10px 40px rgba(0,0,0,.45)}
+.m-cf{position:absolute;width:16px;height:26px;z-index:9;pointer-events:none;border-radius:3px}
 body.l-marcador .m-grid,body.l-tablero .m-grid,body.l-editorial .m-grid,body.l-editorial .m-p,body.l-editorial .m-br,
 body.l-editorial .m-tag,body.l-editorial .m-scan,body.l-ultima_hora .m-br{display:none}
 body.l-marcador [data-m=big]{color:#ffb627!important;-webkit-text-stroke:0}
@@ -69,6 +78,9 @@ const sweep=add('m-sweep');add('m-scan');
 const L=window.__look||'terminal';document.body.classList.add('l-'+L);
 const tag=add('m-tag','<i></i>'+({marcador:'EN VIVO · MARCADOR EGG',ultima_hora:'EGG · AL MINUTO',neon:'EGG · NIGHT DATA',tablero:'EGG · PIZARRA'}[L]||'EGG · DATA FEED'));
 const prog=add('m-prog','<b></b>').firstChild;
+const SC=window.__scene||[0,1];const story=add('m-story',Array.from({length:SC[1]},(_,i)=>'<i><b style="transform:scaleX('+(i<SC[0]?1:0)+')"></b></i>').join(''));
+const storyNow=story.children[SC[0]]?story.children[SC[0]].firstChild:null;
+const cd=document.querySelector('[data-countdown]');
 let beams=[],tick=null,pitch=null;
 if(L==='marcador'){add('m-dots');beams=[add('m-beam'),add('m-beam')];beams[0].style.left='-6%';beams[1].style.right='-6%'}
 if(L==='ultima_hora'){add('m-flag','ÚLTIMA HORA');tick=add('m-tick','<span>'+'ÚLTIMA HORA · EL DATO DE HOY · EGG GOLDGLITCH STATS · '.repeat(6)+'</span>').firstChild}
@@ -85,11 +97,26 @@ const words=[];document.querySelectorAll('[data-m=big]').forEach(el=>{
  const chars=el.dataset.split==='chars';
  el.innerHTML=(chars?[...txt]:txt.split(/\s+/)).map(w=>'<span class="m-w">'+w.replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</span>').join(chars?'':' ');
  el.querySelectorAll('.m-w').forEach(s=>words.push(s));});
+let foil=null,conf=[],landed=null;
+const hero=document.querySelector('[data-m=big][data-count]');
+if(hero){foil=add('m-foil','RASPÁ');foil.dataset.ready='0'}
+for(let i=0;i<46;i++){const c=add('m-cf');c.style.background=['#d4af37','#fff3c4','#ff2e88','#00e5a0','#ffffff'][i%5];c.style.opacity=0;
+ conf.push({el:c,a:R()*6.283,v:700+R()*900,r:R()*720,d:R()*0.25})}
 const nums=[...document.querySelectorAll('[data-m=num]')];
 const fills=[...document.querySelectorAll('[data-m=fill]')];
 fills.forEach(f=>f.style.transformOrigin='0 50%');
 const q=s=>[...document.querySelectorAll('[data-m='+s+']')];
 window.__egg=function(t,T){
+ if(storyNow)storyNow.style.transform='scaleX('+cl(t/T)+')';
+ if(cd){const k=Math.floor(t/0.4);cd.textContent=k<3?String(3-k):'¡AHÍ VA!';const ph=(t%0.4)/0.4;
+  cd.style.transform='scale('+(k<3?1.35-0.35*E(ph/0.5):1+0.15*Math.sin(t*20)*Math.exp(-(t-1.2)*4))+')';cd.style.opacity=k<3?1-0.5*Math.max(0,ph-0.7)/0.3:1}
+ if(hero&&foil){if(foil.dataset.ready==='0'){const r=hero.getBoundingClientRect();if(r.width>10){foil.style.left=(r.left-40)+'px';foil.style.top=(r.top-20)+'px';
+   foil.style.width=(r.width+80)+'px';foil.style.height=(r.height+40)+'px';foil.dataset.ready='1';foil.dataset.cx=r.left+r.width/2;foil.dataset.cy=r.top+r.height/2}}
+  const p=cl((t-0.25)/0.55);let pts=[];const N=14;for(let i=0;i<=N;i++){const y=i/N*100;pts.push(((p*130-30)+(i%2?8:-8)*(1-p))+'% '+y+'%')}
+  foil.style.clipPath=p<=0?'none':p>=1?'polygon(0 0,0 0,0 0)':'polygon('+pts.join(',')+',100% 100%,100% 0)';
+  const tl=1.35;conf.forEach(c=>{const u=t-tl-c.d;if(u<0||u>1.4){c.el.style.opacity=0;return}
+   const x=+foil.dataset.cx+Math.cos(c.a)*c.v*u,y=+foil.dataset.cy+Math.sin(c.a)*c.v*u+900*u*u;
+   c.el.style.opacity=1-u/1.4;c.el.style.transform='translate('+x+'px,'+y+'px) rotate('+(c.r*u)+'deg)'})}
  beams.forEach((b,i)=>{b.style.transform='rotate('+((i?-1:1)*(14+Math.sin(t*0.9+i)*7))+'deg)'});
  if(tick)tick.style.transform='translateX('+(-t*260)+'px)';
  if(pitch)pitch.querySelectorAll('[data-l]').forEach((e,i)=>{e.style.strokeDashoffset=(+e.dataset.l)*(1-E((t-0.1*i)/1.1))});
@@ -106,8 +133,8 @@ window.__egg=function(t,T){
  q('kick').forEach(k=>{const p=cl(t/0.35);k.style.opacity=p;k.style.transform='translateY('+(-34*(1-E(p)))+'px)'});
  words.forEach((w,i)=>{const p=cl((t-0.12*slow-0.055*slow*i)/(0.45*slow));w.style.opacity=Math.min(1,p*2.2);
   w.style.transform='translateY('+((1-B(p))*95)+'px) rotateX('+((1-E(p))*-78)+'deg)'});
- q('big').forEach(el=>{if(el.dataset.count){const p=cl((t-0.12)/0.95);el.textContent=Math.round(E(p)*(+el.dataset.n))+'%';
-  el.style.transform='scale('+(0.6+0.4*B(cl((t-0.05)/0.5)))+')'}
+ q('big').forEach(el=>{if(el.dataset.count){const p=cl((t-0.55)/0.8);el.textContent=Math.round(E(p)*(+el.dataset.n))+'%';
+  const bump=t>1.35?0.18*Math.exp(-(t-1.35)*6)*Math.cos((t-1.35)*18):0;el.style.transform='scale('+(1+bump)+')'}
   const g=t<0.14&&L!=='editorial'?(0.14-t)*90:0;const glow=L==='marcador'?',0 0 34px #ffb627,0 0 80px #ff8a00aa':L==='neon'?',0 0 30px #00e5ff,0 0 70px #ff2d95aa':'';
   el.style.textShadow=(g?(g+'px 0 0 #ff2d55cc,'+(-g)+'px 0 0 #00e5ffcc,'):'')+'0 18px 60px rgba(0,0,0,.75)'+glow});
  q('small').forEach(el=>{const p=cl((t-0.42)/0.45);el.style.opacity=p;el.style.filter='blur('+((1-p)*12)+'px)';el.style.transform='translateY('+(24*(1-E(p)))+'px)'});
@@ -125,16 +152,16 @@ window.__egg(0,1);
 """
 
 
-def inject(html: str, look: str = "terminal") -> str:
-    eng = f"<script>window.__look={look!r};</script>" + ENGINE + (SOUL if look in SOUL_LOOKS else "")
+def inject(html: str, look: str = "terminal", scene: tuple[int, int] = (0, 1)) -> str:
+    eng = f"<script>window.__look={look!r};window.__scene=[{scene[0]},{scene[1]}];</script>" + ENGINE + (SOUL if look in SOUL_LOOKS else "")
     return html.replace("</body>", eng + "</body>", 1) if "</body>" in html else html + eng
 
 
-def scene_frames(pg, html: str, seconds: float, out_dir: str, look: str = "terminal") -> int:
+def scene_frames(pg, html: str, seconds: float, out_dir: str, look: str = "terminal", scene: tuple[int, int] = (0, 1)) -> int:
     """Render one animated scene into out_dir/0001.jpg… Returns the number of frames."""
     shutil.rmtree(out_dir, ignore_errors=True)
     os.makedirs(out_dir, exist_ok=True)
-    pg.set_content(inject(html, look), wait_until="networkidle")
+    pg.set_content(inject(html, look, scene), wait_until="networkidle")
     pg.evaluate("document.fonts.ready.then(()=>1)")
     fps = fps_for(look)
     n = max(2, int(round(seconds * fps)))
@@ -153,7 +180,7 @@ def render_scenes(htmls: list[str], seconds: list[float], base_dir: str, look: s
         pg = b.new_page(viewport={"width": 1080, "height": 1920}, device_scale_factor=1)
         for i, (h, s) in enumerate(zip(htmls, seconds)):
             d = os.path.join(base_dir, f"s{i + 1:02d}")
-            scene_frames(pg, h, s, d, look)
+            scene_frames(pg, h, s, d, look, (i, len(htmls)))
             dirs.append(d)
         b.close()
     return dirs
