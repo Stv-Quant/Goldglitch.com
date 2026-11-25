@@ -60,7 +60,7 @@ def texts() -> dict:
         "tt_bio": "Probabilidades de cada partido con datos. Historial público. +18",
         "yt_descripcion": ("EGG · Goldglitch Stats: probabilidades de fútbol calculadas por un modelo, para hinchas, "
                            "comentaristas, profesores, analistas y jugadores de fantasy. Premier League, LaLiga, Champions, "
-                           "Liga BetPlay, Liga MX, Libertadores y más.\n\nCada día: picks con datos antes de los partidos, "
+                           "liga colombiana, Liga MX, Libertadores y más.\n\nCada día: picks con datos antes de los partidos, "
                            "cómo le fue al modelo (aciertos y fallos, historial público), memes y retos para el parche.\n\n"
                            "Datos, no fijas. Es estadística, no apuestas. +18.\nEstadísticas gratis: https://easygoldglitch.com/?ref=yt_bio"),
     }

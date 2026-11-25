@@ -26,7 +26,7 @@ UA = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.3
 
 GEOS = {"CO": "Colombia", "MX": "México", "AR": "Argentina", "ES": "España", "US": "EE. UU."}
 LEAGUES = {"eng.1": "Premier League", "esp.1": "LaLiga", "ita.1": "Serie A", "ger.1": "Bundesliga", "fra.1": "Ligue 1",
-           "uefa.champions": "Champions League", "col.1": "Liga BetPlay", "conmebol.libertadores": "Libertadores",
+           "uefa.champions": "Champions League", "col.1": "Liga Colombiana", "conmebol.libertadores": "Libertadores",
            "arg.1": "Liga Argentina", "mex.1": "Liga MX", "bra.1": "Brasileirão"}
 # no jokes about these
 SENSITIVE = re.compile(r"\b(muer\w*|muri\w*|fallec\w*|asesin\w*|homicid\w*|accident\w*|tragedi\w*|víctima\w*|victima\w*|"

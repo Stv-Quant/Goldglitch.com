@@ -99,7 +99,7 @@ const words=[];document.querySelectorAll('[data-m=big]').forEach(el=>{
  el.querySelectorAll('.m-w').forEach(s=>words.push(s));});
 let foil=null,conf=[],landed=null;
 const hero=document.querySelector('[data-m=big][data-count]');
-if(hero){foil=add('m-foil','RASPÁ');foil.dataset.ready='0'}
+if(hero){foil=add('m-foil','EL DATO');foil.dataset.ready='0'}
 for(let i=0;i<46;i++){const c=add('m-cf');c.style.background=['#d4af37','#fff3c4','#ff2e88','#00e5a0','#ffffff'][i%5];c.style.opacity=0;
  conf.push({el:c,a:R()*6.283,v:700+R()*900,r:R()*720,d:R()*0.25})}
 const nums=[...document.querySelectorAll('[data-m=num]')];
@@ -112,8 +112,8 @@ window.__egg=function(t,T){
   cd.style.transform='scale('+(k<3?1.35-0.35*E(ph/0.5):1+0.15*Math.sin(t*20)*Math.exp(-(t-1.2)*4))+')';cd.style.opacity=k<3?1-0.5*Math.max(0,ph-0.7)/0.3:1}
  if(hero&&foil){if(foil.dataset.ready==='0'){const r=hero.getBoundingClientRect();if(r.width>10){foil.style.left=(r.left-40)+'px';foil.style.top=(r.top-20)+'px';
    foil.style.width=(r.width+80)+'px';foil.style.height=(r.height+40)+'px';foil.dataset.ready='1';foil.dataset.cx=r.left+r.width/2;foil.dataset.cy=r.top+r.height/2}}
-  const p=cl((t-0.25)/0.55);let pts=[];const N=14;for(let i=0;i<=N;i++){const y=i/N*100;pts.push(((p*130-30)+(i%2?8:-8)*(1-p))+'% '+y+'%')}
-  foil.style.clipPath=p<=0?'none':p>=1?'polygon(0 0,0 0,0 0)':'polygon('+pts.join(',')+',100% 100%,100% 0)';
+  const p=cl((t-0.25)/0.55),e=p*p*(3-2*p);                  // gold curtain lifts cleanly (not a scratch card)
+  foil.style.clipPath='inset(0 0 '+(e*100)+'% 0)';foil.style.transform='translateY('+(-e*40)+'px)';
   const tl=1.35;conf.forEach(c=>{const u=t-tl-c.d;if(u<0||u>1.4){c.el.style.opacity=0;return}
    const x=+foil.dataset.cx+Math.cos(c.a)*c.v*u,y=+foil.dataset.cy+Math.sin(c.a)*c.v*u+900*u*u;
    c.el.style.opacity=1-u/1.4;c.el.style.transform='translate('+x+'px,'+y+'px) rotate('+(c.r*u)+'deg)'})}

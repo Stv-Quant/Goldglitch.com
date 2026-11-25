@@ -337,7 +337,7 @@ def _build(post: dict, facts: dict, ag: Agents, now: datetime, tag: str, shown: 
     fresh = [r for r in facts.get("upcoming") or [] if match_key(r) not in (shown or set())
              and float(r.get("kickoffAt") or 0) > soon and same_day(r, now)]
     if post.get("obligatorio") == "manana" or (t == "picks_dia" and not focus):
-        picks = V.famous_picks(fresh, 4)          # fewer than 5, famous teams of Europe, South America and Liga BetPlay
+        picks = V.famous_picks(fresh, 4)          # fewer than 5, famous teams of Europe, South America and liga colombiana
     else:
         picks = V.top_picks(fresh, 4, focus) or V.top_picks(fresh, 4)
     strong = [r for r in picks if float(r.get("p") or 0) >= ANCHOR_P]
@@ -552,7 +552,7 @@ class SkipPiece(RuntimeError):
 
 MARKET_TAGS = {"MX": ["ligamx", "futbolmexicano"], "US": ["futbolhispano", "mls"], "AR": ["futbolargentino", "ligaprofesional"],
                "ES": ["laliga", "futbolespañol"], "CL": ["futbolchileno"], "PE": ["futbolperuano", "liga1"],
-               "CO": ["ligabetplay", "futbolcolombiano"], "LATAM": ["futbollatino", "futbolsudamericano"]}
+               "CO": ["futbolcolombiano", "ligacolombiana"], "LATAM": ["futbollatino", "futbolsudamericano"]}
 DEFAULT_TAGS = ["futbol", "estadisticasdefutbol", "datosdefutbol", "futbollatino", "analisisdefutbol"]
 SPAM_TAGS = re.compile(r"^(fyp|foryou|foryoupage|parati|paratii|viral|viralvideo|trending|xyzbca|explore|explorepage|tiktok|"
                        r"reels|reel|instagood|followme|follow|like4like|likeforlike|goldglitchstats)$", re.I)
@@ -1079,7 +1079,7 @@ def prueba() -> None:
     k = int((now + timedelta(hours=5)).timestamp() * 1000)
     facts = {"upcoming": [
         {"league": "LaLiga", "home": "Real Madrid", "away": "Sevilla", "kickoffAt": k, "label": "Total de goles: Más de 1.5", "group": "Goles", "p": 0.88},
-        {"league": "Liga BetPlay", "home": "Millonarios", "away": "Nacional", "kickoffAt": k, "label": "Córners totales: Más de 6.5", "group": "Córners", "p": 0.82}],
+        {"league": "liga colombiana", "home": "Millonarios", "away": "Nacional", "kickoffAt": k, "label": "Córners totales: Más de 6.5", "group": "Córners", "p": 0.82}],
         "results": [{"home": "Cali", "away": "América", "label": "Tarjetas totales: Más de 2.5", "p": 0.86, "status": "won"},
                     {"home": "Junior", "away": "Santa Fe", "label": "Total de goles: Menos de 3.5", "p": 0.81, "status": "lost"}],
         "record": {"d7": {"won": 30, "n": 37}}}
@@ -1100,7 +1100,7 @@ def ensayo() -> None:
         facts = None
     if not facts or not facts.get("upcoming"):
         k = int((now + timedelta(hours=5)).timestamp() * 1000)
-        facts = {"upcoming": [{"league": "Liga BetPlay", "home": "Millonarios", "away": "Nacional", "kickoffAt": k,
+        facts = {"upcoming": [{"league": "liga colombiana", "home": "Millonarios", "away": "Nacional", "kickoffAt": k,
                                "label": "Córners totales: Más de 6.5", "group": "Córners", "p": 0.82}],
                  "results": [], "record": {"d7": {"won": 0, "n": 0}}}
     piece = build({"type": "picks_dia", "time": now.strftime("%H:%M"), "angle": "ensayo"}, facts, Agents(None, offline=True), now, "ensayo")

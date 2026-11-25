@@ -121,7 +121,7 @@ la misma red (35 en TikTok) y de las citas fijas (redes distintas pueden coincid
 En Instagram y Facebook cada publicación lleva además su HISTORIA (el sistema la hace y la sube).
 AUDIENCIAS POR RED:
 - Instagram: público joven que viene por los PICKS. Cada día ABRE con "picks_dia" (menos de 5 picks de los equipos más
-  famosos de ligas europeas, sudamericanas y la Liga BetPlay) y CIERRA con "resultados" (cómo le fue al modelo con esos
+  famosos de ligas europeas, sudamericanas y la liga colombiana) y CIERRA con "resultados" (cómo le fue al modelo con esos
   mismos picks). Esas dos van siempre (el sistema las garantiza) y además las piezas que decidan.
 - Facebook: público más adulto: "sabias_que" (videos e imágenes de '¿Sabías que…?'), "noticia" (noticias y datos reales de
   fútbol, de los titulares del día, sin inventar) y los picks/resultados.
@@ -192,7 +192,7 @@ TOOLS = [
      "input_schema": {"type": "object", "properties": {"posts": {"type": "array", "items": {"type": "object", "properties": {
          "type": {"type": "string", "enum": list(POST_TYPES)},
          "time": {"type": "string", "description": "HH:MM entre 07:00 y 23:00, o \"ahora\" para publicar apenas termine la reunión (máx. 1)"},
-         "liga": {"type": "string", "description": "opcional para picks_dia: liga o deporte a destacar (ej. Liga BetPlay, Premier League, NBA)"},
+         "liga": {"type": "string", "description": "opcional para picks_dia: liga o deporte a destacar (ej. liga colombiana, Premier League, NBA)"},
          "redes": {"type": "array", "items": {"type": "string", "enum": ["instagram", "facebook", "tiktok", "youtube"]},
                    "description": "redes donde sale (según el público de cada una)"},
          "meme_formato": {"type": "string", "enum": ["tweet", "nadie", "expectativa", "pov", "starter", "no_si", "noticia", "cuando", "tier", "chat", "duelo", "impopular", "reto", "giro"],
@@ -414,7 +414,7 @@ class Committee:
     MORNING, NIGHT = "07:30", "22:00"
     # the daily appointments, on EVERY network: stats twice a day, results at night, and two night reels/shorts
     SLOTS = (
-        ("manana", "07:30", "picks_dia", "Los picks del día: menos de 5, equipos famosos de Europa, Sudamérica y Liga BetPlay",
+        ("manana", "07:30", "picks_dia", "Los picks del día: menos de 5, equipos famosos de Europa, Sudamérica y liga colombiana",
          "picks del día", "Todas las probabilidades, gratis, en el enlace del perfil"),
         ("tarde", "14:00", "picks_dia", "Estadísticas de la tarde: los partidos de hoy que faltan, con sus probabilidades",
          "picks de la tarde", "Todas las probabilidades, gratis, en el enlace del perfil"),
