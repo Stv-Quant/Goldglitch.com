@@ -38,7 +38,7 @@ export const PLANS: Record<Tier, PlanDef> = {
     features: [
       "Todo lo de Free",
       "Fútbol, béisbol, baloncesto, hockey y NFL",
-      "Picks del modelo con 75% o más",
+      "Picks del modelo con 80% o más",
       "Todas las líneas: goles, córners, tarjetas, remates y jugadores",
       "xG, marcadores más probables y portería a cero",
       "Mercados completos con su rango de incertidumbre",

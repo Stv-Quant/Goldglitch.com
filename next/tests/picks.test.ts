@@ -12,10 +12,10 @@ describe("picksFor", () => {
     ],
     features: [], players: [], edges: [], lines: [],
   } as never;
-  it("keeps only ≥75%, adds the opposite side of over/under, names double chance, best first", () => {
+  it("keeps only ≥80%, adds the opposite side of over/under, names double chance, best first", () => {
     const k = picksFor(p, "Cali", "Tolima");
     expect(k.map((x) => x.label)).toEqual(["Cali o empate", "Gana Cali", "Menos de 2.5 goles"]);
-    expect(k.every((x) => x.p >= 0.75)).toBe(true);
+    expect(k.every((x) => x.p >= 0.8)).toBe(true);
   });
 });
 

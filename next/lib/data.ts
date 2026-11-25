@@ -19,7 +19,7 @@ export type MatchView = {
   home: { id: string; name: string; short: string };
   away: { id: string; name: string; short: string };
   prediction: RedactedPrediction | null;
-  /** Selections at ≥75% (Pro and Elite). Free accounts only get the count. */
+  /** Selections at ≥80% (Pro and Elite). Free accounts only get the count. */
   picks: Pick[];
   picksLocked: number;
 };
@@ -45,7 +45,7 @@ const SELECT_TEMPLATE = `
     JOIN teams ta ON ta.id = m.away_team_id`;
 const BASE_SELECT = SELECT_TEMPLATE.replace("__PAYLOAD__", "p.payload");
 // The match list only needs the 1X2: skip the heavy parts (distributions, score matrix, players).
-// The match list only needs the 1X2 and the picks at 75%+. SQLite (D1) builds that small object so the Worker does not
+// The match list only needs the 1X2 and the picks at 80%+. SQLite (D1) builds that small object so the Worker does not
 // parse 40–60 KB per match: with hundreds of matches that parsing alone used to exceed the Worker's CPU limit.
 const LIST_PAYLOAD = `json_object(
   'matchId', p.match_id,
@@ -59,10 +59,10 @@ const LIST_PAYLOAD = `json_object(
       'selection', json_extract(value, '$.selection'), 'p', json_extract(value, '$.p'),
       'lo', json_extract(value, '$.lo'), 'hi', json_extract(value, '$.hi'), 'price', json_extract(value, '$.price'),
       'book', json_extract(value, '$.book'), 'grade', json_extract(value, '$.grade')))
-    FROM json_each(p.payload, '$.picks') WHERE json_extract(value, '$.p') >= 0.75 AND json_extract(value, '$.p') < 0.995), '[]')),
+    FROM json_each(p.payload, '$.picks') WHERE json_extract(value, '$.p') >= 0.8 AND json_extract(value, '$.p') < 0.995), '[]')),
   'markets', CASE WHEN COALESCE(json_array_length(p.payload, '$.picks'), 0) > 0 THEN json('[]')
     ELSE json(COALESCE((SELECT json_group_array(json(value)) FROM json_each(p.payload, '$.markets')
-      WHERE json_extract(value, '$.p') >= 0.75 OR json_extract(value, '$.p') <= 0.25), '[]')) END
+      WHERE json_extract(value, '$.p') >= 0.8 OR json_extract(value, '$.p') <= 0.2), '[]')) END
 )`;
 const LIST_SELECT = SELECT_TEMPLATE.replace("__PAYLOAD__", LIST_PAYLOAD);
 
@@ -77,7 +77,7 @@ function toView(r: Row, tier: Tier): MatchView {
     try {
       const raw = JSON.parse(r.payload) as Prediction & { sqpcPicks?: number };
       prediction = redactPrediction(raw, tier);
-      // List rows carry only SQPC's picks at 75%+; if SQPC ranked picks but none reached 75%, there are none.
+      // List rows carry only SQPC's picks at 80%+; if SQPC ranked picks but none reached 80%, there are none.
       picks = raw.sqpcPicks && !raw.picks?.length ? [] : picksFor(raw, r.home_name, r.away_name);
     } catch {
       prediction = null;

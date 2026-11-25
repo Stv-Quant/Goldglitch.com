@@ -125,11 +125,11 @@ def main_line(lines: dict, side: str) -> tuple[str, dict] | None:
     return best
 
 
-PICK_MIN = 0.75
+PICK_MIN = 0.80   # 80%+ since 2026-11-25 (was 75%)
 
 
 def sqpc_picks(d: dict) -> list[dict]:
-    """SQPC's own ranked selections at ≥75% (players, goals, half-time, corners…), best first."""
+    """SQPC's own ranked selections at ≥80% (players, goals, half-time, corners…), best first."""
     out = []
     for pk in d.get("picks") or []:
         p = pk.get("p")

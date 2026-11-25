@@ -148,7 +148,7 @@ export function MatchView({ m }: { m: MatchData | { locked: true; sport: Sport }
               : undefined} />
           ) : (
             <LockedPanel tier="Pro" title={`${m.picksLocked} pick${m.picksLocked === 1 ? "" : "s"} del modelo en este partido`}>
-              {"Las selecciones con 75% o más de probabilidad según el modelo, con su nivel de confianza."}
+              {"Las selecciones con 80% o más de probabilidad según el modelo, con su nivel de confianza."}
             </LockedPanel>
           )}
         </section>

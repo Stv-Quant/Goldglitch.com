@@ -14,7 +14,7 @@ export type Pick = {
   grade?: string | null;
 };
 
-export const PICK_MIN = 0.75;     // highlighted in each match
+export const PICK_MIN = 0.8;      // highlighted in each match (80%+ since 2026-11-25; was 75%)
 export const PICK_FEATURED = 0.8; // featured on the app home
 
 /** Same wording as SQPC's tracker (label_of), so a pick on the page and its tracked result share one label. */

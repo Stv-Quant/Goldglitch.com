@@ -43,13 +43,13 @@ export async function POST(req: Request) {
          (SELECT COALESCE(json_group_array(json(x)), '[]') FROM (
             SELECT json_object('matchId', match_id, 'sport', sport, 'league', COALESCE(competition_name, competition_id),
                      'home', home, 'away', away, 'kickoffAt', kickoff_at, 'label', label, 'p', p, 'status', status, 'result', result) AS x
-              FROM tracked_picks WHERE kind = 'featured' AND status IN ('won', 'lost')
+              FROM tracked_picks WHERE kind = 'featured' AND p >= 0.8 AND status IN ('won', 'lost')
                AND COALESCE(settled_at, kickoff_at) > ?1 - 36 * 3600000 ORDER BY p DESC LIMIT 200)) AS results,
          (SELECT json_object(
             'd7', json_object('won', sum(status = 'won' AND kickoff_at > ?1 - 7 * 86400000), 'n', sum(status IN ('won','lost') AND kickoff_at > ?1 - 7 * 86400000)),
             'd30', json_object('won', sum(status = 'won' AND kickoff_at > ?1 - 30 * 86400000), 'n', sum(status IN ('won','lost') AND kickoff_at > ?1 - 30 * 86400000)),
             'all', json_object('won', sum(status = 'won'), 'n', sum(status IN ('won','lost'))))
-            FROM tracked_picks WHERE kind = 'featured') AS record,
+            FROM tracked_picks WHERE kind = 'featured' AND p >= 0.8) AS record,
          (SELECT count(*) FROM matches WHERE kickoff_at > ?1 AND kickoff_at < ?1 + 36 * 3600000) AS matches36h`,
     )
     .bind(now)

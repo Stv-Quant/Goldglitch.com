@@ -1,6 +1,7 @@
 import type { D1Database, D1PreparedStatement } from "@cloudflare/workers-types";
 import type { TrackedPick } from "./contracts";
 import type { Sport } from "./sports";
+import { PICK_MIN } from "./picks";
 
 /** Same DDL as migrations/0008_tracked_picks.sql, so the feature works even before the migration is applied. */
 const DDL = [
@@ -82,10 +83,13 @@ export type KindSummary = {
 };
 
 export function bandOf(p: number): string {
-  return p < 0.8 ? "75–80%" : p < 0.85 ? "80–85%" : p < 0.9 ? "85–90%" : p < 0.95 ? "90–95%" : "95%+";
+  return p < 0.85 ? "80–85%" : p < 0.9 ? "85–90%" : p < 0.95 ? "90–95%" : "95%+";
 }
 
-const BAND_SQL = `CASE WHEN p < 0.8 THEN '75–80%' WHEN p < 0.85 THEN '80–85%' WHEN p < 0.9 THEN '85–90%' WHEN p < 0.95 THEN '90–95%' ELSE '95%+' END`;
+/** The record counts only picks at PICK_MIN or more (80% since 2026-11-25). Older 75–80% picks stay stored but out of it. */
+export const FEATURED_ONLY = `(kind <> 'featured' OR p >= ${PICK_MIN})`;
+
+const BAND_SQL = `CASE WHEN p < 0.85 THEN '80–85%' WHEN p < 0.9 THEN '85–90%' WHEN p < 0.95 THEN '90–95%' ELSE '95%+' END`;
 
 /**
  * Same numbers as summarize(), computed in SQL so the record stays fast with tens of thousands of picks.
@@ -94,7 +98,7 @@ const BAND_SQL = `CASE WHEN p < 0.8 THEN '75–80%' WHEN p < 0.85 THEN '80–85%
 export async function summarizeDb(db: D1Database, kind: TrackedRow["kind"], days = 365): Promise<KindSummary> {
   await ensureTrackedTable(db);
   const since = Date.now() - days * 86_400_000;
-  const done = `kind = ?1 AND kickoff_at >= ?2 AND status IN ('won','lost')`;
+  const done = `kind = ?1 AND kickoff_at >= ?2 AND status IN ('won','lost') AND ${FEATURED_ONLY}`;
   type B = { key: string; n: number; won: number; p: number };
   const grouped = (expr: string) =>
     db.prepare(`SELECT ${expr} AS key, count(*) AS n, sum(status = 'won') AS won, sum(p) AS p FROM tracked_picks WHERE ${done} GROUP BY 1`).bind(kind, since);
@@ -106,7 +110,7 @@ export async function summarizeDb(db: D1Database, kind: TrackedRow["kind"], days
               sum(CASE WHEN status IN ('won','lost') THEN (p - (status = 'won')) * (p - (status = 'won')) END) AS brier,
               sum(CASE WHEN status IN ('won','lost') AND profit IS NOT NULL THEN profit END) AS profit,
               sum(status IN ('won','lost') AND profit IS NOT NULL) AS priced
-         FROM tracked_picks WHERE kind = ?1 AND kickoff_at >= ?2`,
+         FROM tracked_picks WHERE kind = ?1 AND kickoff_at >= ?2 AND ${FEATURED_ONLY}`,
     ).bind(kind, since),
     grouped("sport"),
     grouped(BAND_SQL),
@@ -152,7 +156,7 @@ function bucket(rows: TrackedRow[], key: (r: TrackedRow) => string): Bucket[] {
 
 /** Pure aggregation (tested): pending and void rows never count toward the hit rate. */
 export function summarize(all: TrackedRow[], kind: TrackedRow["kind"]): KindSummary {
-  const rows = all.filter((r) => r.kind === kind);
+  const rows = all.filter((r) => r.kind === kind && (kind !== "featured" || r.p >= PICK_MIN));
   const done = rows.filter((r) => r.status === "won" || r.status === "lost");
   const won = done.filter((r) => r.status === "won").length;
   const priced = done.filter((r) => typeof r.profit === "number");
@@ -182,7 +186,7 @@ export function summarize(all: TrackedRow[], kind: TrackedRow["kind"]): KindSumm
 /** Latest picks for the lists: settled ones newest first, or pending ones soonest first. */
 export async function trackedPicks(db: D1Database, which: "settled" | "pending", limit = 60): Promise<TrackedRow[]> {
   await ensureTrackedTable(db);
-  const where = which === "pending" ? "status = 'pending' AND kickoff_at >= ?1" : "status <> 'pending' AND kickoff_at >= ?1";
+  const where = (which === "pending" ? "status = 'pending' AND kickoff_at >= ?1" : "status <> 'pending' AND kickoff_at >= ?1") + ` AND ${FEATURED_ONLY}`;
   const order = which === "pending" ? "kickoff_at ASC, p DESC" : "kickoff_at DESC";
   const since = which === "pending" ? Date.now() - 3 * 3_600_000 : Date.now() - 365 * 86_400_000;
   const { results } = await db

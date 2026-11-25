@@ -1004,7 +1004,7 @@ def reel_script(kind: str, rows: list[dict], tx: dict, when_fn, record: dict | N
                              kicker=("NBA · esta noche" if intl else f"Top {len(rows)} · ligas grandes")), 2.2, "punch",
                   tx.get("voz_hook") or hook))
         if rate:
-            f.append((reel_frame(f"{rate[0]}/{rate[1]}", f"picks de 75%+ acertados ({rate[2]}%), fallos incluidos",
+            f.append((reel_frame(f"{rate[0]}/{rate[1]}", f"picks de 80%+ acertados ({rate[2]}%), fallos incluidos",
                                  color="#d4af37", kicker="Historial público", glitch=False), 2.4, "slide",
                       f"Nuestro historial es público: {rate[0]} aciertos en {rate[1]} datos de alta probabilidad, fallos incluidos. "
                       f"Lo podés revisar en la página."))
@@ -1040,7 +1040,7 @@ def reel_script(kind: str, rows: list[dict], tx: dict, when_fn, record: dict | N
             f.append((reel_frame("ACERTÓ" if ok else "FALLÓ", f"{r['label']} · {r['home']} vs {r['away']}",
                                  color="#00f0a0" if ok else "#ff4d6d", kicker=f"{round(float(r['p']) * 100)}%"), 2.0, "slide",
                       f"{r['home']} contra {r['away']}, {r['label']}: {'acertó' if ok else 'falló'}."))
-        f.append((reel_frame(f"{won}/{len(rows)}", "picks de 75%+ jugados en las últimas horas", color="#d4af37", kicker="Balance"), 2.2,
+        f.append((reel_frame(f"{won}/{len(rows)}", "picks de 80%+ jugados en las últimas horas", color="#d4af37", kicker="Balance"), 2.2,
                   "punch", f"Balance: {won} de {len(rows)}."))
         if rate:
             f.append((reel_frame(f"{rate[2]}%", f"de acierto histórico ({rate[0]}/{rate[1]})", color="#d4af37", kicker="Historial público"),

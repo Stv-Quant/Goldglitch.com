@@ -52,7 +52,7 @@ export function TrackRecord({ featured, value, rows }: { featured: KindSummary; 
   if (!featured.settled) {
     return (
       <div className="card mt-8 p-8 text-mid">
-        Todavía no hay picks liquidados. Cada pick de 75% o más se guarda antes del partido y aparece aquí, acertado o fallado, cuando termina.
+        Todavía no hay picks liquidados. Cada pick de 80% o más se guarda antes del partido y aparece aquí, acertado o fallado, cuando termina.
       </div>
     );
   }
@@ -60,7 +60,7 @@ export function TrackRecord({ featured, value, rows }: { featured: KindSummary; 
     <div className="mt-8 space-y-6">
       <div className="grid grid-cols-2 gap-4">
         <Card label="Picks acertados" value={featured.settled ? `${featured.won}/${featured.settled}` : "—"}
-          hint={featured.void ? `${featured.void} nulos (aplazados o empujes) no cuentan` : "Picks de 75% o más ya liquidados"} tone="gold" />
+          hint={featured.void ? `${featured.void} nulos (aplazados o empujes) no cuentan` : "Picks de 80% o más ya liquidados"} tone="gold" />
         <Card label="Tasa de acierto" value={featured.hitRate !== null ? pct(featured.hitRate, 1) : "—"} hint="Lo que pasó" />
       </div>
 
