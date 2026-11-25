@@ -1,18 +1,20 @@
 """Combinadas de BetPlay con los picks del modelo: reporte PRIVADO para ti (no se publica y no apuesta nada).
 
 Qué hace:
-  1. Trae de la web todos los picks de fútbol con 85 % o más de las próximas 48 h (todos los mercados de cada partido)
+  1. Trae de la web todos los picks de fútbol con 80 % o más de las próximas 48 h (todos los mercados de cada partido)
      y el historial de cómo le ha ido al modelo en ese rango, por familia de mercado.
   2. Lee las cuotas PÚBLICAS de BetPlay (las mismas que ve cualquiera sin iniciar sesión; BetPlay usa la plataforma
      Kambi). Nunca entra a tu cuenta ni toca tu saldo.
   3. Deja al menos 3 opciones con cuota total mayor a 2: una de 2 o 3 selecciones de UN MISMO partido (en BetPlay:
      'Crea tu apuesta') y dos combinando partidos distintos (máximo 3 selecciones). Si falta de un tipo, completa
      con el otro. Con la probabilidad del modelo y la que ha tenido en la realidad.
+  4. Te pregunta cuánto dinero tienes disponible y sugiere cuánto poner en cada opción (un cuarto del criterio de
+     Kelly, máximo 25% de la banca por ronda; solo en opciones con valor esperado positivo). El resto queda en reserva.
 Tú revisas el reporte y, si quieres, armas la apuesta en BetPlay. Es información, no una recomendación.
 
     python goldglitch_combinadas.py                # reporte en reportes\\combinadas_FECHA.html (se abre solo)
 Ajustes opcionales en el .env:
-    COMB_MIN_P=0.85  COMB_MIN_CUOTA=2.0  COMB_MAX_SEL=3  COMB_OPCIONES=3  COMB_HORAS=48
+    COMB_MIN_P=0.80  COMB_MIN_CUOTA=2.0  COMB_MAX_CUOTA=100  COMB_BANCA=  COMB_MAX_SEL=3  COMB_OPCIONES=3  COMB_HORAS=48
     BETPLAY_KAMBI=betplay     (código de BetPlay en Kambi; si falla, se detecta solo abriendo betplay.com.co)
 """
 from __future__ import annotations
@@ -354,7 +356,7 @@ def combos_same(legs: list[dict], min_odds: float, max_sel: int, want: int) -> l
                 if not same_match_ok(c):
                     continue
                 odds = math.prod(l["odds"] for l in c)
-                if odds <= min_odds:
+                if odds <= min_odds or odds > float(os.environ.get("COMB_MAX_CUOTA", "100")):
                     continue
                 pm, pr = math.prod(l["p"] for l in c), math.prod(l["p_real"] for l in c)
                 out.append({"legs": c, "odds": odds, "p_model": pm, "p_real": pr, "ev": pr * odds - 1, "same": True})
@@ -370,7 +372,7 @@ def combos(legs: list[dict], min_odds: float, max_sel: int, want: int) -> list[d
             if len({l["event"] for l in c}) < k:
                 continue
             odds = math.prod(l["odds"] for l in c)
-            if odds <= min_odds:
+            if odds <= min_odds or odds > float(os.environ.get("COMB_MAX_CUOTA", "100")):
                 continue
             pm, pr = math.prod(l["p"] for l in c), math.prod(l["p_real"] for l in c)
             out.append({"legs": c, "odds": odds, "p_model": pm, "p_real": pr, "ev": pr * odds - 1, "same": False})
@@ -382,6 +384,44 @@ def combos(legs: list[dict], min_odds: float, max_sel: int, want: int) -> list[d
         if x not in chosen:
             chosen.append(x)
     return chosen
+
+
+# ------------------------------------------------------------------ bankroll: how much on each option
+KELLY = 0.25          # a quarter of Kelly: the model is not perfect and the options share selections
+MAX_EXPOSURE = 0.25   # never more than 25% of the bankroll in one round
+UNIT = 1000           # BetPlay stakes rounded to $1.000 COP
+
+
+def stakes(opts: list[dict], bank: float) -> list[float]:
+    """Kelly criterion (what maximises long-run growth), on the probability adjusted to the model's real record.
+    f = (p·odds − 1) / (odds − 1); only options with positive expected value get money; same-match odds are only an
+    estimate (BetPlay prices them lower), so they get half. The rest of the bankroll stays in reserve."""
+    if bank <= 0:
+        return [0.0] * len(opts)
+    raw = []
+    for x in opts:
+        o, p = x["odds"], x["p_real"]
+        f = max(0.0, (p * o - 1) / (o - 1)) * KELLY * (0.5 if x.get("same") else 1.0)
+        raw.append(f)
+    tot = sum(raw)
+    if tot > MAX_EXPOSURE:
+        raw = [f * MAX_EXPOSURE / tot for f in raw]
+    return [math.floor(f * bank / UNIT) * UNIT for f in raw]
+
+
+def money(v: float) -> str:
+    return "$" + f"{v:,.0f}".replace(",", ".")
+
+
+def ask_bank() -> float:
+    v = os.environ.get("COMB_BANCA", "").strip()
+    if not v and sys.stdin and sys.stdin.isatty():
+        try:
+            v = input("\n¿Cuánto dinero tienes disponible para esto? (pesos, ej. 200000; Enter para omitir): ").strip()
+        except EOFError:
+            v = ""
+    v = re.sub(r"[^\d]", "", v or "")
+    return float(v) if v else 0.0
 
 
 # ------------------------------------------------------------------ report
@@ -408,12 +448,28 @@ def report(opts: list[dict], info: dict) -> str:
         same_note = ("<div class=s>Mismo partido: ármala en BetPlay con 'Crea tu apuesta'. BetPlay calcula su propia cuota "
                      "para selecciones del mismo partido (suele ser menor que la multiplicación de abajo), y la probabilidad "
                      "conjunta no es exactamente el producto porque los eventos están relacionados.</div>") if x.get("same") else ""
+        st = x.get("stake")
+        stake_html = ("" if st is None else
+                      f"<div class=tot><b>Monto sugerido: {money(st)}</b> · si sale, recibes {money(st * x['odds'])} "
+                      f"(ganancia {money(st * x['odds'] - st)})</div>" if st > 0 else
+                      "<div class=tot><b>Monto sugerido: $0</b> · con la probabilidad real esta cuota no paga lo que debería</div>")
         cards.append(f"""<section><h2>Opción {i} <span>{tag}</span></h2>{same_note}
 <table><tr><th>Partido</th><th>Mercado</th><th class=n>Cuota</th><th class=n>Modelo</th><th class=n>Real</th></tr>{rows}</table>
 <div class=tot><b>Cuota total {'estimada ' if x.get('same') else ''}{x['odds']:.2f}</b> · probabilidad modelo {x['p_model'] * 100:.0f}% · ajustada a la realidad
 {x['p_real'] * 100:.0f}% · implícita de la cuota {100 / x['odds']:.0f}% ·
-<b class={tone}>valor esperado {x['ev'] * 100:+.0f}%</b></div></section>""")
+<b class={tone}>valor esperado {x['ev'] * 100:+.0f}%</b></div>{stake_html}</section>""")
     body = "".join(cards)
+    bank = info.get("bank") or 0
+    if bank:
+        bet = sum(x.get("stake") or 0 for x in opts)
+        body = (f"<section><h2>Cómo repartir {money(bank)}</h2><p>Apostar: <b>{money(bet)}</b> ({bet / bank * 100:.0f}%) · "
+                f"reserva: <b>{money(bank - bet)}</b>. "
+                + ("Ninguna opción tiene ventaja con la probabilidad real: hoy lo que maximiza es no apostar."
+                   if bet == 0 else
+                   "Los montos salen del criterio de Kelly (un cuarto), que es lo que hace crecer la banca más rápido "
+                   "a largo plazo sin quebrarla. Meter todo en una ronda aumenta la ganancia de un día, pero un mal día "
+                   "te deja en cero; la reserva es lo que te deja seguir jugando con ventaja.")
+                + "</p></section>" + body)
     if not body:
         bt = math.prod(l["odds"] for l in info.get("best") or []) if info.get("best") else 0
         body = (f"<p>No encontré combinaciones de {info['max_sel']} selecciones o menos con cuota total mayor a "
@@ -452,7 +508,7 @@ Calibración general del modelo en picks de {info['min_p'] * 100:.0f}%+: {info['
 # ------------------------------------------------------------------ main
 def main() -> int:
     load_env()
-    min_p, min_odds = env_f("COMB_MIN_P", 0.85), env_f("COMB_MIN_CUOTA", 2.0)
+    min_p, min_odds = env_f("COMB_MIN_P", 0.80), env_f("COMB_MIN_CUOTA", 2.0)
     max_sel, want, hours = int(env_f("COMB_MAX_SEL", 3)), int(env_f("COMB_OPCIONES", 3)), env_f("COMB_HORAS", 48)
     print(f"Picks de {min_p * 100:.0f}% o más de las próximas {hours:.0f} h…")
     data = signed("/api/social/candidatos", {"min": min_p, "hours": hours})
@@ -514,6 +570,7 @@ def main() -> int:
     os.makedirs(OUTDIR, exist_ok=True)
     with open(os.path.join(OUTDIR, "diagnostico_combinadas.json"), "w", encoding="utf-8") as f:
         json.dump(diag, f, ensure_ascii=False, indent=1)
+    bank = ask_bank()
     same = combos_same(legs, min_odds, max_sel, want)          # 2-3 selections of one match
     mixed = combos(legs, min_odds, max_sel, want)              # selections of different matches
     opts = same[:1] + mixed[:max(2, want - 1)]                 # at least: 1 of one match + 2 of mixed matches
@@ -528,10 +585,13 @@ def main() -> int:
         if l["event"] not in used and len(best) < max_sel:
             best.append(l)
             used.add(l["event"])
+    for x, st in zip(opts, stakes(opts, bank) if bank else [None] * len(opts)):
+        x["stake"] = st
     path = report(opts, {"top": top[:12], "best": best, "min_p": min_p, "picks": len(picks), "matched": len(legs), "max_sel": max_sel,
-                         "min_odds": min_odds, "unmatched": unmatched, "hit": hit})
+                         "min_odds": min_odds, "unmatched": unmatched, "hit": hit, "bank": bank})
     for i, x in enumerate(opts, 1):
-        print(f"\nOpción {i} ({'mismo partido' if x.get('same') else 'partidos distintos'}): cuota {x['odds']:.2f} · real {x['p_real'] * 100:.0f}% · VE {x['ev'] * 100:+.0f}%")
+        sug = f" · apostar {money(x['stake'])}" if x.get("stake") is not None else ""
+        print(f"\nOpción {i} ({'mismo partido' if x.get('same') else 'partidos distintos'}): cuota {x['odds']:.2f}{sug} · real {x['p_real'] * 100:.0f}% · VE {x['ev'] * 100:+.0f}%")
         for l in x["legs"]:
             print(f"   {l['home']} vs {l['away']} ({when(l['kickoffAt'])}) — {l['label']} @ {l['odds']:.2f}")
     if len(opts) < want:
