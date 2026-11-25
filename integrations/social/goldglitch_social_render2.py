@@ -1152,11 +1152,14 @@ def beat(path: str, seconds: float, bpm: int = 148, cuts: list[tuple[float, str]
 
 TRANSITIONS = ["zoomin", "slideup", "smoothleft", "circleopen", "fadewhite", "slidedown", "radial", "smoothup"]
 LOOK: dict = {}
-LOOKS = ("diario", "cuaderno", "trapo", "cartel", "album", "marcador")
+LOOKS = ("club", "stmoritz", "esmeralda", "bbc", "noche")
 LOOK_TRANSITIONS = {
     "diario": ["slideleft", "wipeleft", "slideup", "wiperight"], "cuaderno": ["slideup", "wipeup", "slidedown", "smoothleft"],
     "trapo": ["squeezeh", "wipeleft", "slideright", "squeezev"], "cartel": ["hlslice", "vuslice", "slideleft", "zoomin"],
     "album": ["circleopen", "slideup", "radial", "wipetl"],
+    "club": ["fade", "smoothup", "fadeblack", "smoothleft"], "stmoritz": ["fade", "smoothdown", "fadewhite", "smoothright"],
+    "esmeralda": ["fade", "circleopen", "smoothup", "fadeblack"], "bbc": ["zoomin", "smoothleft", "fade", "squeezev"],
+    "noche": ["fadeblack", "smoothup", "fade", "smoothleft"],
     "terminal": ["pixelize", "slideup", "smoothleft", "zoomin"], "marcador": ["wipeleft", "slideup", "wiperight", "zoomin"],
     "ultima_hora": ["slideleft", "fadewhite", "slideright", "squeezev"], "neon": ["hlslice", "vrslice", "pixelize", "radial"],
     "editorial": ["fade", "smoothup", "fadeblack", "smoothleft"], "tablero": ["wipeup", "circleopen", "wipedown", "smoothright"],

@@ -492,13 +492,17 @@ ANCHOR_P = float(os.environ.get("REDES_ANCLA_P", "0.85"))
 FOMO_SHARE = {"tiktok": 0.7}        # TikTok: mostly curiosity pieces; elsewhere 35 %
 
 
-LOOK_BRIEF = {
-    "diario": "PORTADA DE DIARIO DEPORTIVO: titular de periódico, corto y contundente, como Olé o El Gráfico",
-    "cuaderno": "CUADERNO DEL ANALISTA: tono de amigo que te explica a mano lo que encontró; cercano, con '¡ojo con esto!'",
-    "trapo": "TRAPO DE LA BARRA: tono de hincha apasionado, de tribuna, orgullo del equipo; frases para cantar",
-    "cartel": "CARTEL DE BARRIO: tono de anuncio fiestero, gritado, con energía de evento ('¡ESTA NOCHE!')",
-    "album": "LÁMINA DEL ÁLBUM: el partido como una lámina coleccionable; tono de 'esta no te puede faltar'",
-    "marcador": "MARCADOR DE ESTADIO EN VIVO: tono de transmisión, energía de previa; gancho tipo 'esta noche se juega…'",
+LOOK_BRIEF = {   # one brand voice (a private members' data club), five rooms
+    "club": "EL SALÓN DEL CLUB: negro y oro, sello de socio; tono de quien entra sin hacer fila: pocas palabras, "
+            "seguras ('Esta noche el dato es uno solo.')",
+    "stmoritz": "ST. MORITZ: crema, azul alpino y oro viejo, aire de temporada de invierno; tono sereno y elegante, "
+                "como invitación privada ('Temporada de Champions. Reservado para quien mira los números.')",
+    "esmeralda": "ESMERALDA: verde profundo con vetas de oro, mucho estilo y calle de lujo; tono con swagger, "
+                 "confiado, juvenil, con personalidad propia ('El verde es el color del que ya lo sabía.')",
+    "bbc": "CLUB DE MILLONARIOS: azul noche, diamantes y oro; tono de conversación entre socios, ambición sin "
+           "gritar ('Los que ganan no adivinan: leen.')",
+    "noche": "NOCHE PRIVADA: negro terciopelo y luz de oro, cierre de jornada; tono íntimo, de confidencia "
+             "('Te cuento algo antes de que empiece.')",
 }
 
 
@@ -549,8 +553,21 @@ class SkipPiece(RuntimeError):
 MARKET_TAGS = {"MX": ["ligamx", "futbolmexicano"], "US": ["futbolhispano", "mls"], "AR": ["futbolargentino", "ligaprofesional"],
                "ES": ["laliga", "futbolespañol"], "CL": ["futbolchileno"], "PE": ["futbolperuano", "liga1"],
                "CO": ["ligabetplay", "futbolcolombiano"], "LATAM": ["futbollatino", "futbolsudamericano"]}
-DEFAULT_TAGS = ["futbol", "football", "soccer", "fyp", "parati", "viral", "futbolcolombiano", "futbollatino", "datosdefutbol",
-                "estadistica", "probabilidad", "analisisdeportivo", "goldglitch", "goldglitchstats"]
+DEFAULT_TAGS = ["futbol", "estadisticasdefutbol", "datosdefutbol", "futbollatino", "analisisdefutbol"]
+SPAM_TAGS = re.compile(r"^(fyp|foryou|foryoupage|parati|paratii|viral|viralvideo|trending|xyzbca|explore|explorepage|tiktok|"
+                       r"reels|reel|instagood|followme|follow|like4like|likeforlike|goldglitchstats)$", re.I)
+SIGNATURES = {    # who we are + follow, said differently each time (and not on every post)
+    "tiktok": ["Datos de cada partido, todos los días. Seguí la cuenta.", "Si te gustan los números del fútbol, quedate.",
+               "EGG: el dato antes del partido. Seguinos.", "Mañana hay más. Seguí la cuenta para no perdértelo."],
+    "ig": ["EGG · estadística de fútbol con un modelo propio. El historial completo está en el enlace de la bio.",
+           "Guardalo para antes del partido. Todos los datos, gratis en la bio.",
+           "Seguinos: cada día, el dato que nadie está mirando."],
+    "fb": ["En EGG calculamos la probabilidad de cada partido con un modelo propio. Seguí la página y lo comentamos juntos.",
+           "¿Usted qué piensa? Lo leemos todo. Seguí la página para el dato de cada día.",
+           "Somos EGG: estadística de fútbol, partido por partido."],
+    "yt": ["EGG analiza cada partido con un modelo estadístico propio. Suscribite para el dato de cada día.",
+           "Estadística de fútbol, partido por partido. Suscribite y activá la campanita."],
+}
 
 
 def caption(tx: dict, key: str) -> str:
@@ -561,7 +578,8 @@ def caption(tx: dict, key: str) -> str:
     if key == "fb":     # Meta allows only 2 posts with links per month to pages without Meta Verified: never put one
         text = re.sub(r"\s*(https?://\S+|(www\.)?easygoldglitch\.com\S*)", "", str(text or "")).rstrip(" :→-👉👇")
         if "perfil" not in text.lower():
-            text += "\n\nEnlace en el perfil de la página."
+            if int(hashlib.md5(text.encode()).hexdigest()[:2], 16) % 2:   # not on every post
+                text += "\n\nEl historial completo está en el enlace del perfil."
     body = re.sub(r"#(\d)", r"Nº\1", str(text or ""))
     inline = re.findall(r"(?<![\w&])#([^\W\d][\w]*)", body)
     body = re.sub(r"[ \t]*(?<![\w&])#[^\W\d][\w]*", "", body).rstrip()
@@ -571,20 +589,18 @@ def caption(tx: dict, key: str) -> str:
         if h and h.lower() not in seen:
             seen.add(h.lower())
             tags.append(h)
-    if not re.search(r"segu[íi]|suscrib|follow", body, re.I):      # who we are + follow, on every post
-        body += "\n\n" + {"yt": "EGG: estadística de fútbol con un modelo propio. Suscribite para el dato de cada día.",
-                            "tiktok": "EGG: estadística de fútbol con un modelo propio. Seguí la cuenta para el dato de cada día.",
-                            "fb": "EGG: estadística de fútbol con un modelo propio. Seguí la página para el dato de cada día."
-                            }.get(key, "EGG: estadística de fútbol con un modelo propio. Seguinos para el dato de cada día.")
-    if key == "tiktok":   # TikTok flags betting language: statistics words only, no betting tags
+    h = int(hashlib.md5(body.encode()).hexdigest()[:6], 16)
+    if not re.search(r"segu[íi]|suscrib|follow", body, re.I) and h % 3:      # who we are + follow, 2 of every 3 posts
+        pool = SIGNATURES.get(key, SIGNATURES["ig"])
+        body += "\n\n" + pool[h % len(pool)]
+    tags = [t for t in tags if not SPAM_TAGS.match(t)]
+    if key in ("tiktok", "yt"):   # TikTok and YouTube flag betting language: statistics words only, no betting tags
         from goldglitch_lenguaje import safe_tags, safe_text
         body, tags = safe_text(body), safe_tags(tags)
-    if key == "tiktok":   # TikTok rewards a few broad tags first
-        big = [t for t in tags if t.lower() in ("fyp", "parati", "viral", "futbol", "football", "soccer")]
-        tags = big + [t for t in tags if t not in big]
     if key == "yt":       # YouTube: the first 3 hashtags show above the title; more than 15 and it ignores them all
         tags = ["Shorts"] + [t for t in tags if t.lower() != "shorts"]
-    n = {"ig": max(3, min(IG_HASHTAGS, 30)), "tiktok": 10, "fb": 8, "yt": 12}.get(key, 10)
+    # few, specific tags read as a person and rank better than walls of generic ones
+    n = {"ig": max(3, min(IG_HASHTAGS, 8)), "tiktok": 5, "fb": 2, "yt": 3}.get(key, 5)
     return f"{body}\n\n{' '.join('#' + h for h in tags[:n])}".strip()
 
 
@@ -618,7 +634,8 @@ def publish(post: dict, piece: dict, meta: Meta | None, tt: TikTok | None, dry: 
         jobs.append(("tiktok", lambda: tt.video(piece["video"], caption(tx, "tiktok"))))
     if YT is not None and piece.get("video"):
         YT.audio_vibe = str(tx.get("audio_vibe") or "")[:60]
-        title = str(tx.get("yt_title") or tx.get("reel_hook") or tx.get("cover_title") or "Datos de fútbol")[:90]
+        from goldglitch_lenguaje import safe_text
+        title = safe_text(str(tx.get("yt_title") or tx.get("reel_hook") or tx.get("cover_title") or "Datos de fútbol"))[:90]
         jobs.append(("youtube", lambda: YT.short(piece["video"], f"{title} #Shorts"[:100], caption(tx, "yt"))))
     nets = post.get("redes") or ["instagram", "facebook", "tiktok", "youtube"]   # each network's audience (plan)
     jobs = [(n, f) for n, f in jobs if n.split("_")[0] in nets]

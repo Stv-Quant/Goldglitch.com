@@ -139,16 +139,16 @@ MEME_FORMATS = {
 }   # one text card (+ CTA in the vertical version)
 
 
-NET_VOICE = {
-    "instagram": "INSTAGRAM (público joven, 18-30): estético, rápido, carrusel o meme que se guarda y se comparte por DM; "
-                 "portada que detiene el scroll, lenguaje de calle sin vulgaridad.",
-    "facebook": "FACEBOOK (público adulto, 30-55): conversación y nostalgia futbolera, datos explicados con calma, "
-                "pregunta que invite a opinar con argumentos; frases completas, sin jerga juvenil.",
-    "tiktok": "TIKTOK, nuestra red PRINCIPAL (la que más usa nuestro público): entretenimiento primero; gancho en el "
-              "primer segundo, tendencia del momento, dato que sorprende y remate inesperado; que provoque comentar y "
-              "compartir.",
-    "youtube": "YOUTUBE SHORTS: búsqueda real (título con lo que la gente escribe), público internacional, datos claros "
-               "que se entiendan sin sonido.",
+NET_VOICE = {   # one brand (a private members' data club: quiet luxury, sharp, confident), four ways of talking
+    "instagram": "INSTAGRAM (18-30): lujo silencioso y estética; frases cortas que se guardan y se mandan por DM; la "
+                 "primera línea (125 caracteres) lleva el partido o el equipo y el dato, como algo que alguien buscaría.",
+    "facebook": "FACEBOOK (30-55): anfitrión del club que conversa; frases completas y cálidas, el dato explicado con "
+                "calma y una pregunta para opinar con argumentos; nada de jerga juvenil.",
+    "tiktok": "TIKTOK (la red PRINCIPAL, 18-30): socio del club con swagger; la primera línea es lo que la gente "
+              "escribe en el buscador de TikTok ('Real Madrid vs PSV quién gana', 'estadísticas Champions hoy') dicho "
+              "con naturalidad, luego el remate y una pregunta de una palabra.",
+    "youtube": "YOUTUBE SHORTS (búsqueda, público internacional): título que responde lo que la gente busca, con "
+               "equipos y competición; claro y sin jerga local.",
 }
 
 
@@ -278,11 +278,12 @@ Entrega:
 - ig: texto para Instagram (máx. 900 caracteres, gancho de curiosidad en la primera línea, saltos de línea, una pregunta
   para comentar, un "guárdalo / mándaselo a…" y termina invitando a ver todo gratis en el enlace de la bio).
 - fb: texto para Facebook (máx. 700 caracteres, incluye https://easygoldglitch.com).
-- tiktok: texto corto para TikTok (máx. 150 caracteres) con gancho y pregunta.
-- hashtags: 26 a 30 hashtags sin '#'. Mezcla en tres niveles: 8 grandes y en tendencia (futbol, football, soccer,
-  championsleague, premierleague, laliga, fyp, parati, viral), 12 medianos del tema (ligas, equipos, jugadores conocidos
-  de los datos, "futbolcolombiano", "futbollatino", "datosdefutbol") y 8 de nicho (estadística, probabilidad,
-  analisisdeportivo, goldglitch…). Nada de apuestas ni casas de apuestas.
+- tiktok: texto para TikTok (máx. 220 caracteres): primera línea BUSCABLE y natural (equipos/competición + lo que
+  la gente quiere saber: "quién gana", "estadísticas", "cuántos goles"), luego el remate y una pregunta corta.
+- hashtags: 8 a 12 hashtags sin '#', ORDENADOS del más específico al más general: primero los equipos y la
+  competición del dato (realmadrid, psv, championsleague), luego el tema (estadisticasdefutbol, datosdefutbol), al final
+  1 general (futbol). PROHIBIDOS los de relleno: fyp, parati, viral, foryou, trending, explore. Nada de apuestas.
+  (Cada red usa solo los primeros: TikTok 5, Instagram 8, YouTube 3, Facebook 2.)
 - reel_hook: texto de impacto para la primera pantalla del reel, máx. 26 caracteres, en voz EGG (ej. "MIRÁ ESTO 👀",
   "O SEA… 88%", "NIVEL: CHAMPIONS 🥂").
 - reel_sub: segunda línea del reel, máx. 40 caracteres.
@@ -307,9 +308,11 @@ HOOKS (los mejores, probados en Shorts/Reels/TikTok; el gancho decide todo en el
 - voz_hook: la misma idea dicha en voz alta, natural (máx. 16 palabras). voz_cierre: cierre hablado (máx. 12 palabras).
   La voz es un RELATOR ARGENTINO apasionado por el fútbol: voseo rioplatense ("mirá", "vos", "tenés", "fijate", "che",
   "no sabés lo que es esto"), exclamaciones y energía de relato, sin groserías.
-SEO NATURAL: en los datos vienen "busquedas_reales" (lo que la gente escribe en YouTube/Google). Usa 1 o 2 de esas frases
-tal cual en el título de YouTube y en la primera línea de ig/tiktok, de forma natural; los hashtags salen de esas
-búsquedas, de la liga, los equipos y el mercado.
+SEO NATURAL (que suene a persona, no a lista de palabras clave): en los datos vienen "busquedas_reales" (lo que la gente
+escribe en YouTube/Google/TikTok). Toma UNA de esas búsquedas (sin palabras de apuestas) y dila como la diría alguien en
+la primera línea de tiktok/ig y en el título de YouTube; nunca repitas la misma palabra clave dos veces ni pongas listas
+de términos. La voz en off también nombra los equipos y la competición: TikTok y YouTube indexan lo que se dice.
+Cada red tiene su manera de hablar (ver "Red de destino"); el texto de una red NUNCA es copia del de otra.
 VOZ HUMANA, NO DE IA: frases como las escribiría una persona real de la marca; máximo 2 emojis por texto (ninguno en
 títulos ni en textos de imagen); nada de muletillas repetidas ("o sea", "next level", "literal") en cada pieza, nada de
 listas de emojis ni de frases de plantilla ("¡No te lo pierdas!", "Descubre", "Increíble"). En fb nunca pongas enlaces.
@@ -320,8 +323,9 @@ listas de emojis ni de frases de plantilla ("¡No te lo pierdas!", "Descubre", "
   reales, escudos, logos, marcas ni texto; evita lo que la IA llena de letras falsas (camisetas vistas de espaldas con
   número, marcadores, carteles, pantallas, periódicos): mejor rostros, manos, balón, luces, estadio desenfocado. Si sale EGG: "a stylish young Colombian woman with long dark wavy hair with
   golden highlights and gold hoop earrings".
-- yt_title: título del Short de YouTube (máx. 70 caracteres): empieza con una frase de "busquedas_reales" (ej.
-  "Arsenal vs Chelsea pronóstico") + el gancho concreto; sin hashtags, sin emojis, sin mayúsculas sostenidas.
+- yt_title: título del Short de YouTube (máx. 60 caracteres): empieza con los equipos o la competición como los
+  busca la gente (ej. "Arsenal vs Chelsea: quién gana según los datos", "Real Madrid vs PSV, el dato que nadie mira");
+  sin "pronóstico" ni palabras de apuestas, sin hashtags, sin emojis, sin mayúsculas sostenidas.
 - voz_hook y voz_cierre: ver HOOKS.
 - yt: descripción de YouTube (3 a 5 líneas): la primera con palabras clave de búsqueda, luego el valor, y el enlace
   https://easygoldglitch.com/?ref=yt_desc ; +18; sin hashtags.
