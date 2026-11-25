@@ -973,8 +973,8 @@ def countdown_frame(line: str = "el dato que estabas esperando") -> tuple:
 
 def brand_intro() -> tuple:
     """0.9 s sting that opens every video: the EGG mark assembling with a gold glitch."""
-    return (reel_frame("EGG", "el dato antes del partido", color="#e7c25a", kicker="Goldglitch Stats", split_chars=True,
-                       glitch=False, tilt=0), 0.95, "flash", "")
+    return (reel_frame("EGG", "100% objetivos · solo datos", color="#e7c25a", kicker="Goldglitch Stats", split_chars=True,
+                       glitch=False, tilt=0), 1.6, "flash", "Esto es EGG. Cien por ciento objetivos. Solo datos.")
 
 
 def brand_outro(nets: list[str], line: str = "") -> tuple:
@@ -982,7 +982,8 @@ def brand_outro(nets: list[str], line: str = "") -> tuple:
     net = nets[0] if len(nets) == 1 else ""
     follow = "Suscribite" if net == "youtube" else "Seguinos"
     where = "el enlace está en la página" if net == "facebook" else "el enlace está en el primer comentario"
-    say = line or (f"Registrate gratis en easygoldglitch punto com: {where}. {follow}, que mañana hay más.")
+    say = line or (f"Sin opiniones, sin humo: solo datos. Nuestro historial es público, aciertos y fallos, en easygoldglitch "
+                   f"punto com. Entrá y registrate gratis: {where}. {follow}.")
     return (reel_frame("REGISTRATE GRATIS", "easygoldglitch.com · la probabilidad de cada partido de hoy",
                        color="#e7c25a", kicker="Esto es EGG", glitch=False,
                        foot="enlace en la página" if net == "facebook" else "enlace en el primer comentario"), 3.2, "punch", say)
@@ -1005,7 +1006,8 @@ def reel_script(kind: str, rows: list[dict], tx: dict, when_fn, record: dict | N
         if rate:
             f.append((reel_frame(f"{rate[0]}/{rate[1]}", f"picks de 75%+ acertados ({rate[2]}%), fallos incluidos",
                                  color="#d4af37", kicker="Historial público", glitch=False), 2.4, "slide",
-                      f"Nuestro historial es público: {rate[0]} aciertos en {rate[1]} picks de alta probabilidad."))
+                      f"Nuestro historial es público: {rate[0]} aciertos en {rate[1]} datos de alta probabilidad, fallos incluidos. "
+                      f"Lo podés revisar en la página."))
         for i, r in enumerate(rows):
             acc = ACCENT.get(r["league"], "#d4af37")
             p = float(r["p"])

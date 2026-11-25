@@ -537,6 +537,11 @@ body.sig .wrap{position:relative;z-index:2}
 .sg-stamp{position:fixed;z-index:4;white-space:nowrap;border:7px solid #ff3b1f;color:#ff3b1f;border-radius:16px;padding:6px 26px;font:700 64px 'JetBrains Mono',monospace;
  letter-spacing:.06em;text-transform:uppercase;opacity:0;mix-blend-mode:screen}
 .sg-ring{position:fixed;inset:0;z-index:4;pointer-events:none}
+.sg-eq{display:flex;gap:4px;align-items:flex-end;height:26px;margin-left:10px}.sg-eq i{display:block;width:5px;background:#d4af37;border-radius:2px}
+.sg-tick{position:absolute;left:0;right:0;top:58px;height:34px;overflow:hidden;border-bottom:1px solid rgba(237,230,214,.1);font:400 19px 'JetBrains Mono',monospace;color:rgba(212,175,55,.75);white-space:nowrap}
+.sg-tick div{position:absolute;top:6px}
+.sg-cap .on{display:inline-block}
+.sg-corner{position:fixed;z-index:3;width:46px;height:46px;border:3px solid #d4af37;pointer-events:none}
 .sg-ring path{fill:none;stroke:#ff3b1f;stroke-width:7;stroke-linecap:round}
 </style>
 <script>
@@ -579,15 +584,19 @@ function sample(){
 // karaoke: the line said in this scene, word by word, in chunks of up to 3 words
 const cap=document.createElement('div');cap.className='sg-cap';document.body.appendChild(cap);
 const say=(M.say||'').replace(/\s+/g,' ').trim(),vd=+M.vd||0,wordsS=say?say.split(' '):[];
-const tot=wordsS.reduce((a,w)=>a+w.length+1,0)||1;let acc=0;const wt=wordsS.map(w=>{const t=0.12+vd*(acc/tot);acc+=w.length+1;return t});
+const wl=w=>w.length+1+(/[.!?:;…]$/.test(w)?9:/,$/.test(w)?3:0);const tot=wordsS.reduce((a,w)=>a+wl(w),0)||1;let acc=0;const wt=wordsS.map(w=>{const t=0.12+vd*(acc/tot);acc+=wl(w);return t});
 const chunks=[];{let c=[];wordsS.forEach((w,i)=>{c.push(i);if(c.length===3||(w.length>3&&/[.,;:!?…]$/.test(w))){chunks.push(c);c=[]}});if(c.length)chunks.push(c);for(let k=chunks.length-1;k>0;k--)if(chunks[k].length===1&&chunks[k-1].length<4){chunks[k-1]=chunks[k-1].concat(chunks[k]);chunks.splice(k,1)}}
 const capEnd=0.12+vd+0.45;
 // terminal window around the stage, with a typed command
 const st=document.querySelector('[data-m=stage]'),kickEl=document.querySelector('[data-m=kick]');
 const win=document.createElement('div');win.className='sg-win';
 const cmd=(kickEl?kickEl.textContent:'el dato').trim().toLowerCase().replace(/\s+/g,'_').slice(0,22);
-win.innerHTML="<div class='sg-bar'><span class='sg-dot'></span><span class='sg-dot'></span><span class='sg-dot'></span><span>egg / el-dato</span><span class='sg-pill'>easygoldglitch.com</span></div><div class='sg-term'></div>";
+win.innerHTML="<div class='sg-bar'><span class='sg-dot'></span><span class='sg-dot'></span><span class='sg-dot'></span><span>egg / el-dato</span><span class='sg-eq'>"+'<i></i>'.repeat(9)+"</span><span class='sg-pill'>easygoldglitch.com</span></div><div class='sg-tick'><div></div></div><div class='sg-term'></div>";
 document.body.appendChild(win);const term=win.querySelector('.sg-term'),full=">>> egg.dato('"+cmd+"')";
+const eqs=[...win.querySelectorAll('.sg-eq i')],tick=win.querySelector('.sg-tick div');
+tick.textContent=('P(local)=0.'+(40+sc*7%50)+' · λ=1.'+(20+sc*13%70)+' · n=3550 · calibración 0.9'+(sc%9)+' · ruido→señal · σ=0.'+(10+sc%80)+' · solo datos · historial público · ').repeat(4);
+const corners=[0,1,2,3].map(k=>{const c=document.createElement('div');c.className='sg-corner';c.style.borderWidth=(k<2?'3px 0 0 ':'0 0 3px ')+(k%2?'0 3px':'3px 0');document.body.appendChild(c);return c});
+const comets=[...Array(7)].map((_,k)=>({y:200+R()*1500,v:700+R()*900,d:R()*6,dir:R()<.5?1:-1,c:R()<.3?'#ff3b1f':'#d4af37',len:120+R()*220}));
 // stamp + hand-drawn ring on the number scenes
 const hero=document.querySelector('[data-m=big][data-count]');
 const stamp=document.createElement('div');stamp.className='sg-stamp';stamp.textContent=hero?'EL DATO':'';document.body.appendChild(stamp);
@@ -600,21 +609,35 @@ function setup(){ready=true;sample();
  if(hero&&bigBox){const [x0,y0,x1,y1]=bigBox,cx=(x0+x1)/2,cy=(y0+y1)/2,rx=(x1-x0)/2+70,ry=(y1-y0)/2+50;let d='';
   for(let i=0;i<=40;i++){const a=-2.2+i/40*7.0,k=1+0.022*Math.sin(i*1.3);d+=(i?'L':'M')+(cx+Math.cos(a)*rx*k).toFixed(1)+' '+(cy+Math.sin(a)*ry*k).toFixed(1)}
   rp.setAttribute('d',d);rl=rp.getTotalLength();rp.style.strokeDasharray=rl;rp.style.strokeDashoffset=rl;
-  stamp.style.left=Math.min(W-340,x1-10)+'px';stamp.style.top=(y1-30)+'px'}}
+  stamp.style.left=Math.min(W-400,x1+20)+'px';stamp.style.top=(y0-30)+'px'}}
 const px=new Float32Array(N),py=new Float32Array(N);
 window.__sig=function(t,T){
  if(!ready)setup();
- const push=1+0.035*S(t/Math.max(1,T));document.documentElement.style.transform='scale('+push+')';document.documentElement.style.transformOrigin='50% 46%';
+ const push=1+0.05*S(t/Math.max(1,T)),hx0=Math.sin(t*0.7)*6,hy0=Math.cos(t*0.53)*5,rot=Math.sin(t*0.37)*0.35;
+ document.documentElement.style.transform='translate('+hx0+'px,'+hy0+'px) scale('+push+') rotate('+rot+'deg)';document.documentElement.style.transformOrigin='50% 46%';
  ctx.fillStyle='#0a0907';ctx.fillRect(0,0,W,H);
+ // perspective grid floor, scrolling toward the viewer
+ ctx.strokeStyle='rgba(212,175,55,0.10)';ctx.lineWidth=1.5;const hor=H*0.70,vx=W/2;
+ for(let k=-12;k<=12;k++){ctx.beginPath();ctx.moveTo(vx+k*18,hor);ctx.lineTo(vx+k*260,H);ctx.stroke()}
+ for(let k=0;k<14;k++){const u=((k+(t*0.9)%1)/14),y=hor+(H-hor)*u*u;ctx.globalAlpha=u;ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke()}ctx.globalAlpha=1;
+ // comets
+ comets.forEach(c=>{const u=((t+c.d)*c.v)%(W+1400)-700,x=c.dir>0?u:W-u;const g=ctx.createLinearGradient(x,c.y,x-c.dir*c.len,c.y);g.addColorStop(0,c.c);g.addColorStop(1,'rgba(0,0,0,0)');
+  ctx.strokeStyle=g;ctx.lineWidth=2.5;ctx.beginPath();ctx.moveTo(x,c.y);ctx.lineTo(x-c.dir*c.len,c.y+c.dir*c.len*0.08);ctx.stroke()});
+ // voice impulses: each spoken word sends a wave through the dust
+ const imp=[];for(let k=0;k<wt.length;k++){const a=t-wt[k];if(a>=0&&a<0.7)imp.push(a)}
+ const cx0=bigBox?(bigBox[0]+bigBox[2])/2:W/2,cy0=bigBox?(bigBox[1]+bigBox[3])/2:H/2,yaw=Math.sin(t*0.45)*0.16,scan=((t*0.55)%1.6)*W*1.4-W*0.2;
  const buckets=[[],[],[],[]];  // dim, gold, flare, bone
  for(let i=0;i<N;i++){
   const z=az[i],dr=0.6+z*0.8;
   const hx=ax[i]+Math.sin(t*0.35*dr+ph[i])*38+Math.cos(t*0.21+ph[i]*2)*22,hy=ay[i]+Math.cos(t*0.3*dr+ph[i])*46-t*6*dr;
   let x,y,c=col[i],s=2+z*2.6;
   if(i<nt){const k=E((t-dl[i])/1.5),w=(1-k)*(1-k)*60;
-   x=sx[i]+(tx[i]-sx[i])*k+Math.sin(t*2.1+ph[i])*w+Math.sin(t*3+ph[i])*0.5;y=sy[i]+(ty[i]-sy[i])*k+Math.cos(t*1.7+ph[i])*w+Math.cos(t*2.6+ph[i])*0.5;
-   c=k>0.92?(hero?1:(i%3===0?1:3)):(k>0.35?1:0);s=k>0.9?5:2+k*2.4}
-  else{const k=E((t-0.05-z*0.3)/1.4);x=sx[i]+(hx-sx[i])*k;y=sy[i]+(hy-sy[i])*k}
+   x=sx[i]+(tx[i]-sx[i])*k+Math.sin(t*2.1+ph[i])*w+Math.sin(t*3+ph[i])*0.6;y=sy[i]+(ty[i]-sy[i])*k+Math.cos(t*1.7+ph[i])*w+Math.cos(t*2.6+ph[i])*0.6;
+   const dx=x-cx0,dy=y-cy0,dd=Math.sqrt(dx*dx+dy*dy)+1;let push2=0;for(const a of imp)push2+=Math.sin(dd*0.045-a*22)*Math.exp(-a*7)*4.5*k;
+   x+=dx/dd*push2;y+=dy/dd*push2;x=cx0+(x-cx0)*Math.cos(yaw*0.8);
+   const sc2=Math.exp(-Math.pow((x-scan)/60,2));
+   c=k>0.92?(sc2>0.5?3:(hero?1:(i%3===0?1:3))):(k>0.35?1:0);s=(k>0.9?4.6+0.9*Math.sin(t*5+ph[i]*3)+sc2*2.5:2+k*2.4)}
+  else{const k=E((t-0.05-z*0.3)/1.4);x=sx[i]+(hx-sx[i])*k;y=sy[i]+(hy-sy[i])*k;x=W/2+(x-W/2)*Math.cos(yaw*1.6)+(z-.5)*yaw*420;s*=0.8+0.4*Math.sin(t*3+ph[i])}
   px[i]=x;py[i]=y;buckets[c].push(x,y,s)}
  const pal=['rgba(170,160,138,0.62)','#d4af37','#ff3b1f','#ede6d6'];
  for(let c=0;c<4;c++){const b=buckets[c];ctx.fillStyle=pal[c];if(c===2){ctx.shadowColor='#ff3b1f';ctx.shadowBlur=10}else ctx.shadowBlur=0;
@@ -625,6 +648,11 @@ window.__sig=function(t,T){
  let cur=-1;for(let i=0;i<wt.length;i++)if(t>=wt[i])cur=i;
  if(cur<0||!chunks.length||t>capEnd){cap.innerHTML=''}else{const ch=chunks.find(c=>c.includes(cur))||chunks[chunks.length-1];
   cap.innerHTML=ch.filter(i=>i<=cur).map(i=>"<span class='"+(i===cur?'on':'past')+"'>"+wordsS[i].replace(/&/g,'&amp;').replace(/</g,'&lt;')+"</span>").join('')}
+ const talking=t>0.12&&t<0.12+vd;eqs.forEach((e,k)=>{const h=talking?6+20*Math.abs(Math.sin(t*(9+k*1.7)+k*1.3)*Math.sin(t*3.1+k)):3;e.style.height=h+'px'});
+ tick.style.left=(-((t*90)%900))+'px';
+ {const r=win.getBoundingClientRect(),o=8+4*Math.sin(t*3);const P=[[r.left-o,r.top-o],[r.right-46+o,r.top-o],[r.left-o,r.bottom-46+o],[r.right-46+o,r.bottom-46+o]];
+  corners.forEach((c,k)=>{c.style.left=P[k][0]+'px';c.style.top=P[k][1]+'px';c.style.opacity=S((t-0.4)/0.5)})}
+ {const on=cap.querySelector('.on');if(on&&cur>=0){const a=t-wt[cur];on.style.transform='scale('+(1+0.25*Math.exp(-a*9)*Math.cos(a*30))+')'}}
  // window + terminal
  win.style.opacity=S(t/0.6);const nch=Math.floor(cl((t-0.3)/1.2)*full.length);
  term.innerHTML='<b>&gt;&gt;&gt;</b>'+full.slice(3,Math.max(3,nch)).replace(/</g,'&lt;')+"<span class='sg-cur' style='opacity:"+((Math.floor(t*2.2)%2)?0.15:1)+"'></span>";

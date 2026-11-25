@@ -94,8 +94,10 @@ def eleven_say(text: str, path: str) -> tuple[str, float] | None:
     r = requests.post(f"{EL}/text-to-speech/{vid}", params={"output_format": "pcm_24000"}, timeout=120,
                       headers={**_el_headers(), "accept": "audio/pcm", "content-type": "application/json"},
                       json={"text": text, "model_id": os.environ.get("ELEVENLABS_MODELO", "eleven_multilingual_v2"),
-                            "voice_settings": {"stability": 0.45, "similarity_boost": 0.8, "style": 0.35,
-                                               "use_speaker_boost": True}})
+                            "voice_settings": ({"stability": 0.78, "similarity_boost": 0.8, "style": 0.08, "speed": 0.88,
+                                                "use_speaker_boost": True} if serio() else
+                                               {"stability": 0.45, "similarity_boost": 0.8, "style": 0.35,
+                                                "use_speaker_boost": True})})
     if r.status_code != 200:
         raise RuntimeError(f"ElevenLabs {r.status_code}: {r.text[:200]}")
     with wave.open(path, "wb") as w:
@@ -148,9 +150,53 @@ def rioplatense(text: str) -> str:
     return text
 
 
+def serio() -> bool:
+    """Narrator tone: 'serio' (default: calm, slow, documentary, like the classic synthetic narrators) or 'pasion'."""
+    return os.environ.get("REDES_VOZ_TONO", "serio") != "pasion"
+
+
+def pausado(text: str) -> str:
+    """Longer pauses between ideas: sentence ends and colons become ellipses, which every engine reads as a breath."""
+    import re
+    if not serio():
+        return text
+    t = re.sub(r"([.!?:;])\s+(?=\S)", "... ", text.strip())
+    return re.sub(r"\.{4,}", "...", t)
+
+
+def _tempo(res: list) -> list:
+    """Slow the narration down a little (pitch kept): REDES_VOZ_TEMPO, 0.9 by default in the serious tone."""
+    tempo = float(os.environ.get("REDES_VOZ_TEMPO", "0.9" if serio() else "1.0"))
+    if abs(tempo - 1) < 0.01:
+        return res
+    try:
+        import imageio_ffmpeg
+        ff = imageio_ffmpeg.get_ffmpeg_exe()
+    except Exception:
+        return res
+    out = []
+    for r in res:
+        if not r:
+            out.append(r)
+            continue
+        path, d = r
+        tmp = path[:-4] + "_t.wav"
+        p = subprocess.run([ff, "-y", "-loglevel", "error", "-i", path, "-af", f"atempo={tempo:.3f}", tmp],
+                           capture_output=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+        if p.returncode == 0 and os.path.exists(tmp):
+            os.replace(tmp, path)
+            out.append((path, d / tempo))
+        else:
+            out.append(r)
+    return out
+
+
 def say_many(items: list[tuple[str, str]]) -> list:
     """Narrate several lines at once [(text, wav_path)] → [(path, seconds) | None]. One model load per reel."""
-    items = [(rioplatense(t) if t else t, p) for t, p in items]
+    return _tempo(_say_many([(pausado(rioplatense(t)) if t else t, p) for t, p in items]))
+
+
+def _say_many(items: list[tuple[str, str]]) -> list:
     if engine() == "elevenlabs":
         need = sum(len(t) for t, _ in items if t)
         if eleven_left() >= need:
@@ -174,8 +220,8 @@ def say_many(items: list[tuple[str, str]]) -> list:
     fd, spec = tempfile.mkstemp(suffix=".json")
     with os.fdopen(fd, "w", encoding="utf-8") as f:
         json.dump({"jobs": jobs, "ref": REF if os.path.exists(REF) else None,
-                   "exaggeration": float(os.environ.get("REDES_VOZ_EMOCION", "0.8")),     # passionate
-                   "cfg": float(os.environ.get("REDES_VOZ_RITMO", "0.35"))}, f, ensure_ascii=False)
+                   "exaggeration": float(os.environ.get("REDES_VOZ_EMOCION", "0.3" if serio() else "0.8")),   # calm / passionate
+                   "cfg": float(os.environ.get("REDES_VOZ_RITMO", "0.3" if serio() else "0.35"))}, f, ensure_ascii=False)
     try:
         r = subprocess.run([VPY, os.path.join(HERE, "goldglitch_voz_worker.py"), spec], capture_output=True, text=True,
                            encoding="utf-8", errors="replace", timeout=1800, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
@@ -259,7 +305,7 @@ def say(text: str, path: str, speed: float = 1.0) -> tuple[str, float] | None:
         import numpy as np
         import soundfile as sf
         voice = os.environ.get("REDES_VOZ", "ef_dora")
-        chunks = [a for _, _, a in _pipe()(text, voice=voice, speed=speed)]
+        chunks = [a for _, _, a in _pipe()(text, voice=voice, speed=speed * (0.92 if serio() else 1.0))]
         if not chunks:
             return None
         audio = np.concatenate([c.numpy() if hasattr(c, "numpy") else c for c in chunks])
