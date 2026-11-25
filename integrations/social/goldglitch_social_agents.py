@@ -305,7 +305,7 @@ HOOKS (los mejores, probados en Shorts/Reels/TikTok; el gancho decide todo en el
   de esta noche que el modelo ve claros").
 - El gancho dice algo concreto (equipo, número, partido) en máx. 8 palabras; nada de saludos ni de "mira esto".
 - No uses la palabra "parche" en ganchos ni títulos (máximo una vez en el texto, y solo si suena natural).
-- voz_hook: la misma idea dicha en voz alta, natural (máx. 16 palabras). voz_cierre: cierre hablado (máx. 12 palabras).
+- voz_hook: la misma idea dicha en voz alta, natural (máx. 16 palabras). voz_cierre: cierre hablado (máx. 22 palabras) que SIEMPRE invita a registrarse gratis en easygoldglitch punto com y dice que el enlace está en el primer comentario (en Facebook: 'en la página').
   La voz es un RELATOR ARGENTINO apasionado por el fútbol: voseo rioplatense ("mirá", "vos", "tenés", "fijate", "che",
   "no sabés lo que es esto"), exclamaciones y energía de relato, sin groserías.
 SEO NATURAL (que suene a persona, no a lista de palabras clave): en los datos vienen "busquedas_reales" (lo que la gente

@@ -447,7 +447,42 @@ window.__lux=function(t,T){
  snow.forEach(f=>{const y=(f.y+t*f.sp)%H;const x=f.x+Math.sin(t*0.6+f.ph)*22*f.z;f.el.style.transform='translate('+x+'px,'+y+'px)'});
  // quieter, more expensive motion: slow down the stage sway set by the base engine
  document.querySelectorAll('[data-m=stage]').forEach(s=>{const k=S(t/1.0);s.style.transform='translateY('+((1-k)*40)+'px) scale('+(0.97+0.03*k)+')';s.style.opacity=S(t/0.6)});
+ choreo(t);
 };
+// ---- choreography: every scene stages its text differently, and each layer arrives on its own beat
+const cSc=(window.__scene||[0,1])[0],cSeed=((cSc*7919)+(document.body.innerText.length*31))%997;
+const cBIG=['mask','track','zoom','slide','flip','rise'][(cSc+cSeed)%6];
+const cSMALL=['type','blur','right','spread'][(cSc*3+cSeed)%4];
+const cKICK=['wipe','track','drop'][(cSc+cSeed*2)%3];
+const cGap=[0.07,0.1,0.13][cSeed%3];
+const cl1=x=>Math.min(1,Math.max(0,x));
+const cOb=x=>{const c=1.70158;x=cl1(x)-1;return 1+(c+1)*x*x*x+c*x*x};         // overshoot
+const cWs=[...document.querySelectorAll('[data-m=big] .m-w')];
+let cFit=false;const fitBig=()=>document.querySelectorAll('[data-m=big]').forEach(b=>{   // fit (after fonts load): no word may run past the card
+ let fs=parseFloat(getComputedStyle(b).fontSize),n=0;const lim=Math.min(b.clientWidth||W,W*0.84)*0.96;
+ while(n++<30&&fs>40&&[...b.querySelectorAll('.m-w')].some(w=>w.offsetWidth>lim)){fs*=0.94;b.style.fontSize=fs+'px'}});
+const cSmalls=[...document.querySelectorAll('[data-m=small]')],cKicks=[...document.querySelectorAll('[data-m=kick]')];
+const cTBig=0.2,cTSmall=cTBig+0.25+cGap*Math.max(1,cWs.length),cTKick=0.0;
+function choreo(t){
+ if(!cFit){cFit=true;const keep=cWs.map(w=>[w.style.letterSpacing,w.style.transform]);cWs.forEach(w=>{w.style.letterSpacing='';w.style.transform='none'});fitBig();cWs.forEach((w,i)=>{w.style.letterSpacing=keep[i][0];w.style.transform=keep[i][1]})}
+ cKicks.forEach(k=>{const p=cl1((t-cTKick)/0.5),e=S(p);
+  if(cKICK==='wipe'){k.style.clipPath='inset(0 '+((1-e)*50)+'% 0 '+((1-e)*50)+'%)';k.style.opacity=1;k.style.transform='none'}
+  else if(cKICK==='track'){k.style.letterSpacing=(0.9-0.6*e)+'em';k.style.opacity=e;k.style.filter='blur('+((1-e)*8)+'px)';k.style.transform='none'}});
+ cWs.forEach((w,i)=>{const p=cl1((t-cTBig-cGap*i)/0.55),e=S(p),o=cOb(p);
+  const idle=p>=1?'translateY('+(Math.sin(t*1.6+i*0.9)*3)+'px)':'';
+  if(cBIG==='rise'){if(p>=1)w.style.transform=idle;return}
+  w.style.opacity=Math.min(1,p*2);w.style.filter='none';w.style.clipPath='none';w.style.letterSpacing='';
+  if(cBIG==='mask'){w.style.clipPath='inset('+((1-e)*100)+'% -20% -20% -20%)';w.style.transform='translateY('+((1-e)*60)+'px) '+idle;w.style.opacity=1}
+  else if(cBIG==='track'){w.style.letterSpacing=((1-e)*0.55)+'em';w.style.filter='blur('+((1-e)*16)+'px)';w.style.transform=idle}
+  else if(cBIG==='zoom'){w.style.transform='scale('+(2.1-1.1*o)+') '+idle;w.style.filter='blur('+((1-e)*14)+'px)'}
+  else if(cBIG==='slide'){const d=i%2?1:-1;w.style.transform='translateX('+(d*(1-o)*700)+'px) skewX('+(d*(1-e)*-28)+'deg) '+idle;w.style.filter='blur('+((1-e)*10)+'px)'}
+  else if(cBIG==='flip'){w.style.transform='perspective(900px) rotateY('+((1-o)*95)+'deg) '+idle;w.style.transformOrigin='0% 50%'}});
+ cSmalls.forEach(el=>{const p=cl1((t-cTSmall)/0.6),e=S(p);el.style.transform='none';el.style.filter='none';el.style.clipPath='none';el.style.opacity=1;el.style.letterSpacing='';
+  if(cSMALL==='type'){el.style.clipPath='inset(0 '+((1-Math.floor(e*24)/24)*100)+'% 0 0)'}
+  else if(cSMALL==='blur'){el.style.opacity=e;el.style.filter='blur('+((1-e)*14)+'px)';el.style.transform='translateY('+((1-e)*24)+'px)'}
+  else if(cSMALL==='right'){el.style.opacity=e;el.style.transform='translateX('+((1-cOb(p))*260)+'px)'}
+  else {el.style.opacity=e;el.style.letterSpacing=((1-e)*0.5)+'em';el.style.filter='blur('+((1-e)*6)+'px)'}});
+}
 })();
 </script>
 """

@@ -382,6 +382,21 @@ class AgentMeta:
         task += trending_audio_step("Facebook", "Facebook/Meta", self.audio_vibe)
         return self.agent.run(task, self.fb_page or "https://www.facebook.com/", [path], caption, self.rehearsal, "facebook")
 
+    def first_comment(self, net: str, ref, text: str) -> str:
+        if self.rehearsal:          # a rehearsal never comments
+            return "ensayo"
+        if net == "instagram" and self.ig:
+            task = ("En Instagram, abre el perfil de la cuenta (icono 'Perfil'), abre la publicación MÁS RECIENTE (la primera "
+                    "que NO tenga el icono de fijada), haz clic en 'Agrega un comentario…', usa escribir_texto_preparado y "
+                    "pulsa 'Publicar'. " + "Después fíjalo: pasa el cursor sobre TU comentario, abre su menú '…' y elige 'Fijar' / 'Pin' (si no existe esa opción, déjalo así). No publiques nada más, no respondas a nadie y no cambies nada del video.")
+            return self.agent.run(task, "https://www.instagram.com/", [], text, self.rehearsal, "instagram")
+        if net == "facebook" and self.fb_page:
+            task = ("En Facebook, abre la página de EGG, busca la publicación MÁS RECIENTE de la página (no una fijada), haz "
+                    "clic en 'Comentar' / 'Escribe un comentario', usa escribir_texto_preparado y pulsa Enter. "
+                    "Comenta como la página (no como persona). " + "Después fíjalo: pasa el cursor sobre TU comentario, abre su menú '…' y elige 'Fijar' / 'Pin' (si no existe esa opción, déjalo así). No publiques nada más, no respondas a nadie y no cambies nada del video.")
+            return self.agent.run(task, self.fb_page or "https://www.facebook.com/", [], text, self.rehearsal, "facebook")
+        return ""
+
     def ig_recent_comments(self, media_limit: int = 12) -> list[dict]:
         return []
 
@@ -425,6 +440,15 @@ class AgentTikTok:
                               self.rehearsal, "tiktok")
 
 
+    def first_comment(self, net: str, ref, text: str) -> str:
+        if self.rehearsal:          # a rehearsal never comments
+            return "ensayo"
+        task = ("En TikTok, abre tu perfil (icono 'Perfil'), abre el video MÁS RECIENTE (el primero que NO tenga la etiqueta "
+                "'Fijado'), haz clic en el cuadro 'Añadir comentario…', usa escribir_texto_preparado y pulsa 'Publicar'. "
+                + "Después fíjalo: pasa el cursor sobre TU comentario, abre su menú '…' y elige 'Fijar' / 'Pin' (si no existe esa opción, déjalo así). No publiques nada más, no respondas a nadie y no cambies nada del video.")
+        return self.agent.run(task, "https://www.tiktok.com/", [], text, self.rehearsal, "tiktok")
+
+
 class AgentYouTube:
     """YouTube Shorts through YouTube Studio (the reels are vertical and short, so they are Shorts)."""
     local = True
@@ -449,6 +473,15 @@ class AgentYouTube:
         except TypeError:       # API screen agent: no named texts
             return run(task.replace("escribir_texto_guardado('titulo')", f"escribir con el texto: {title[:95]}"),
                        "https://studio.youtube.com/", [path], description, self.rehearsal, "youtube")
+
+
+    def first_comment(self, net: str, ref, text: str) -> str:
+        if self.rehearsal:          # a rehearsal never comments
+            return "ensayo"
+        task = ("En YouTube, abre el canal de EGG > pestaña 'Shorts', abre el Short MÁS RECIENTE, abre los comentarios, "
+                "haz clic en 'Agrega un comentario…', usa escribir_texto_preparado y pulsa 'Comentar'. Si YouTube pide "
+                "verificar el teléfono para fijar, NO lo fijes. " + "Después fíjalo: pasa el cursor sobre TU comentario, abre su menú '…' y elige 'Fijar' / 'Pin' (si no existe esa opción, déjalo así). No publiques nada más, no respondas a nadie y no cambies nada del video.")
+        return self.agent.run(task, "https://www.youtube.com/", [], text, self.rehearsal, "youtube")
 
 
 COMMUNITY_SYSTEM = """Eres el community manager de EGG (Goldglitch Stats), la amiga gomela caleña que sabe más fútbol que todo el
