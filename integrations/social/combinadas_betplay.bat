@@ -2,7 +2,8 @@
 chcp 65001 >nul
 REM COMBINADAS: picks del modelo de 80%+ cruzados con las cuotas PUBLICAS de BetPlay (no entra a tu cuenta, no apuesta).
 REM Al menos 3 opciones con cuota total mayor a 2: 1 de un mismo partido y 2 de partidos distintos.
-REM Te pregunta el dinero disponible y sugiere cuanto poner en cada opcion. Deja el reporte en reportes\ y lo abre.
+REM Te pregunta el monto total y arma un portafolio: seguras (cuota 2-3), medias (3-10) y profit (10-100), minimo $500 por boleto.
+REM Deja el reporte en reportes\ y lo abre.
 cd /d "%~dp0"
 set COMB_MIN_P=0.80
 set PY=python
