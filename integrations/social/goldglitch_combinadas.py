@@ -8,8 +8,9 @@ Qué hace:
   3. Deja al menos 3 opciones con cuota total mayor a 2: una de 2 o 3 selecciones de UN MISMO partido (en BetPlay:
      'Crea tu apuesta') y dos combinando partidos distintos (máximo 3 selecciones). Si falta de un tipo, completa
      con el otro. Con la probabilidad del modelo y la que ha tenido en la realidad.
-  4. Te pregunta cuánto dinero vas a apostar y lo reparte TODO entre las opciones: más donde la ventaja (criterio de
-     Kelly sobre la probabilidad real) es mayor; si ninguna tiene ventaja, según la probabilidad real.
+  4. Te pregunta cuánto dinero vas a apostar y arma un PORTAFOLIO con todo: boletos seguros (cuota 2-3), medios (3-10)
+     y de profit (10-100), mínimo $500 cada uno, repartidos para el mayor crecimiento esperado (simulación de 20.000
+     jornadas). Te dice la probabilidad real de terminar arriba, de llegar a 2X y de perderlo todo.
 Tú revisas el reporte y, si quieres, armas la apuesta en BetPlay. Es información, no una recomendación.
 
     python goldglitch_combinadas.py                # reporte en reportes\\combinadas_FECHA.html (se abre solo)
@@ -415,7 +416,7 @@ def ask_bank() -> float:
     v = os.environ.get("COMB_BANCA", "").strip()
     if not v and sys.stdin and sys.stdin.isatty():
         try:
-            v = input("\n¿Cuánto dinero vas a apostar? Se reparte todo (pesos, ej. 200000; Enter para omitir): ").strip()
+            v = input("\n¿Cuánto dinero vas a apostar en total? Se reparte todo en seguras, medias y de profit (pesos, mínimo 500; Enter para omitir): ").strip()
         except EOFError:
             v = ""
     v = re.sub(r"[^\d]", "", v or "")
@@ -582,8 +583,14 @@ def main() -> int:
         if l["event"] not in used and len(best) < max_sel:
             best.append(l)
             used.add(l["event"])
-    for x, st in zip(opts, stakes(opts, bank) if bank else [None] * len(opts)):
-        x["stake"] = st
+    port = None
+    if bank:                                   # the money goes to a portfolio of safe / medium / profit tickets
+        import goldglitch_portafolio as P
+        port = P.run(legs, combos_same(legs, min_odds, max_sel, 40), bank, OUTDIR, {"min_p": min_p, "hit": hit})
+        if not port:
+            print(f"  no armé portafolio: hacen falta picks con cuota y al menos {money(P.MIN_STAKE)}.")
+    for x in opts:
+        x["stake"] = None
     path = report(opts, {"top": top[:12], "best": best, "min_p": min_p, "picks": len(picks), "matched": len(legs), "max_sel": max_sel,
                          "min_odds": min_odds, "unmatched": unmatched, "hit": hit, "bank": bank})
     for i, x in enumerate(opts, 1):
@@ -594,8 +601,10 @@ def main() -> int:
     if len(opts) < want:
         print(f"\nSolo encontré {len(opts)} opciones que cumplen todo (con picks de {min_p * 100:.0f}%+ las cuotas suelen ser bajas).")
     print(f"\nReporte: {path}")
+    if port:
+        print(f"Portafolio: {port}")
     if os.name == "nt":
-        os.startfile(path)  # type: ignore[attr-defined]
+        os.startfile(port or path)  # type: ignore[attr-defined]
     return 0
 
 
