@@ -117,7 +117,7 @@ export function AppHome() {
       {/* Summary: one quiet strip instead of three boxes */}
       <dl className="grid grid-cols-3 divide-x divide-[var(--border-soft)] rounded-xl border border-line">
         <Stat label="partidos" value={view ? String(view.upcoming.length) : "·"} />
-        <Stat label="picks de 75%+" value={view ? String(view.picks) : "·"} locked={!pro && !!view?.picks} />
+        <Stat label="picks de 80%+" value={view ? String(view.picks) : "·"} locked={!pro && !!view?.picks} />
         <Stat label="mejor pick" p={pro && view?.best ? view.best : undefined} value={view ? "—" : "·"} locked={!pro && !!view?.picks} />
       </dl>
 
@@ -195,7 +195,7 @@ export function AppHome() {
             </ul>
           ) : (
             <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line p-4">
-              <p className="text-sm text-mid">Hay <span className="num text-gold">{view.picks}</span> selecciones con 75% o más en estos partidos. Los picks son parte de Pro.</p>
+              <p className="text-sm text-mid">Hay <span className="num text-gold">{view.picks}</span> selecciones con 80% o más en estos partidos. Los picks son parte de Pro.</p>
               <Link href="/planes" className="btn-gold px-4 py-2 text-sm">Ver planes</Link>
             </div>
           )}
@@ -302,7 +302,7 @@ function Row({ m, pro, three, crest }: { m: M; pro: boolean; three: boolean; cre
                 {n > 1 && <span className="text-lo">+{n - 1}</span>}
               </>
             ) : (
-              <span className="text-lo">{n} pick{n === 1 ? "" : "s"} de 75%+ · <span className="text-gold">Pro</span></span>
+              <span className="text-lo">{n} pick{n === 1 ? "" : "s"} de 80%+ · <span className="text-gold">Pro</span></span>
             )}
           </div>
         )}

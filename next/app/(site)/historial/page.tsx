@@ -37,9 +37,11 @@ export default async function HistorialPage() {
         <p className="eyebrow">Seguimiento de picks</p>
         <h2 className="mt-2 text-2xl font-semibold tracking-tight">Cada pick que el sistema escoge, acertado o fallado</h2>
         <p className="mt-2 text-mid max-w-3xl text-sm leading-relaxed">
-          Cada pick que mostramos (toda selección con 75% o más según el modelo, en todos los deportes) queda guardado antes
+          Cada pick que mostramos (toda selección con 80% o más según el modelo, en todos los deportes) queda guardado antes
           de que empiece el partido y se liquida con el resultado real. No se borra ni se edita nada después del inicio. Un pick de 85% debe
           fallar más o menos 15 de cada 100 veces: lo que medimos es si la tasa real se parece a la que estimó el modelo.
+          Desde el 25 de noviembre de 2026 el umbral de pick es 80%: este historial cuenta todos los picks de 80% o más, también
+          los anteriores a esa fecha. Los de 75–80% que se mostraron antes siguen guardados y no se borraron, pero ya no son picks.
         </p>
         <TrackRecord featured={featured} value={value} rows={recent} />
       </div>

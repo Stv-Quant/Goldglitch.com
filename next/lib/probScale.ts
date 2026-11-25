@@ -19,5 +19,5 @@ export function probStep(p: number): ProbStep {
 
 export const probColor = (p: number) => probStep(p).color;
 
-/** ≥75%: the model's strong calls get a soft glow. */
-export const isHot = (p: number) => p >= 0.75;
+/** ≥80%: the model's picks get a soft glow. */
+export const isHot = (p: number) => p >= 0.8;

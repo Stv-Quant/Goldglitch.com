@@ -16,7 +16,7 @@ export type SavedSlip = {
 
 /**
  * Rebuilds each requested leg from the model's current picks (never trusts the probability sent by the browser).
- * Only picks at 75%+ of matches that have not started qualify: those are the ones SQPC tracks and settles.
+ * Only picks at 80%+ of matches that have not started qualify: those are the ones SQPC tracks and settles.
  */
 export async function resolveLegs(wanted: { matchId: string; label: string }[]): Promise<Leg[] | string> {
   if (wanted.length < 2) return "Una combinada necesita al menos 2 selecciones.";
@@ -33,7 +33,7 @@ export async function resolveLegs(wanted: { matchId: string; label: string }[]):
                  FROM predictions p, json_each(p.payload, '$.picks')
                 WHERE p.match_id = m.id
                   AND p.generated_at = (SELECT max(generated_at) FROM predictions WHERE match_id = m.id)
-                  AND json_extract(value, '$.p') >= 0.75 AND json_extract(value, '$.p') < 0.995) AS picks
+                  AND json_extract(value, '$.p') >= 0.8 AND json_extract(value, '$.p') < 0.995) AS picks
          FROM matches m
          JOIN competitions c ON c.id = m.competition_id
          JOIN teams th ON th.id = m.home_team_id
@@ -51,7 +51,7 @@ export async function resolveLegs(wanted: { matchId: string; label: string }[]):
     if (m.kickoffAt <= now) return `${m.home} vs ${m.away} ya empezó: quita esa selección.`;
     const picks = JSON.parse(m.picks ?? "[]") as { label: string; group: string; p: number; lo: number | null; hi: number | null }[];
     const k = picks.filter((x) => x.label === w.label).sort((a, b) => b.p - a.p)[0];
-    if (!k) return `“${w.label}” ya no es un pick de 75% o más: quítala.`;
+    if (!k) return `“${w.label}” ya no es un pick de 80% o más: quítala.`;
     legs.push({
       matchId: m.matchId, sport: m.sport, competition: m.competition, home: m.home, away: m.away, kickoffAt: m.kickoffAt,
       label: k.label, group: k.group ?? "Otros", p: k.p, lo: k.lo, hi: k.hi,

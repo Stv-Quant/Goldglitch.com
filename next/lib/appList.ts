@@ -11,7 +11,7 @@ import { getDB } from "./env";
  * request) parsing and rendering hundreds of matches on the server was what caused error 1102.
  *
  * Per match: id, sport, ko (kickoff ms), st (status), hs/as (score), c/cn (competition), h/hn/a/an (names, shorts),
- * o {h,d,a} (1X2), k {n: picks at 75%+, l/p: strongest pick — Pro only}.
+ * o {h,d,a} (1X2), k {n: picks at 80%+, l/p: strongest pick — Pro only}.
  */
 // Same wording as pickLabel() / SQPC's label_of.
 export const LABEL = `CASE WHEN COALESCE(json_extract(value, '$.market'), '') = ''
@@ -30,7 +30,7 @@ const CAND = `SELECT lbl, pp FROM (
     UNION ALL SELECT 'Gana ' || ta.name, pr.p_away WHERE ${NO_PICKS}
     UNION ALL SELECT 'Empate', pr.p_draw WHERE ${NO_PICKS} AND pr.p_draw IS NOT NULL
     UNION ALL SELECT json_extract(value, '$.label'), json_extract(value, '$.p') FROM json_each(pr.payload, '$.markets') WHERE ${NO_PICKS}
-  ) WHERE pp >= 0.75 AND pp < 0.995`;
+  ) WHERE pp >= 0.8 AND pp < 0.995`;
 
 export async function compactList(tier: Tier, fromMs: number, toMs: number): Promise<string> {
   const db = await getDB();
