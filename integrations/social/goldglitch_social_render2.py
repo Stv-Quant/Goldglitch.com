@@ -536,7 +536,7 @@ def _art_layer(h: int) -> str:
     if not path or not os.path.exists(path):
         return ""
     return (f"<div data-m='art' style='position:absolute;inset:-4%;background:url({_data_uri(path)}) center/cover no-repeat'></div>"
-            "<div style='position:absolute;inset:0;background:linear-gradient(180deg,rgba(5,4,3,.38) 0%,rgba(5,4,3,.42) 40%,"
+            "<div data-m='shade' style='position:absolute;inset:0;background:linear-gradient(180deg,rgba(5,4,3,.38) 0%,rgba(5,4,3,.42) 40%,"
             "rgba(5,4,3,.70) 75%,rgba(5,4,3,.9) 100%)'></div><style>.wrap{text-shadow:0 4px 26px rgba(0,0,0,.9)}</style>")
 
 
@@ -1134,8 +1134,11 @@ def beat(path: str, seconds: float, bpm: int = 148, cuts: list[tuple[float, str]
 
 TRANSITIONS = ["zoomin", "slideup", "smoothleft", "circleopen", "fadewhite", "slidedown", "radial", "smoothup"]
 LOOK: dict = {}
-LOOKS = ("terminal", "marcador", "ultima_hora", "neon", "editorial", "tablero")
+LOOKS = ("diario", "cuaderno", "trapo", "cartel", "album", "marcador")
 LOOK_TRANSITIONS = {
+    "diario": ["slideleft", "wipeleft", "slideup", "wiperight"], "cuaderno": ["slideup", "wipeup", "slidedown", "smoothleft"],
+    "trapo": ["squeezeh", "wipeleft", "slideright", "squeezev"], "cartel": ["hlslice", "vuslice", "slideleft", "zoomin"],
+    "album": ["circleopen", "slideup", "radial", "wipetl"],
     "terminal": ["pixelize", "slideup", "smoothleft", "zoomin"], "marcador": ["wipeleft", "slideup", "wiperight", "zoomin"],
     "ultima_hora": ["slideleft", "fadewhite", "slideright", "squeezev"], "neon": ["hlslice", "vrslice", "pixelize", "radial"],
     "editorial": ["fade", "smoothup", "fadeblack", "smoothleft"], "tablero": ["wipeup", "circleopen", "wipedown", "smoothright"],
@@ -1217,7 +1220,7 @@ def _motion_video(frames, lens, voice, name, M, T) -> str:
     dirs = M.render_scenes([f[0] for f in frames], lens, d, LOOK.get("look") or "terminal")
     inputs, parts = [], []
     for i, (dd, (_, _secs, fx, _say)) in enumerate(zip(dirs, frames)):
-        inputs += ["-framerate", str(M.FPS), "-i", os.path.join(dd, "%04d.jpg")]
+        inputs += ["-framerate", str(M.fps_for(LOOK.get("look") or "terminal")), "-i", os.path.join(dd, "%04d.jpg")]
         glitch = ",rgbashift=rh=-10:bh=10:gv=4:enable='lt(t,0.12)'"          # the gold glitch cut, every scene
         flash = ",fade=t=in:st=0:d=0.10:color=white" if fx == "flash" else ""
         parts.append(f"[{i}:v]fps=30,scale=1080:1920,format=yuv420p,setsar=1{glitch}{flash},vignette=PI/6,"

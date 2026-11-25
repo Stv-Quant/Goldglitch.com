@@ -493,12 +493,12 @@ FOMO_SHARE = {"tiktok": 0.7}        # TikTok: mostly curiosity pieces; elsewhere
 
 
 LOOK_BRIEF = {
-    "terminal": "TERMINAL DE DATOS: tono de analista frío que descubre algo; gancho tipo 'el modelo detectó…'",
+    "diario": "PORTADA DE DIARIO DEPORTIVO: titular de periódico, corto y contundente, como Olé o El Gráfico",
+    "cuaderno": "CUADERNO DEL ANALISTA: tono de amigo que te explica a mano lo que encontró; cercano, con '¡ojo con esto!'",
+    "trapo": "TRAPO DE LA BARRA: tono de hincha apasionado, de tribuna, orgullo del equipo; frases para cantar",
+    "cartel": "CARTEL DE BARRIO: tono de anuncio fiestero, gritado, con energía de evento ('¡ESTA NOCHE!')",
+    "album": "LÁMINA DEL ÁLBUM: el partido como una lámina coleccionable; tono de 'esta no te puede faltar'",
     "marcador": "MARCADOR DE ESTADIO EN VIVO: tono de transmisión, energía de previa; gancho tipo 'esta noche se juega…'",
-    "ultima_hora": "ÚLTIMA HORA: tono de noticia urgente; gancho tipo 'ÚLTIMA HORA: …' con el dato como noticia",
-    "neon": "NOCHE NEÓN: tono de hype nocturno y competitivo; gancho corto y provocador",
-    "editorial": "EDITORIAL DE LUJO: tono de historia elegante, pausado; gancho tipo 'hay un número que nadie está mirando'",
-    "tablero": "PIZARRA TÁCTICA: tono de entrenador que explica por qué; gancho tipo 'te explico por qué pasa esto'",
 }
 
 
