@@ -29,7 +29,7 @@ TOP_LEAGUES = [
     (("copa libertadores", "libertadores", "lib"), "Copa Libertadores", "CopaLibertadores", 0),
     (("premier league", "e0"), "Premier League", "PremierLeague", 1),
     (("laliga", "la liga", "sp1"), "LaLiga", "LaLiga", 1),
-    (("liga betplay", "betplay", "col"), "Liga BetPlay", "LigaBetPlay", 1),
+    (("liga betplay", "betplay", "liga colombiana", "col"), "Liga Colombiana", "FutbolColombiano", 1),
     (("serie a", "i1"), "Serie A", "SerieA", 2),
     (("bundesliga", "d1"), "Bundesliga", "Bundesliga", 2),
     (("brasileirão", "brasileirao", "bra"), "Brasileirão", "Brasileirao", 2),
@@ -43,12 +43,12 @@ TOP_LEAGUES = [
 ]
 ESPN_SLUG = {"Champions League": "uefa.champions", "Europa League": "uefa.europa", "Premier League": "eng.1", "LaLiga": "esp.1",
              "Serie A": "ita.1", "Bundesliga": "ger.1", "Ligue 1": "fra.1", "Primeira Liga": "por.1", "Eredivisie": "ned.1",
-             "Liga BetPlay": "col.1", "Brasileirão": "bra.1", "Liga Profesional Argentina": "arg.1", "Liga MX": "mex.1",
+             "Liga Colombiana": "col.1", "Brasileirão": "bra.1", "Liga Profesional Argentina": "arg.1", "Liga MX": "mex.1",
              "Copa Libertadores": "conmebol.libertadores", "Copa Sudamericana": "conmebol.sudamericana"}
 EXCLUDE = ("2.", " 2", "segunda", "serie b", "championship", "ligue 2", "laliga 2", "austria", "premiership")
 
 ACCENT = {"Champions League": "#4f8cff", "Europa League": "#ff8a1f", "Premier League": "#a25cff", "LaLiga": "#ff4d6d",
-          "Serie A": "#2fb6ff", "Bundesliga": "#ff3b3b", "Ligue 1": "#d8ff3c", "Liga BetPlay": "#ffd23f",
+          "Serie A": "#2fb6ff", "Bundesliga": "#ff3b3b", "Ligue 1": "#d8ff3c", "Liga Colombiana": "#ffd23f",
           "Copa Libertadores": "#ffcc33", "Copa Sudamericana": "#3ad1a7", "Brasileirão": "#2ee66b",
           "Liga Profesional Argentina": "#7cc7ff", "Liga MX": "#21d4a0", "Primeira Liga": "#ff5a36", "Eredivisie": "#ff7a00"}
 
@@ -106,7 +106,7 @@ def famous_picks(rows: list[dict], n: int = 4) -> list[dict]:
     fame = lambda r: sum(f in (r["home"] + " " + r["away"]).lower() for f in FAMOUS)
     cands.sort(key=lambda r: (-fame(r), r["_rank"], -float(r["p"])))
     out: list[dict] = []
-    for pool in (lambda r: r["league"] == "Liga BetPlay", lambda r: r["league"] in SOUTH, lambda r: r["league"] in EUROPE):
+    for pool in (lambda r: r["league"] == "Liga Colombiana", lambda r: r["league"] in SOUTH, lambda r: r["league"] in EUROPE):
         pick = next((r for r in cands if pool(r) and r not in out and fame(r)), None) or next((r for r in cands if pool(r) and r not in out), None)
         if pick:
             out.append(pick)
@@ -505,8 +505,9 @@ def set_safe(on: bool) -> None:
 
 def base(body: str, w: int, h: int, accent: str | None = None, watermark: str = "") -> str:
     accent = accent or house()
+    from goldglitch_lenguaje import brand_clean, safe_text
+    body, watermark = brand_clean(body), brand_clean(watermark)      # no bookmaker brand on any network
     if SAFE["on"]:
-        from goldglitch_lenguaje import safe_text
         body, watermark = safe_text(body), safe_text(watermark)
     wm = (f"<div style='position:absolute;right:-40px;top:38%;font-family:Anton;font-size:{int(w * .26)}px;line-height:.85;"
           f"color:rgba(255,255,255,.035);text-transform:uppercase;transform:rotate(-8deg);white-space:nowrap'>{esc(watermark)}</div>") if watermark else ""
@@ -1184,8 +1185,9 @@ def _voiceover(frames: list[tuple], name: str) -> list:
     except Exception:
         return [None] * len(frames)
     items = [(strip_emoji(fr[3] or "").strip(), os.path.join(OUT, f"{name}_voz_{i}.wav")) for i, fr in enumerate(frames)]
+    from goldglitch_lenguaje import brand_clean, safe_text
+    items = [(brand_clean(t) if t else t, p) for t, p in items]
     if SAFE["on"]:
-        from goldglitch_lenguaje import safe_text
         items = [(safe_text(t) if t else t, p) for t, p in items]
     return VZ.say_many(items)
 

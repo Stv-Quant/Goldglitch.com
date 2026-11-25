@@ -309,7 +309,9 @@ def trending_audio_step(app: str, library: str, vibe: str) -> str:
             "'Música', 'Agregar audio', 'Sonidos', ícono de nota musical). Abre la pestaña 'En tendencia' / 'Tendencias' / "
             f"'Para ti' (o el ícono ↗ de audio en tendencia) y elige un audio en tendencia que encaje con el video"
             f"{' (vibra: ' + vibe + ')' if vibe else ''}, preferiblemente con muchos reels usándolo. Ponlo como audio "
-            f"principal y baja el 'audio original' / 'sonido original' a 0 (el del video es solo un ritmo de relleno).{search} "
+            f"de fondo: deja el 'audio original' / 'sonido original' en 100% (lleva la VOZ del relator, nunca lo bajes ni lo "
+            f"quites) y el audio en tendencia en 10-15%. Descarta canciones con letra explícita, violenta, de drogas, de "
+            f"dinero fácil o de apuestas (si dudas, no pongas audio).{search} "
             f"Usa SOLO audios de la biblioteca de {library}; nunca subas ni busques música por fuera. Si la opción de audio "
             "no existe en la versión web, o el audio dice que no está disponible para esta cuenta, publica sin cambiarlo "
             "y dilo en el detalle de terminar (qué audio pusiste o por qué no).")

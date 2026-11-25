@@ -102,7 +102,7 @@ BANNED = re.compile(r"\b(cuotas?|apuest\w*|apostar\w*|apostador\w*|stake|bank|fi
 
 POST_TYPES = {
     "resultados": "Resumen de los picks ya jugados (acertados y fallados) — carrusel + video vertical.",
-    "picks_dia": "Los picks más probables de las ligas top (Champions, Premier, LaLiga, Serie A, Bundesliga, Liga BetPlay, Brasileirão, Liga MX, Argentina, Libertadores…) — carrusel premium.",
+    "picks_dia": "Los picks más probables de las ligas top (Champions, Premier, LaLiga, Serie A, Bundesliga, liga colombiana, Brasileirão, Liga MX, Argentina, Libertadores…) — carrusel premium.",
     "reel": "Reel vertical de ritmo rápido (cortes, zoom, destellos, beat original) con los picks top o los resultados — Instagram Reels, Facebook y TikTok.",
     "educativo": "Pieza educativa de una imagen sobre probabilidad o cómo leer los datos.",
     "pregunta": "Pregunta a la comunidad para generar comentarios y compartidos (imagen con la pregunta).",
@@ -308,6 +308,7 @@ HOOKS (los mejores, probados en Shorts/Reels/TikTok; el gancho decide todo en el
 - voz_hook: la misma idea dicha en voz alta, natural (máx. 16 palabras). voz_cierre: cierre hablado (máx. 22 palabras) que SIEMPRE invita a registrarse gratis en easygoldglitch punto com y dice que el enlace está en el primer comentario (en Facebook: 'en la página').
   La voz es un RELATOR ARGENTINO apasionado por el fútbol: voseo rioplatense ("mirá", "vos", "tenés", "fijate", "che",
   "no sabés lo que es esto"), exclamaciones y energía de relato, sin groserías.
+MARCAS: NUNCA nombres casas de apuestas ni ligas por su patrocinador de apuestas (di "liga colombiana", no "Liga BetPlay"); nada de raspa y gana, loterías ni dinero.
 SEO NATURAL (que suene a persona, no a lista de palabras clave): en los datos vienen "busquedas_reales" (lo que la gente
 escribe en YouTube/Google/TikTok). Toma UNA de esas búsquedas (sin palabras de apuestas) y dila como la diría alguien en
 la primera línea de tiktok/ig y en el título de YouTube; nunca repitas la misma palabra clave dos veces ni pongas listas
@@ -461,7 +462,7 @@ Formato: {{"puntajes":{{...}}, "mejorado":{{solo las claves que reescribiste}}}}
     @staticmethod
     def _fallback(post: dict, data: dict) -> dict:
         tags = ["futbol", "football", "soccer", "fyp", "parati", "viral", "championsleague", "premierleague", "laliga",
-                "seriea", "bundesliga", "ligabetplay", "futbolcolombiano", "futbollatino", "futboleuropeo", "datosdefutbol",
+                "seriea", "bundesliga", "futbolcolombiano", "futbollatino", "futboleuropeo", "datosdefutbol",
                 "statsfutbol", "golazo", "futbolcolombia", "libertadores", "estadistica", "datos", "probabilidad",
                 "analisisdeportivo", "futbolconsdatos", "goldglitch", "goldglitchstats", "deportes"]
         if post["type"] == "resultados":

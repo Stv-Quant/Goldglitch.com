@@ -58,6 +58,20 @@ def nice_label(label: str) -> str:
     return s
 
 
+BRAND_SWAPS = [   # bookmaker names, including league sponsors: never on screen, in the voice or in tags (any network)
+    (r"\bLiga\s+Bet\s?[Pp]lay(\s+Dimayor)?\b", "Liga Colombiana"), (r"\bLIGA\s+BET\s?PLAY(\s+DIMAYOR)?\b", "LIGA COLOMBIANA"),
+    (r"\bTorneo\s+Bet\s?[Pp]lay\b", "Torneo Colombiano"), (r"\bCopa\s+Bet\s?[Pp]lay\b", "Copa Colombia"),
+    (r"\bligabetplay\b", "futbolcolombiano"), (r"\b(Bet\s?[Pp]lay|BETPLAY|betplay|Wplay|WPLAY|Rushbet|Codere|Betsson|bet365|1xbet|Stake)\b", "Colombia"),
+]
+
+
+def brand_clean(text: str) -> str:
+    out = str(text or "")
+    for pat, rep in BRAND_SWAPS:
+        out = re.sub(pat, rep, out)
+    return out
+
+
 _SWAPS = [
     (r"\bpicks bloqueados\b", "datos bloqueados"), (r"\bPick bloqueado\b", "Dato bloqueado"), (r"\bPICK BLOQUEADO\b", "DATO BLOQUEADO"),
     (r"\bpick bloqueado\b", "dato bloqueado"), (r"\bmercado oculto\b", "dato oculto"), (r"\bel mercado\b", "el dato"),
@@ -66,15 +80,15 @@ _SWAPS = [
     (r"\bPronósticos\b", "Predicciones"), (r"\bpronóstico\b", "predicción"), (r"\bPronóstico\b", "Predicción"),
     (r"¿\s*[Ee]ntra o no entra\s*\?", "¿Se cumple o no?"), (r"\b[Ee]ntra o no entra\b", "se cumple o no"),
     (r"\bcuotas?\b", "números"), (r"\bapuestas?\b", "jugadas"), (r"\bapostar\b", "jugar"), (r"\bparlays?\b", "combinaciones"),
-    (r"\b(fijas?|seguras?)\b", "fuertes"), (r"\s*[·|-]?\s*\+18\b", ""), (r"\+ ?18\s*·\s*", ""),
+    (r"\b(fijas?|seguras?)\b", "fuertes"), (r"\bRASP[ÁA]\b", "EL DATO"), (r"\b[Rr]asp[áa]\b", "mirá"), (r"\s*[·|-]?\s*\+18\b", ""), (r"\+ ?18\s*·\s*", ""),
 ]
 BAD_TAGS = re.compile(r"^(picks?|pronosticos?|pronósticos?|apuestas?|apuesta|betting|bet|bets|parlay|cuotas?|tipster|"
-                      r"fijas?|stake|apuestasdeportivas|apuestadeportiva|sportsbetting|odds)$", re.I)
+                      r"fijas?|stake|apuestasdeportivas|ligabetplay|betplay|wplay|rushbet|codere|bet365|1xbet|raspa|raspadita|loteria|lotería|apuestadeportiva|sportsbetting|odds)$", re.I)
 
 
 def safe_text(text: str) -> str:
     """Betting words out, statistics words in (TikTok)."""
-    out = str(text or "")
+    out = brand_clean(text)
     for pat, rep in _SWAPS:
         out = re.sub(pat, rep, out)
     return re.sub(r"[ \t]{2,}", " ", out)
