@@ -535,7 +535,7 @@ def _art_layer(h: int) -> str:
     path = BG["reel"] if h >= 1600 else BG["feed"]
     if not path or not os.path.exists(path):
         return ""
-    return (f"<div style='position:absolute;inset:0;background:url({_data_uri(path)}) center/cover no-repeat'></div>"
+    return (f"<div data-m='art' style='position:absolute;inset:-4%;background:url({_data_uri(path)}) center/cover no-repeat'></div>"
             "<div style='position:absolute;inset:0;background:linear-gradient(180deg,rgba(5,4,3,.38) 0%,rgba(5,4,3,.42) 40%,"
             "rgba(5,4,3,.70) 75%,rgba(5,4,3,.9) 100%)'></div><style>.wrap{text-shadow:0 4px 26px rgba(0,0,0,.9)}</style>")
 
@@ -908,7 +908,7 @@ def story(thumb: str | None, headline: str, kicker: str, is_video: bool, w: int 
 def reel_frame(big: str, small: str = "", color: str = "#f3ecdc", accent: str | None = None, glitch: bool = True,
                badge_names: tuple[str, str] | None = None, top: str = "", kicker: str = "", tilt: int = 8,
                bars: list[tuple[str, float, str]] | None = None, host: str | None = None,
-               face: tuple[str, str] | None = None) -> str:
+               face: tuple[str, str] | None = None, split_chars: bool = False, foot: str = "") -> str:
     """One scene. Depth: blurred giant echo of the text behind, 3D tilt, glow and floating light.
     host: mood of EGG's avatar presenting the scene (bottom-left), e.g. shock | smug | wink | laugh."""
     accent = accent or house()
@@ -918,21 +918,21 @@ def reel_frame(big: str, small: str = "", color: str = "#f3ecdc", accent: str | 
     shadow = "text-shadow:7px 0 0 #ff2d55cc,-7px 0 0 #00e5ffcc,0 18px 60px rgba(0,0,0,.75);" if glitch else "text-shadow:0 18px 60px rgba(0,0,0,.75);"
     badges = ""
     if badge_names:
-        badges = (f"<div style='display:flex;justify-content:center;align-items:center;gap:46px;margin-bottom:70px;"
-                  f"transform:perspective(1200px) rotateX({tilt}deg)'>{badge(badge_names[0], 250)}"
-                  f"<div class='anton' style='font-size:96px;color:#d4af37;text-shadow:0 0 40px #d4af3799'>VS</div>{badge(badge_names[1], 250)}</div>")
+        badges = (f"<div data-m='badges' style='display:flex;justify-content:center;align-items:center;gap:46px;margin-bottom:70px;"
+                  f"transform:perspective(1200px) rotateX({tilt}deg)'><div>{badge(badge_names[0], 250)}</div>"
+                  f"<div class='anton' style='font-size:96px;color:#d4af37;text-shadow:0 0 40px #d4af3799'>VS</div><div>{badge(badge_names[1], 250)}</div></div>")
     chart = ""
     if bars:
         chart = "<div style='margin:56px auto 0;width:86%;text-align:left'>" + "".join(
             f"<div style='margin-top:26px'><div style='display:flex;justify-content:space-between;font-size:40px;font-weight:800'>"
-            f"<span>{esc(lbl)}</span><span style='color:{c}'>{round(v * 100)}%</span></div>"
+            f"<span>{esc(lbl)}</span><span data-m='num' data-v='{round(v * 100)}' style='color:{c}'>{round(v * 100)}%</span></div>"
             f"<div style='height:26px;border-radius:99px;background:#24211b;margin-top:12px;overflow:hidden'>"
-            f"<div style='width:{v * 100:.1f}%;height:100%;border-radius:99px;background:linear-gradient(90deg,{c}aa,{c});box-shadow:0 0 30px {c}'></div></div></div>"
+            f"<div data-m='fill' style='width:{v * 100:.1f}%;height:100%;border-radius:99px;background:linear-gradient(90deg,{c}aa,{c});box-shadow:0 0 30px {c}'></div></div></div>"
             for lbl, v, c in bars) + "</div>"
     size = 250 if len(big) <= 8 else 176 if len(big) <= 18 else 132 if len(big) <= 34 else 100
-    echo = (f"<div class='anton' style='position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) scale(1.9);white-space:nowrap;"
+    echo = (f"<div data-m='echo' class='anton' style='position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) scale(1.9);white-space:nowrap;"
             f"font-size:{size}px;color:{color};opacity:.10;filter:blur(14px)'>{esc(big)}</div>")
-    kick = (f"<div class='chip' style='margin:0 auto 40px;border:2px solid {accent};color:{accent};font-size:30px'>{esc(kicker)}</div>"
+    kick = (f"<div data-m='kick' class='chip' style='margin:0 auto 40px;border:2px solid {accent};color:{accent};font-size:30px'>{esc(kicker)}</div>"
             if kicker else "")
     if face and avatar(face[0], 10, face[1]):      # the character who speaks in this beat, big and centered
         kick += f"<div style='display:flex;justify-content:center;margin-bottom:46px'>{avatar(face[0], 420, face[1])}</div>"
@@ -941,12 +941,12 @@ def reel_frame(big: str, small: str = "", color: str = "#f3ecdc", accent: str | 
                 f"{avatar('egg', 190, host)}<div class='chip anton' style='background:#d4af37;color:#050403;font-size:34px'>EGG</div></div>") + kick
     return base(f"""{top_bar(top or "Goldglitch", accent)}
       <div style='margin:auto 0;text-align:center;position:relative'>{echo}{kick}{badges}
-        <div style='transform:perspective(1400px) rotateX({tilt // 2}deg)'>
-          <div class='anton' style='font-size:{size}px;line-height:.98;color:{color};{shadow}'>{esc(big)}</div>
-          <div style='font-size:58px;font-weight:800;margin-top:44px;color:#e9e1cf;line-height:1.2;text-shadow:0 8px 30px rgba(0,0,0,.7)'>{esc(small)}</div>
+        <div data-m='stage' style='transform:perspective(1400px) rotateX({tilt // 2}deg)'>
+          <div data-m='big' {"data-split='chars'" if split_chars else ""} class='anton' style='font-size:{size}px;line-height:.98;color:{color};{shadow}'>{esc(big)}</div>
+          <div data-m='small' style='font-size:58px;font-weight:800;margin-top:44px;color:#e9e1cf;line-height:1.2;text-shadow:0 8px 30px rgba(0,0,0,.7)'>{esc(small)}</div>
         </div>{chart}
       </div>
-      <div class='foot' style='font-size:30px;margin-top:0'><span>easygoldglitch.com</span><span>+18 · probabilidad ≠ certeza</span></div>""",
+      <div class='foot' style='font-size:30px;margin-top:0;margin-bottom:22px'><span>easygoldglitch.com</span><span>{foot or "+18 · probabilidad ≠ certeza"}</span></div>""",
                 w, h, accent, watermark=top if top and top != "Goldglitch" else "")
 
 
@@ -960,6 +960,24 @@ def _rate(rec: dict | None) -> tuple[int, int, int] | None:
 
 def _say_pct(p: float) -> str:
     return f"{round(p * 100)} por ciento"
+
+
+FOLLOW = {"tiktok": "SEGUÍ LA CUENTA", "youtube": "SUSCRIBITE", "instagram": "SEGUINOS", "facebook": "SEGUÍ LA PÁGINA"}
+
+
+def brand_intro() -> tuple:
+    """0.9 s sting that opens every video: the EGG mark assembling with a gold glitch."""
+    return (reel_frame("EGG", "el dato antes del partido", color="#e7c25a", kicker="Goldglitch Stats", split_chars=True,
+                       glitch=False, tilt=0), 0.95, "flash", "")
+
+
+def brand_outro(nets: list[str], line: str = "") -> tuple:
+    """Who we are + follow/subscribe, in every video."""
+    follow = FOLLOW.get(nets[0], "SEGUINOS") if len(nets) == 1 else "SEGUINOS"
+    say = line or ("Esto es EGG: estadística de fútbol, partido por partido, con un modelo propio. "
+                   + ("Suscribite" if follow == "SUSCRIBITE" else "Seguinos") + " y mañana te traigo el dato.")
+    return (reel_frame(follow, "EGG calcula la probabilidad de cada partido con un modelo estadístico propio · gratis",
+                       color="#e7c25a", kicker="Esto es EGG", glitch=False, foot="datos gratis en el perfil"), 3.0, "punch", say)
 
 
 def reel_script(kind: str, rows: list[dict], tx: dict, when_fn, record: dict | None = None) -> list[tuple]:
@@ -1057,8 +1075,8 @@ def reel_script(kind: str, rows: list[dict], tx: dict, when_fn, record: dict | N
                            f"{anc['label']}: {_say_pct(p)}."))
         at = len(f) if kind == "resultados" else min(1, len(f))
         f[at:at] = scenes
-    f.append((reel_frame("ENLACE EN EL PERFIL", "todas las probabilidades, gratis", color="#d4af37", kicker="EGG · Goldglitch Stats",
-                         host="wink"), 2.4, "punch", tx.get("voz_cierre") or "Todas las probabilidades, gratis, en el enlace del perfil."))
+    f.insert(0, brand_intro())
+    f.append(brand_outro(tx.get("_redes") or [], tx.get("voz_cierre") or ""))
     return f
 
 
@@ -1115,6 +1133,20 @@ def beat(path: str, seconds: float, bpm: int = 148, cuts: list[tuple[float, str]
 
 
 TRANSITIONS = ["zoomin", "slideup", "smoothleft", "circleopen", "fadewhite", "slidedown", "radial", "smoothup"]
+LOOK: dict = {}
+LOOKS = ("terminal", "marcador", "ultima_hora", "neon", "editorial", "tablero")
+LOOK_TRANSITIONS = {
+    "terminal": ["pixelize", "slideup", "smoothleft", "zoomin"], "marcador": ["wipeleft", "slideup", "wiperight", "zoomin"],
+    "ultima_hora": ["slideleft", "fadewhite", "slideright", "squeezev"], "neon": ["hlslice", "vrslice", "pixelize", "radial"],
+    "editorial": ["fade", "smoothup", "fadeblack", "smoothleft"], "tablero": ["wipeup", "circleopen", "wipedown", "smoothright"],
+}
+
+
+def set_look(look: str | None) -> None:
+    """The visual format of this piece's video (rotates so no two videos in a row look the same)."""
+    LOOK.clear()
+    if look in LOOKS:
+        LOOK["look"] = look
 
 
 def _voiceover(frames: list[tuple], name: str) -> list:
@@ -1140,19 +1172,24 @@ def R_SCALE() -> float:
 def reel_video(frames: list[tuple[str, float, str]], name: str) -> str:
     """Scenes with punch-in zooms, wobble, RGB-split glitches and a moving gold light, joined with varied quick
     transitions, over an original beat. 2160×3840 (4K) with REDES_ESCALA=2 (default), 30 fps, H.264 + AAC."""
-    import imageio_ffmpeg
-    ff = imageio_ffmpeg.get_ffmpeg_exe()
     frames = [tuple(fr) + ("",) * (4 - len(fr)) for fr in frames]
     voice = _voiceover(frames, name)            # [(path, seconds) | None] per scene
+    T = 0.14                                                # transition length
+    pace = {"muy_rapido": 0.9, "elegante": 1.2}.get(STYLE["ritmo"], 1.0)
+    lens = [max(10, int((max(secs * pace, (voice[i][1] + 0.45) if voice[i] else 0) + T) * 30)) / 30
+            for i, (_, secs, _fx, _s) in enumerate(frames)]   # a scene lasts at least as long as its line
+    try:
+        import goldglitch_motion as M
+        if M.enabled():
+            return _motion_video(frames, lens, voice, name, M, T)
+    except Exception as e:                                  # never lose a video: fall back to the flat one
+        print(f"  movimiento no disponible ({e}); video plano")
     imgs = render([f[0] for f in frames], 1080, 1920, f"{name}_frames")
     S = max(1, int(round(R_SCALE())))                      # 2 → 2160×3840 (4K vertical)
     W, H = 1080 * S, 1920 * S
-    T = 0.14                                                # transition length
     inputs, parts, durs = [], [], []
     for i, (img, (_, secs, fx, _say)) in enumerate(zip(imgs, frames)):
-        pace = {"muy_rapido": 0.9, "elegante": 1.2}.get(STYLE["ritmo"], 1.0)
-        need = (voice[i][1] + 0.45) if voice[i] else 0          # the scene lasts at least as long as its line
-        nfr = max(10, int((max(secs * pace, need) + T) * 30))
+        nfr = int(round(lens[i] * 30))
         durs.append(nfr / 30)
         inputs += ["-framerate", "30", "-loop", "1", "-t", f"{nfr / 30:.3f}", "-i", img]
         if fx == "punch":
@@ -1171,9 +1208,33 @@ def reel_video(frames: list[tuple[str, float, str]], name: str) -> str:
         sweep = rf",drawbox=x='-{400 * S}+mod(t*{1500 * S}\,{1900 * S})':y=0:w={150 * S}:h=ih:color=0xd4af37@0.045:t=fill"
         parts.append(f"[{i}:v]scale={1200 * S}:{2134 * S},{z},{wob}format=yuv420p,setsar=1{glitch}{flash}{sweep},"
                      f"vignette=PI/5,trim=duration={nfr / 30:.3f},setpts=PTS-STARTPTS[v{i}]")
+    return _assemble(inputs, parts, durs, frames, voice, name, T, len(imgs))
+
+
+def _motion_video(frames, lens, voice, name, M, T) -> str:
+    """Animated scenes (goldglitch_motion): depth, data that counts and fills, the EGG look of the day."""
+    d = os.path.join(OUT, f"{name}_motion")
+    dirs = M.render_scenes([f[0] for f in frames], lens, d, LOOK.get("look") or "terminal")
+    inputs, parts = [], []
+    for i, (dd, (_, _secs, fx, _say)) in enumerate(zip(dirs, frames)):
+        inputs += ["-framerate", str(M.FPS), "-i", os.path.join(dd, "%04d.jpg")]
+        glitch = ",rgbashift=rh=-10:bh=10:gv=4:enable='lt(t,0.12)'"          # the gold glitch cut, every scene
+        flash = ",fade=t=in:st=0:d=0.10:color=white" if fx == "flash" else ""
+        parts.append(f"[{i}:v]fps=30,scale=1080:1920,format=yuv420p,setsar=1{glitch}{flash},vignette=PI/6,"
+                     f"trim=duration={lens[i]:.3f},setpts=PTS-STARTPTS[v{i}]")
+    out = _assemble(inputs, parts, lens, frames, voice, name, T, len(dirs))
+    import shutil as _sh
+    _sh.rmtree(d, ignore_errors=True)
+    return out
+
+
+def _assemble(inputs, parts, durs, frames, voice, name, T, count) -> str:
+    import imageio_ffmpeg
+    ff = imageio_ffmpeg.get_ffmpeg_exe()
+    trs = LOOK_TRANSITIONS.get(LOOK.get("look") or "", TRANSITIONS)
     chain, last, off = [], "v0", durs[0] - T
-    for i in range(1, len(imgs)):
-        tr = TRANSITIONS[i % len(TRANSITIONS)]
+    for i in range(1, count):
+        tr = trs[i % len(trs)]
         chain.append(f"[{last}][v{i}]xfade=transition={tr}:duration={T}:offset={off:.3f}[x{i}]")
         last, off = f"x{i}", off + durs[i] - T
     total = off + T
@@ -1186,8 +1247,8 @@ def reel_video(frames: list[tuple[str, float, str]], name: str) -> str:
     out = os.path.join(OUT, f"{name}.mp4")
     a_in, a_parts, mix = ["-i", audio], [], []
     has_voice = any(voice)
-    a_parts.append(f"[{len(imgs)}:a]volume={0.16 if has_voice else 1.0}[bg]")
-    k = len(imgs) + 1
+    a_parts.append(f"[{count}:a]volume={0.16 if has_voice else 1.0}[bg]")
+    k = count + 1
     for (st, _), v in zip(starts, voice):
         if v:
             a_in += ["-i", v[0]]

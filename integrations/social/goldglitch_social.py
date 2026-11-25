@@ -409,6 +409,7 @@ def _build(post: dict, facts: dict, ag: Agents, now: datetime, tag: str, shown: 
     data["tema_ilustracion"] = scene_theme(post, tag)
     modo = piece_mode(post, tag)
     data["modo"] = modo
+    data["formato_visual"] = LOOK_BRIEF.get(choose_look(post, tag, st), "")
     if anchor:          # every piece revolves around one 85%+ stat of today
         x12 = {n: round(q * 100) for n, q, _ in V.x12_parts(anchor)}
         data["pick_ancla"] = ({k: anchor[k] for k in ("league", "home", "away", "p")} | {"cuando": when(anchor["kickoffAt"], now),
@@ -447,6 +448,9 @@ def _build(post: dict, facts: dict, ag: Agents, now: datetime, tag: str, shown: 
     tx["_ancla"] = anchor
     tx["_modo"] = modo
     V.set_stats(anchor, modo == "fomo")
+    look = choose_look(post, tag, st)
+    V.set_look(look)
+    tx["_redes"] = list(post.get("redes") or [])
     V.set_bg(*illustrations(post, tx, tag))
     shown_keys = [match_key(r) for r in rows] if reel_of in ("picks_dia", "nba") else []
     shown_rows = [{k: r.get(k) for k in ("matchId", "league", "home", "away", "label", "p", "kickoffAt")}
@@ -486,6 +490,31 @@ def _build(post: dict, facts: dict, ag: Agents, now: datetime, tag: str, shown: 
 
 ANCHOR_P = float(os.environ.get("REDES_ANCLA_P", "0.85"))
 FOMO_SHARE = {"tiktok": 0.7}        # TikTok: mostly curiosity pieces; elsewhere 35 %
+
+
+LOOK_BRIEF = {
+    "terminal": "TERMINAL DE DATOS: tono de analista frío que descubre algo; gancho tipo 'el modelo detectó…'",
+    "marcador": "MARCADOR DE ESTADIO EN VIVO: tono de transmisión, energía de previa; gancho tipo 'esta noche se juega…'",
+    "ultima_hora": "ÚLTIMA HORA: tono de noticia urgente; gancho tipo 'ÚLTIMA HORA: …' con el dato como noticia",
+    "neon": "NOCHE NEÓN: tono de hype nocturno y competitivo; gancho corto y provocador",
+    "editorial": "EDITORIAL DE LUJO: tono de historia elegante, pausado; gancho tipo 'hay un número que nadie está mirando'",
+    "tablero": "PIZARRA TÁCTICA: tono de entrenador que explica por qué; gancho tipo 'te explico por qué pasa esto'",
+}
+
+
+def choose_look(post: dict, tag: str, st: dict | None) -> str:
+    """Visual format of the video: rotates by piece and never repeats the last two used today."""
+    if st is not None and st.get("_look_tag") == tag and st.get("_look") in V.LOOKS:
+        return st["_look"]
+    looks = list(V.LOOKS)
+    recent = list((st or {}).get("looks_recientes") or [])[-2:]
+    h = int(hashlib.md5(f"look|{tag}".encode()).hexdigest()[:6], 16)
+    cands = [x for x in looks if x not in recent] or looks
+    look = cands[h % len(cands)]
+    if st is not None:
+        st["_look_tag"], st["_look"] = tag, look
+        st["looks_recientes"] = (recent + [look])[-6:]
+    return look
 
 
 def piece_mode(post: dict, tag: str) -> str:
@@ -542,6 +571,11 @@ def caption(tx: dict, key: str) -> str:
         if h and h.lower() not in seen:
             seen.add(h.lower())
             tags.append(h)
+    if not re.search(r"segu[íi]|suscrib|follow", body, re.I):      # who we are + follow, on every post
+        body += "\n\n" + {"yt": "EGG: estadística de fútbol con un modelo propio. Suscribite para el dato de cada día.",
+                            "tiktok": "EGG: estadística de fútbol con un modelo propio. Seguí la cuenta para el dato de cada día.",
+                            "fb": "EGG: estadística de fútbol con un modelo propio. Seguí la página para el dato de cada día."
+                            }.get(key, "EGG: estadística de fútbol con un modelo propio. Seguinos para el dato de cada día.")
     if key == "tiktok":   # TikTok flags betting language: statistics words only, no betting tags
         from goldglitch_lenguaje import safe_tags, safe_text
         body, tags = safe_text(body), safe_tags(tags)

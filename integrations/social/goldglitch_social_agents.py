@@ -259,6 +259,8 @@ Red de destino: {red_destino(post)}
 Dato ancla (pick de 85%+ de hoy): {json.dumps(data.get('pick_ancla'), ensure_ascii=False) if data.get('pick_ancla') else 'no hay'}
 — si hay dato ancla, TODA la pieza (imagen, video y texto) gira en torno a él: nómbralo en reel_hook o voz_hook, usa
   sus porcentajes de quién gana y conéctalo con el tema (un meme del partido, una noticia de esos equipos…).
+Formato visual del video: {data.get('formato_visual') or 'libre'} — escribe reel_hook, reel_sub y la voz con ESE tono; que
+  cada pieza se sienta distinta de la anterior.
 Modo: {data.get('modo', 'pick')} — "pick": muestra el pick y su mercado con claridad. "fomo": genera CURIOSIDAD y ganas
   de saber más: muestra quién gana según el modelo y el porcentaje del pick, pero NO reveles el mercado (está oculto en
   el enlace del perfil); urgencia real (el partido es hoy), invita a comentar "DATO" o a ir al perfil. Nada de promesas
