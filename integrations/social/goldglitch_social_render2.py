@@ -1178,6 +1178,12 @@ def set_look(look: str | None) -> None:
         LOOK["look"] = look
 
 
+def read_secs(line: str | None) -> float:
+    """Time to read a caption line on a phone (~15 characters per second), for videos without narration."""
+    t = strip_emoji(line or "").strip()
+    return round(len(t) / 15.0 + 0.3, 2) if t else 0.0
+
+
 def _voiceover(frames: list[tuple], name: str) -> list:
     """Human-sounding voice-over (goldglitch_voz: Kokoro, open model running on this PC). None per scene if off."""
     try:
@@ -1208,7 +1214,8 @@ def reel_video(frames: list[tuple[str, float, str]], name: str) -> str:
     pace = {"muy_rapido": 0.9, "elegante": 1.2}.get(STYLE["ritmo"], 1.0)
     calm = (LOOK.get("look") or "") == "senal"            # slower rhythm: time for the dust to land and to read
     pace, tail = (max(pace, 1.15), 0.7) if calm else (pace, 0.45)
-    lens = [max(10, int((max(secs * pace, (voice[i][1] + tail) if voice[i] else 0) + T) * 30)) / 30
+    lens = [max(10, int((max(secs * pace, (voice[i][1] + tail) if voice[i] else (read_secs(frames[i][3]) + tail) if calm else 0)
+                         + T) * 30)) / 30
             for i, (_, secs, _fx, _s) in enumerate(frames)]   # a scene lasts at least as long as its line
     try:
         import goldglitch_motion as M
@@ -1250,7 +1257,8 @@ def _motion_video(frames, lens, voice, name, M, T) -> str:
     d = os.path.join(OUT, f"{name}_motion")
     from goldglitch_lenguaje import brand_clean, safe_text
     clean = (lambda x: safe_text(brand_clean(x))) if SAFE["on"] else brand_clean
-    meta = [{"say": clean(strip_emoji(f[3] or "").strip()), "vd": (voice[i][1] if voice[i] else 0.0)} for i, f in enumerate(frames)]
+    meta = [{"say": clean(strip_emoji(f[3] or "").strip()), "vd": (voice[i][1] if voice[i] else read_secs(f[3])),
+             "voz": bool(voice[i])} for i, f in enumerate(frames)]
     dirs = M.render_scenes([f[0] for f in frames], lens, d, look, meta)
     fps = M.fps_for(look)
     try:

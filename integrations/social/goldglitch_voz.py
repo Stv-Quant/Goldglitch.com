@@ -36,11 +36,20 @@ def _cfg() -> dict:
         return {}
 
 
+def own_voice() -> bool:
+    """Our OWN voice: the reference recording (voz_referencia.wav, made with grabar_voz.bat) cloned by the local
+    Chatterbox model. Stock voices (ElevenLabs 'Valentino', Kokoro) are not ours."""
+    return os.path.exists(REF) and os.path.exists(VPY) and _cfg().get("engine") == "chatterbox"
+
+
 def available() -> bool:
-    return bool(_cfg().get("ok")) and os.environ.get("REDES_VOZ_ACTIVA", "1") != "0"
+    """Videos only speak with our own voice. Until it exists, every video goes out without narration."""
+    return bool(_cfg().get("ok")) and os.environ.get("REDES_VOZ_ACTIVA", "1") != "0" and own_voice()
 
 
 def engine() -> str:
+    if own_voice():
+        return "chatterbox"
     if os.environ.get("ELEVENLABS_API_KEY") and os.environ.get("REDES_VOZ_MOTOR", "elevenlabs") == "elevenlabs" \
             and _cfg().get("eleven_voice_id"):
         return "elevenlabs"
