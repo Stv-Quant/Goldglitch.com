@@ -1207,7 +1207,7 @@ def reel_video(frames: list[tuple[str, float, str]], name: str) -> str:
     T = 0.14                                                # transition length
     pace = {"muy_rapido": 0.9, "elegante": 1.2}.get(STYLE["ritmo"], 1.0)
     calm = (LOOK.get("look") or "") == "senal"            # slower rhythm: time for the dust to land and to read
-    pace, tail = (max(pace, 1.3), 1.1) if calm else (pace, 0.45)
+    pace, tail = (max(pace, 1.15), 0.7) if calm else (pace, 0.45)
     lens = [max(10, int((max(secs * pace, (voice[i][1] + tail) if voice[i] else 0) + T) * 30)) / 30
             for i, (_, secs, _fx, _s) in enumerate(frames)]   # a scene lasts at least as long as its line
     try:

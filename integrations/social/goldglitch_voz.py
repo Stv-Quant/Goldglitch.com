@@ -160,13 +160,13 @@ def pausado(text: str) -> str:
     import re
     if not serio():
         return text
-    t = re.sub(r"([.!?:;])\s+(?=\S)", "... ", text.strip())
+    t = re.sub(r"([.!?])\s+(?=\S)", r"\1.. ", text.strip())
     return re.sub(r"\.{4,}", "...", t)
 
 
 def _tempo(res: list) -> list:
     """Slow the narration down a little (pitch kept): REDES_VOZ_TEMPO, 0.9 by default in the serious tone."""
-    tempo = float(os.environ.get("REDES_VOZ_TEMPO", "0.9" if serio() else "1.0"))
+    tempo = float(os.environ.get("REDES_VOZ_TEMPO", "0.94" if serio() else "1.0"))
     if abs(tempo - 1) < 0.01:
         return res
     try:
