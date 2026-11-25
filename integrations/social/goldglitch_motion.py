@@ -126,7 +126,7 @@ window.__egg(0,1);
 
 
 def inject(html: str, look: str = "terminal") -> str:
-    eng = f"<script>window.__look={look!r};</script>" + ENGINE
+    eng = f"<script>window.__look={look!r};</script>" + ENGINE + (SOUL if look in SOUL_LOOKS else "")
     return html.replace("</body>", eng + "</body>", 1) if "</body>" in html else html + eng
 
 
@@ -136,9 +136,10 @@ def scene_frames(pg, html: str, seconds: float, out_dir: str, look: str = "termi
     os.makedirs(out_dir, exist_ok=True)
     pg.set_content(inject(html, look), wait_until="networkidle")
     pg.evaluate("document.fonts.ready.then(()=>1)")
-    n = max(2, int(round(seconds * FPS)))
+    fps = fps_for(look)
+    n = max(2, int(round(seconds * fps)))
     for i in range(n):
-        pg.evaluate(f"window.__egg({i / FPS:.4f},{seconds:.4f})")
+        pg.evaluate(f"window.__egg({i / fps:.4f},{seconds:.4f});window.__soul&&window.__soul({i / fps:.4f},{seconds:.4f},{i})")
         pg.screenshot(path=os.path.join(out_dir, f"{i + 1:04d}.jpg"), type="jpeg", quality=84)
     return n
 
@@ -158,5 +159,142 @@ def render_scenes(htmls: list[str], seconds: list[float], base_dir: str, look: s
     return dirs
 
 
+def fps_for(look: str) -> int:
+    return SOUL_FPS if look in SOUL_LOOKS else FPS
+
+
 def enabled() -> bool:
     return os.environ.get("REDES_MOVIMIENTO", "1") != "0"
+
+
+# ------------------------------------------------------------------ "Alma": hand-made, printed, from the stands
+# The glossy dark-gold terminal looked like every AI template. These looks come from football culture instead:
+#   diario    the sports paper's front page: newsprint, halftone photo, ink slightly off-register, red marker
+#   cuaderno  the analyst's notebook: graph paper, highlighter, handwriting, arrows and circles drawn live
+#   trapo     the barra's painted flag: fabric weave, hand-painted letters, the cloth waves
+#   cartel    the neighbourhood party poster: fluorescent blocks, chunky letters, screen-print misregistration
+#   album     the sticker album: the match as a collectible card with gold foil that catches the light
+# All animate "on twos" (12 drawings per second) with lines that boil a little: stop-motion, made by hand.
+SOUL_LOOKS = ("diario", "cuaderno", "trapo", "cartel", "album")
+SOUL_FPS = int(os.environ.get("REDES_FPS_ALMA", "12"))
+
+SOUL = r"""
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Permanent+Marker&family=Caveat+Brush&family=Bungee&family=Oswald:wght@500;700&family=Rubik+Mono+One&display=block">
+<svg width="0" height="0" style="position:absolute"><defs>
+ <filter id="rough"><feTurbulence id="rough-t" type="fractalNoise" baseFrequency="0.035" numOctaves="2" seed="1"/><feDisplacementMap in="SourceGraphic" scale="5"/></filter>
+ <filter id="ink"><feTurbulence id="ink-t" type="fractalNoise" baseFrequency="0.9" numOctaves="1" seed="3"/><feColorMatrix values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -1.4 1.25"/><feComposite in="SourceGraphic" operator="in"/></filter>
+</defs></svg>
+<style>
+body.soul .m-grid,body.soul .m-p,body.soul .m-sweep,body.soul .m-scan,body.soul .m-br,body.soul .m-tag,body.soul .grain,body.soul .streak,
+body.soul [data-m=echo],body.soul [data-m=shade]{display:none!important}
+body.soul .wrap{text-shadow:none!important}
+body.soul [data-m=big],body.soul [data-m=small]{text-shadow:none!important}
+.s-paper{position:absolute;inset:0;pointer-events:none;mix-blend-mode:multiply;opacity:.55;
+ background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='300'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .45  0 0 0 0 .4  0 0 0 0 .32  0 0 0 .55 0'/></filter><rect width='300' height='300' filter='url(%23n)'/></svg>")}
+.s-anno{position:absolute;inset:0;pointer-events:none;z-index:6}
+.s-anno path{fill:none;stroke-linecap:round;stroke-linejoin:round}
+/* diario */
+body.l-diario{background:#ece3cf!important}
+body.l-diario [data-m=art]{filter:grayscale(1) contrast(1.5) brightness(1.08);mix-blend-mode:multiply;opacity:.42;inset:14% 6% 34% 6%!important;
+ -webkit-mask-image:radial-gradient(#000 0.9px,transparent 1.3px);-webkit-mask-size:7px 7px;mask-image:radial-gradient(#000 0.9px,transparent 1.3px);mask-size:7px 7px}
+body.l-diario .wrap{color:#15120d}
+body.l-diario [data-m=big]{color:#15120d!important;font-family:Oswald,'Big Shoulders Display',sans-serif!important;font-weight:700!important;letter-spacing:-.01em!important;
+ text-shadow:4px 3px 0 rgba(215,38,61,.55)!important;filter:url(#rough)}
+body.l-diario [data-m=small]{color:#2d271e!important;font-family:Georgia,'Times New Roman',serif!important;font-style:italic;font-weight:700!important}
+body.l-diario [data-m=kick]{background:#d7263d!important;color:#fff!important;border:0!important;border-radius:0!important;transform:rotate(-2deg)}
+body.l-diario .top,body.l-diario .top *{color:#15120d!important}
+body.l-diario .foot,body.l-diario .foot *{color:#5a5044!important}
+body.l-diario [data-m=num]{color:#d7263d!important}
+body.l-diario [data-m=fill]{background:repeating-linear-gradient(-45deg,#15120d 0 6px,transparent 6px 11px)!important;box-shadow:none!important}
+body.l-diario div:has(> [data-m=fill]){background:rgba(21,18,13,.10)!important;border:2px solid #15120d}
+.s-mast{position:absolute;left:66px;right:66px;top:178px;border-top:6px solid #15120d;border-bottom:2px solid #15120d;padding:8px 0;display:flex;
+ justify-content:space-between;font-family:Oswald,sans-serif;font-weight:700;font-size:30px;letter-spacing:.12em;color:#15120d;z-index:4}
+/* cuaderno */
+body.l-cuaderno{background:#fbfaf4!important}
+body.l-cuaderno::before{content:'';position:absolute;inset:0;background-image:linear-gradient(rgba(40,110,200,.16) 2px,transparent 2px),linear-gradient(90deg,rgba(40,110,200,.16) 2px,transparent 2px);background-size:54px 54px}
+body.l-cuaderno::after{content:'';position:absolute;top:0;bottom:0;left:118px;width:3px;background:rgba(215,38,61,.55)}
+body.l-cuaderno [data-m=art]{opacity:.0}
+body.l-cuaderno .wrap{color:#1b2a4a}
+body.l-cuaderno [data-m=big]{color:#1b2a4a!important;font-family:'Permanent Marker',cursive!important;text-transform:none!important;filter:url(#rough)}
+body.l-cuaderno [data-m=small]{color:#1b2a4a!important;font-family:'Caveat Brush',cursive!important;font-size:66px!important;font-weight:400!important}
+body.l-cuaderno [data-m=kick]{background:#ffe94a!important;color:#1b2a4a!important;border:0!important;font-family:'Caveat Brush',cursive!important;font-size:44px!important;letter-spacing:0!important;text-transform:none!important}
+body.l-cuaderno .top *,body.l-cuaderno .foot,body.l-cuaderno .foot *{color:#1b2a4a!important}
+body.l-cuaderno [data-m=num]{color:#d7263d!important;font-family:'Permanent Marker',cursive}
+body.l-cuaderno [data-m=fill]{background:#ffe94a!important;box-shadow:none!important;opacity:.95}
+body.l-cuaderno div:has(> [data-m=fill]){background:transparent!important;border:3px solid #1b2a4a;border-radius:6px!important}
+/* trapo */
+body.l-trapo{background:#7a0f1c!important}
+body.l-trapo::before{content:'';position:absolute;inset:0;background-image:repeating-linear-gradient(0deg,rgba(0,0,0,.10) 0 2px,transparent 2px 4px),repeating-linear-gradient(90deg,rgba(255,255,255,.05) 0 2px,transparent 2px 5px)}
+body.l-trapo [data-m=art]{opacity:.22;filter:grayscale(1) contrast(1.3);mix-blend-mode:luminosity}
+body.l-trapo [data-m=big]{color:#fff6e0!important;font-family:'Permanent Marker',cursive!important;filter:url(#rough);text-shadow:0 0 1px #fff6e0,3px 4px 0 rgba(0,0,0,.35)!important}
+body.l-trapo [data-m=small]{color:#ffd451!important;font-family:'Caveat Brush',cursive!important;font-size:64px!important}
+body.l-trapo [data-m=kick]{background:#ffd451!important;color:#7a0f1c!important;border:0!important}
+body.l-trapo .top *,body.l-trapo .foot *{color:#fff6e0!important}
+body.l-trapo [data-m=fill]{background:#ffd451!important;box-shadow:none!important}
+.s-fold{position:absolute;inset:0;pointer-events:none;background:linear-gradient(90deg,rgba(0,0,0,.28),rgba(255,255,255,.06) 20%,rgba(0,0,0,.22) 40%,rgba(255,255,255,.07) 62%,rgba(0,0,0,.26) 82%,rgba(255,255,255,.05));mix-blend-mode:overlay}
+/* cartel */
+body.l-cartel{background:#0d0d0d!important}
+body.l-cartel [data-m=art]{opacity:.18;filter:grayscale(1) contrast(1.6)}
+body.l-cartel [data-m=big]{font-family:Bungee,'Rubik Mono One',sans-serif!important;color:#ffe600!important;line-height:1.05!important;
+ text-shadow:6px 6px 0 #ff2e88,12px 12px 0 #00c2ff!important}
+body.l-cartel [data-m=small]{display:inline-block;background:#ff2e88;color:#fff!important;padding:10px 22px;font-family:'Rubik Mono One',sans-serif!important;font-size:40px!important;transform:rotate(-1.5deg)}
+body.l-cartel [data-m=kick]{background:#00e676!important;color:#0d0d0d!important;border:0!important;font-family:'Rubik Mono One',sans-serif!important}
+body.l-cartel [data-m=num]{color:#ffe600!important}
+body.l-cartel [data-m=fill]{box-shadow:none!important}
+.s-burst{position:absolute;width:300px;height:300px;z-index:0;pointer-events:none;opacity:.9}
+/* album */
+body.l-album{background:#1f6f43!important}
+body.l-album::before{content:'';position:absolute;inset:0;background-image:radial-gradient(rgba(255,255,255,.08) 2px,transparent 2.5px);background-size:26px 26px}
+body.l-album [data-m=art]{opacity:0}
+body.l-album [data-m=stage]{background:#fbf6e8;border-radius:34px;padding:56px 44px;margin:0 10px;border:14px solid #d4af37;
+ box-shadow:0 0 0 6px #fbf6e8,0 30px 60px rgba(0,0,0,.45);position:relative;overflow:hidden}
+body.l-album [data-m=big]{color:#1a1a1a!important;font-family:Oswald,sans-serif!important;font-weight:700!important}
+body.l-album [data-m=small]{color:#3a3a3a!important}
+body.l-album [data-m=kick]{background:#d4af37!important;color:#1a1a1a!important;border:0!important}
+body.l-album .top *,body.l-album .foot *{color:#fbf6e8!important}
+.s-foil{position:absolute;top:-30%;bottom:-30%;width:180px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.75),rgba(255,236,170,.6),transparent);transform:rotate(18deg);mix-blend-mode:overlay;pointer-events:none}
+</style>
+<script>
+(function(){
+const L=window.__look;const S=['diario','cuaderno','trapo','cartel','album'];if(!S.includes(L))return;
+document.body.classList.add('soul');
+const W=innerWidth,H=innerHeight,cl=x=>Math.max(0,Math.min(1,x)),E=x=>1-Math.pow(1-cl(x),3);
+const add=(c,h,parent)=>{const d=document.createElement('div');d.className=c;if(h)d.innerHTML=h;(parent||document.body).appendChild(d);return d};
+add('s-paper');
+if(L==='diario'){const d=new Date();add('s-mast','<span>EL DATO</span><span>EDICIÓN DEL DÍA</span><span>EGG</span>')}
+if(L==='trapo')add('s-fold');
+let foil=null;if(L==='album'){const st=document.querySelector('[data-m=stage]');if(st)foil=add('s-foil','',st)}
+let bursts=[];if(L==='cartel'){[[-70,240,'#ff2e88'],[W-250,120,'#00c2ff']].forEach(([x,y,c])=>{const b=add('s-burst','<svg viewBox="0 0 100 100"><polygon fill="'+c+'" points="50,0 61,30 95,20 72,46 100,62 66,68 72,100 50,78 28,100 34,68 0,62 28,46 5,20 39,30"/></svg>');b.style.left=x+'px';b.style.top=y+'px';bursts.push(b)})}
+// hand-drawn marks around the hero element, drawn live
+const anno=add('s-anno','<svg width="'+W+'" height="'+H+'"></svg>').firstChild;
+const ink={diario:'#d7263d',cuaderno:'#d7263d',trapo:'#ffd451',cartel:'#00e676',album:'#d7263d'}[L];
+const marks=[];
+const hero=document.querySelector('[data-m=big]');
+function mark(d,w){const p=document.createElementNS('http://www.w3.org/2000/svg','path');p.setAttribute('d',d);p.setAttribute('stroke',ink);
+ p.setAttribute('stroke-width',w||11);p.setAttribute('filter','url(#rough)');anno.appendChild(p);const l=p.getTotalLength();p.style.strokeDasharray=l;p.style.strokeDashoffset=l;marks.push([p,l]);return p}
+setTimeout(()=>{},0);
+function plan(){if(!hero||L==='album')return;const r=hero.getBoundingClientRect();if(r.width<10)return;
+ const cx=r.left+r.width/2,cy=r.top+r.height/2,rx=r.width/2+46,ry=r.height/2+38;
+ if(hero.dataset.count||r.width<W*.5){let d='';for(let i=0;i<=36;i++){const a=-1.9+i/36*6.9,k=1+0.06*Math.sin(i*1.7);d+=(i?'L':'M')+(cx+Math.cos(a)*rx*k).toFixed(1)+' '+(cy+Math.sin(a)*ry*k).toFixed(1)}mark(d)}
+ else{const y=r.bottom+16;mark('M'+(r.left+10)+' '+y+' C '+(r.left+r.width*.3)+' '+(y+14)+', '+(r.left+r.width*.6)+' '+(y-10)+', '+(r.right-6)+' '+(y+6),12);
+  if(L==='cuaderno')mark('M'+(r.left+20)+' '+(y+30)+' C '+(r.left+r.width*.4)+' '+(y+44)+', '+(r.left+r.width*.7)+' '+(y+20)+', '+(r.right-60)+' '+(y+34),8)}
+ const sm=document.querySelector('[data-m=small]');if(sm&&(L==='cuaderno'||L==='diario')){const s=sm.getBoundingClientRect();if(s.width>10&&s.left>170){
+  const x=s.left-70,y=s.top+s.height/2;mark('M'+(x-90)+' '+(y-120)+' Q '+(x-40)+' '+(y-10)+' '+x+' '+y+' M '+(x-30)+' '+(y-26)+' L '+x+' '+y+' L '+(x-36)+' '+(y+12),9)}}}
+let planned=false;
+const rt=document.getElementById('rough-t');
+window.__soul=function(t,T,f){
+ if(!planned&&t>0.5){plan();planned=true}
+ marks.forEach(([p,l],i)=>{p.style.strokeDashoffset=l*(1-E((t-0.55-0.25*i)/0.55))});
+ if(rt)rt.setAttribute('seed',1+Math.floor(f/2)%7);
+ // stop-motion jitter: everything drawn by hand moves a hair every drawing
+ const j=(k)=>((Math.sin(f*12.9898+k*78.233)*43758.5453)%1);
+ document.querySelectorAll('[data-m=big],[data-m=kick]').forEach((el,i)=>{el.style.translate=(j(i)*3).toFixed(1)+'px '+(j(i+9)*3).toFixed(1)+'px';el.style.rotate=(j(i+4)*0.6).toFixed(2)+'deg'});
+ if(L==='trapo')document.querySelectorAll('[data-m=stage]').forEach(s=>{s.style.transform+=' skewY('+(Math.sin(t*2.2)*1.6)+'deg)'});
+ if(L==='diario'){const st=document.querySelector('[data-m=stage]');if(st){const k=E(t/0.35);st.style.transform='scale('+(1.25-0.25*k)+') rotate('+((1-k)*-6)+'deg)'}}
+ if(L==='cartel')bursts.forEach((b,i)=>{b.style.transform='rotate('+(t*(i?-30:24))+'deg) scale('+(0.6+0.4*E(t/0.4))+')'});
+ if(foil)foil.style.left=(-300+((t*0.55)%1.6)*900)+'px';
+ if(L==='album'){const st=document.querySelector('[data-m=stage]');if(st){const k=E(t/0.5);st.style.transform='perspective(1400px) rotateY('+((1-k)*-80+Math.sin(t*1.3)*6)+'deg) rotateX('+(Math.sin(t)*3)+'deg)'}}
+};
+})();
+</script>
+"""
