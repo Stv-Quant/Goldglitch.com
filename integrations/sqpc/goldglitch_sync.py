@@ -789,7 +789,7 @@ def main() -> int:
     load_env(os.path.join(HERE, ".env"))
     ap = argparse.ArgumentParser(description="Publica en easygoldglitch.com lo que SQPC ya calculó")
     ap.add_argument("--reports", default=os.path.join(HERE, "reports"))
-    ap.add_argument("--days", type=int, default=3, help="carpetas de predicciones recientes a leer")
+    ap.add_argument("--days", type=int, default=9, help="carpetas de predicciones recientes a leer (ciclo semanal: domingo + rápidas)")
     ap.add_argument("--skip-ncaab", action="store_true", help="no publicar NCAA baloncesto (decenas de partidos al día)")
     ap.add_argument("--include-ncaab", action="store_true", help=argparse.SUPPRESS)  # compat: NCAAB is published by default
     ap.add_argument("--dry-run", action="store_true")
