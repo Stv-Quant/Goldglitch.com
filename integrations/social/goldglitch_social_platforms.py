@@ -134,6 +134,12 @@ class Meta:
                             "post": (p.get("message") or "")[:200]})
         return out
 
+    def first_comment(self, net: str, ref, text: str) -> str:
+        """Comment on our own new post (the Graph API cannot pin; the id is what publish returned)."""
+        if not ref or not isinstance(ref, str) or not ref.replace("_", "").isdigit():
+            return ""
+        return self._post(f"{ref}/comments", {"message": text})["id"]
+
     def reply(self, c: dict, text: str) -> None:
         if c["net"] == "instagram":
             self._post(f"{c['id']}/replies", {"message": text})

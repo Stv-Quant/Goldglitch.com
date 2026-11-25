@@ -977,12 +977,14 @@ def brand_intro() -> tuple:
 
 
 def brand_outro(nets: list[str], line: str = "") -> tuple:
-    """Who we are + follow/subscribe, in every video."""
-    follow = FOLLOW.get(nets[0], "SEGUINOS") if len(nets) == 1 else "SEGUINOS"
-    say = line or ("Esto es EGG: estadística de fútbol, partido por partido, con un modelo propio. "
-                   + ("Suscribite" if follow == "SUSCRIBITE" else "Seguinos") + " y mañana te traigo el dato.")
-    return (reel_frame(follow, "EGG calcula la probabilidad de cada partido con un modelo estadístico propio · gratis",
-                       color="#e7c25a", kicker="Esto es EGG", glitch=False, foot="datos gratis en el perfil"), 3.0, "punch", say)
+    """Every video ends inviting to sign up (free) on the site, with the link in the first comment."""
+    net = nets[0] if len(nets) == 1 else ""
+    follow = "Suscribite" if net == "youtube" else "Seguinos"
+    where = "el enlace está en la página" if net == "facebook" else "el enlace está en el primer comentario"
+    say = line or (f"Registrate gratis en easygoldglitch punto com: {where}. {follow}, que mañana hay más.")
+    return (reel_frame("REGISTRATE GRATIS", "easygoldglitch.com · la probabilidad de cada partido de hoy",
+                       color="#e7c25a", kicker="Esto es EGG", glitch=False,
+                       foot="enlace en la página" if net == "facebook" else "enlace en el primer comentario"), 3.2, "punch", say)
 
 
 def reel_script(kind: str, rows: list[dict], tx: dict, when_fn, record: dict | None = None) -> list[tuple]:

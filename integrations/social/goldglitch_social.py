@@ -556,12 +556,32 @@ MARKET_TAGS = {"MX": ["ligamx", "futbolmexicano"], "US": ["futbolhispano", "mls"
 DEFAULT_TAGS = ["futbol", "estadisticasdefutbol", "datosdefutbol", "futbollatino", "analisisdefutbol"]
 SPAM_TAGS = re.compile(r"^(fyp|foryou|foryoupage|parati|paratii|viral|viralvideo|trending|xyzbca|explore|explorepage|tiktok|"
                        r"reels|reel|instagood|followme|follow|like4like|likeforlike|goldglitchstats)$", re.I)
-SIGNATURES = {    # who we are + follow, said differently each time (and not on every post)
-    "tiktok": ["Datos de cada partido, todos los días. Seguí la cuenta.", "Si te gustan los números del fútbol, quedate.",
-               "EGG: el dato antes del partido. Seguinos.", "Mañana hay más. Seguí la cuenta para no perdértelo."],
-    "ig": ["EGG · estadística de fútbol con un modelo propio. El historial completo está en el enlace de la bio.",
-           "Guardalo para antes del partido. Todos los datos, gratis en la bio.",
-           "Seguinos: cada día, el dato que nadie está mirando."],
+SITE_REF = {"tiktok": "tt", "instagram": "ig", "facebook": "fb", "youtube": "yt"}
+FIRST_COMMENT = {   # the first comment on every post: sign up (free), with the link where the network lets it work
+    "tiktok": ["Registrate gratis en easygoldglitch.com y mirá la probabilidad de cada partido de hoy. Te espero adentro.",
+               "¿Querés todos los datos de hoy? Registrate gratis en easygoldglitch.com (también está en el perfil).",
+               "Cuenta gratis en easygoldglitch.com: el modelo calcula cada partido del día. Entrá antes de que empiece."],
+    "instagram": ["Registrate gratis en easygoldglitch.com: cada partido del día, con su probabilidad. El enlace también está en la bio.",
+                  "Socio del club, gratis: easygoldglitch.com (enlace en la bio) y tenés todos los datos de hoy."],
+    "facebook": ["Regístrese gratis en EGG y vea la probabilidad de cada partido de hoy: el enlace está en la página. ¿Qué partido quiere que analicemos?",
+                 "Cuenta gratis en EGG: todos los datos del día, partido por partido. El enlace está en la información de la página."],
+    "youtube": ["Registrate gratis y mirá la probabilidad de cada partido de hoy: https://easygoldglitch.com/?ref=yt_cm",
+                "Todos los datos del día, gratis: https://easygoldglitch.com/?ref=yt_cm ¿Qué partido querés que analicemos mañana?"],
+}
+
+
+def first_comment_text(net: str, seed: str) -> str:
+    pool = FIRST_COMMENT[net]
+    return pool[int(hashlib.md5(f"{net}|{seed}".encode()).hexdigest()[:6], 16) % len(pool)]
+
+
+SIGNATURES = {    # who we are + sign up, said differently each time
+    "tiktok": ["Registrate gratis (enlace en el primer comentario) y seguí la cuenta.",
+               "Todos los datos de hoy, gratis: el enlace está en el primer comentario.",
+               "EGG: el dato antes del partido. Registro gratis en el primer comentario."],
+    "ig": ["EGG · estadística de fútbol con un modelo propio. Registrate gratis: enlace en la bio y en el primer comentario.",
+           "Guardalo para antes del partido. Todos los datos, gratis: registro en la bio.",
+           "Cada día, el dato que nadie está mirando. Cuenta gratis en la bio."],
     "fb": ["En EGG calculamos la probabilidad de cada partido con un modelo propio. Seguí la página y lo comentamos juntos.",
            "¿Usted qué piensa? Lo leemos todo. Seguí la página para el dato de cada día.",
            "Somos EGG: estadística de fútbol, partido por partido."],
@@ -590,7 +610,7 @@ def caption(tx: dict, key: str) -> str:
             seen.add(h.lower())
             tags.append(h)
     h = int(hashlib.md5(body.encode()).hexdigest()[:6], 16)
-    if not re.search(r"segu[íi]|suscrib|follow", body, re.I) and h % 3:      # who we are + follow, 2 of every 3 posts
+    if not re.search(r"registr|suscrib|primer comentario", body, re.I):      # always invite to sign up, in a rotating line
         pool = SIGNATURES.get(key, SIGNATURES["ig"])
         body += "\n\n" + pool[h % len(pool)]
     tags = [t for t in tags if not SPAM_TAGS.match(t)]
@@ -652,9 +672,27 @@ def publish(post: dict, piece: dict, meta: Meta | None, tt: TikTok | None, dry: 
                 continue
             done[net] = r
             log(f"  {net}: publicado ({done[net]})")
+            first_comment(net, r, post, {"tiktok": tt, "instagram": meta, "facebook": meta, "youtube": YT}.get(net))
         except (PlatformError, requests.RequestException, RuntimeError) as e:
             post.setdefault("errors", {})[net] = str(e)[:300]
             log(f"  {net}: ERROR {e}")
+
+
+def first_comment(net: str, ref, post: dict, client) -> None:
+    """Right after a post goes up: the first comment invites to sign up (pinned where the network allows)."""
+    if net not in FIRST_COMMENT or client is None or not hasattr(client, "first_comment"):
+        return
+    done = post.setdefault("done", {})
+    if done.get(net + "_comentario") or os.environ.get("REDES_PRIMER_COMENTARIO", "1") == "0":
+        return
+    text = first_comment_text(net, str(post.get("id") or post.get("when") or ref))
+    try:
+        r = client.first_comment(net, ref, text)
+        if r and r != "ensayo":
+            done[net + "_comentario"] = r
+            log(f"  {net}: primer comentario ({r})")
+    except Exception as e:                  # a missing comment never blocks the post
+        log(f"  {net}: primer comentario no se pudo ({str(e)[:160]})")
 
 
 # ------------------------------------------------------------------ jobs
