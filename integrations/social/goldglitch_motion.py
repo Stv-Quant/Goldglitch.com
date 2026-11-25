@@ -534,7 +534,7 @@ body.sig .wrap{position:relative;z-index:2}
 .sg-cap span{display:inline-block;margin:0 .14em;padding:0 .14em;border-radius:6px}
 .sg-cap .on{color:#ede6d6;box-shadow:0 0 0 3px #d4af37;background:rgba(212,175,55,.12)}
 .sg-cap .past{color:#ede6d6}
-.sg-stamp{position:fixed;z-index:4;border:7px solid #ff3b1f;color:#ff3b1f;border-radius:16px;padding:6px 26px;font:700 64px 'JetBrains Mono',monospace;
+.sg-stamp{position:fixed;z-index:4;white-space:nowrap;border:7px solid #ff3b1f;color:#ff3b1f;border-radius:16px;padding:6px 26px;font:700 64px 'JetBrains Mono',monospace;
  letter-spacing:.06em;text-transform:uppercase;opacity:0;mix-blend-mode:screen}
 .sg-ring{position:fixed;inset:0;z-index:4;pointer-events:none}
 .sg-ring path{fill:none;stroke:#ff3b1f;stroke-width:7;stroke-linecap:round}
@@ -580,7 +580,8 @@ function sample(){
 const cap=document.createElement('div');cap.className='sg-cap';document.body.appendChild(cap);
 const say=(M.say||'').replace(/\s+/g,' ').trim(),vd=+M.vd||0,wordsS=say?say.split(' '):[];
 const tot=wordsS.reduce((a,w)=>a+w.length+1,0)||1;let acc=0;const wt=wordsS.map(w=>{const t=0.12+vd*(acc/tot);acc+=w.length+1;return t});
-const chunks=[];{let c=[];wordsS.forEach((w,i)=>{c.push(i);if(c.length===3||/[.,;:!?…]$/.test(w)){chunks.push(c);c=[]}});if(c.length)chunks.push(c)}
+const chunks=[];{let c=[];wordsS.forEach((w,i)=>{c.push(i);if(c.length===3||(w.length>3&&/[.,;:!?…]$/.test(w))){chunks.push(c);c=[]}});if(c.length)chunks.push(c);for(let k=chunks.length-1;k>0;k--)if(chunks[k].length===1&&chunks[k-1].length<4){chunks[k-1]=chunks[k-1].concat(chunks[k]);chunks.splice(k,1)}}
+const capEnd=0.12+vd+0.45;
 // terminal window around the stage, with a typed command
 const st=document.querySelector('[data-m=stage]'),kickEl=document.querySelector('[data-m=kick]');
 const win=document.createElement('div');win.className='sg-win';
@@ -622,7 +623,7 @@ window.__sig=function(t,T){
  window.__sigEnd=Array.from(px).flatMap((x,i)=>[x,py[i]]);
  // karaoke
  let cur=-1;for(let i=0;i<wt.length;i++)if(t>=wt[i])cur=i;
- if(cur<0||!chunks.length){cap.innerHTML=''}else{const ch=chunks.find(c=>c.includes(cur))||chunks[chunks.length-1];
+ if(cur<0||!chunks.length||t>capEnd){cap.innerHTML=''}else{const ch=chunks.find(c=>c.includes(cur))||chunks[chunks.length-1];
   cap.innerHTML=ch.filter(i=>i<=cur).map(i=>"<span class='"+(i===cur?'on':'past')+"'>"+wordsS[i].replace(/&/g,'&amp;').replace(/</g,'&lt;')+"</span>").join('')}
  // window + terminal
  win.style.opacity=S(t/0.6);const nch=Math.floor(cl((t-0.3)/1.2)*full.length);
