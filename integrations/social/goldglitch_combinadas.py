@@ -8,8 +8,8 @@ Qué hace:
   3. Deja al menos 3 opciones con cuota total mayor a 2: una de 2 o 3 selecciones de UN MISMO partido (en BetPlay:
      'Crea tu apuesta') y dos combinando partidos distintos (máximo 3 selecciones). Si falta de un tipo, completa
      con el otro. Con la probabilidad del modelo y la que ha tenido en la realidad.
-  4. Te pregunta cuánto dinero tienes disponible y sugiere cuánto poner en cada opción (un cuarto del criterio de
-     Kelly, máximo 25% de la banca por ronda; solo en opciones con valor esperado positivo). El resto queda en reserva.
+  4. Te pregunta cuánto dinero vas a apostar y lo reparte TODO entre las opciones: más donde la ventaja (criterio de
+     Kelly sobre la probabilidad real) es mayor; si ninguna tiene ventaja, según la probabilidad real.
 Tú revisas el reporte y, si quieres, armas la apuesta en BetPlay. Es información, no una recomendación.
 
     python goldglitch_combinadas.py                # reporte en reportes\\combinadas_FECHA.html (se abre solo)
@@ -387,26 +387,24 @@ def combos(legs: list[dict], min_odds: float, max_sel: int, want: int) -> list[d
 
 
 # ------------------------------------------------------------------ bankroll: how much on each option
-KELLY = 0.25          # a quarter of Kelly: the model is not perfect and the options share selections
-MAX_EXPOSURE = 0.25   # never more than 25% of the bankroll in one round
 UNIT = 1000           # BetPlay stakes rounded to $1.000 COP
 
 
 def stakes(opts: list[dict], bank: float) -> list[float]:
-    """Kelly criterion (what maximises long-run growth), on the probability adjusted to the model's real record.
-    f = (p·odds − 1) / (odds − 1); only options with positive expected value get money; same-match odds are only an
-    estimate (BetPlay prices them lower), so they get half. The rest of the bankroll stays in reserve."""
-    if bank <= 0:
+    """The WHOLE amount is split among the options (no reserve). Weights: Kelly of each option on the probability
+    adjusted to the model's real record, f = (p·odds − 1) / (odds − 1) (same-match odds are only an estimate: half);
+    options without an edge get nothing. If none has an edge, it splits by real probability (the most likely, more).
+    Rounded to $1.000 and the leftover of the rounding goes to the strongest option, so it adds up to exactly `bank`."""
+    if bank <= 0 or not opts:
         return [0.0] * len(opts)
-    raw = []
-    for x in opts:
-        o, p = x["odds"], x["p_real"]
-        f = max(0.0, (p * o - 1) / (o - 1)) * KELLY * (0.5 if x.get("same") else 1.0)
-        raw.append(f)
-    tot = sum(raw)
-    if tot > MAX_EXPOSURE:
-        raw = [f * MAX_EXPOSURE / tot for f in raw]
-    return [math.floor(f * bank / UNIT) * UNIT for f in raw]
+    w = [max(0.0, (x["p_real"] * x["odds"] - 1) / (x["odds"] - 1)) * (0.5 if x.get("same") else 1.0) for x in opts]
+    if sum(w) <= 0:
+        w = [x["p_real"] for x in opts]
+    tot = sum(w)
+    out = [math.floor(bank * f / tot / UNIT) * UNIT for f in w]
+    best = max(range(len(opts)), key=lambda k: w[k])
+    out[best] += bank - sum(out)
+    return out
 
 
 def money(v: float) -> str:
@@ -417,7 +415,7 @@ def ask_bank() -> float:
     v = os.environ.get("COMB_BANCA", "").strip()
     if not v and sys.stdin and sys.stdin.isatty():
         try:
-            v = input("\n¿Cuánto dinero tienes disponible para esto? (pesos, ej. 200000; Enter para omitir): ").strip()
+            v = input("\n¿Cuánto dinero vas a apostar? Se reparte todo (pesos, ej. 200000; Enter para omitir): ").strip()
         except EOFError:
             v = ""
     v = re.sub(r"[^\d]", "", v or "")
@@ -462,13 +460,12 @@ def report(opts: list[dict], info: dict) -> str:
     bank = info.get("bank") or 0
     if bank:
         bet = sum(x.get("stake") or 0 for x in opts)
-        body = (f"<section><h2>Cómo repartir {money(bank)}</h2><p>Apostar: <b>{money(bet)}</b> ({bet / bank * 100:.0f}%) · "
-                f"reserva: <b>{money(bank - bet)}</b>. "
-                + ("Ninguna opción tiene ventaja con la probabilidad real: hoy lo que maximiza es no apostar."
-                   if bet == 0 else
-                   "Los montos salen del criterio de Kelly (un cuarto), que es lo que hace crecer la banca más rápido "
-                   "a largo plazo sin quebrarla. Meter todo en una ronda aumenta la ganancia de un día, pero un mal día "
-                   "te deja en cero; la reserva es lo que te deja seguir jugando con ventaja.")
+        edge = any(x["ev"] > 0 for x in opts)
+        body = (f"<section><h2>Cómo repartir {money(bank)}</h2><p>Se reparte <b>todo</b>: {money(bet)} entre las opciones. "
+                + ("Más dinero donde la ventaja (probabilidad real contra cuota) es mayor; las opciones sin ventaja quedan en $0."
+                   if edge else
+                   "Ojo: ninguna opción tiene ventaja con la probabilidad real (las cuotas pagan menos de lo que deberían); "
+                   "se reparte según la probabilidad real, más a la más probable.")
                 + "</p></section>" + body)
     if not body:
         bt = math.prod(l["odds"] for l in info.get("best") or []) if info.get("best") else 0
