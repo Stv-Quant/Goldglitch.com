@@ -5,13 +5,14 @@ Qué hace:
      y el historial de cómo le ha ido al modelo en ese rango, por familia de mercado.
   2. Lee las cuotas PÚBLICAS de BetPlay (las mismas que ve cualquiera sin iniciar sesión; BetPlay usa la plataforma
      Kambi). Nunca entra a tu cuenta ni toca tu saldo.
-  3. Busca combinadas de 1 a 3 selecciones de partidos distintos con cuota total mayor a 2, y te deja al menos 5
-     opciones ordenadas por valor esperado, con la probabilidad del modelo y la que ha tenido en la realidad.
+  3. Busca primero combinadas de 2 o 3 selecciones de UN MISMO partido con cuota total mayor a 2 (en BetPlay:
+     'Crea tu apuesta'). Si no hay ninguna, combina partidos distintos (1 a 3 selecciones). Máximo 3 opciones,
+     con la probabilidad del modelo y la que ha tenido en la realidad.
 Tú revisas el reporte y, si quieres, armas la apuesta en BetPlay. Es información, no una recomendación.
 
     python goldglitch_combinadas.py                # reporte en reportes\\combinadas_FECHA.html (se abre solo)
 Ajustes opcionales en el .env:
-    COMB_MIN_P=0.80  COMB_MIN_CUOTA=2.0  COMB_MAX_SEL=3  COMB_OPCIONES=5  COMB_HORAS=48
+    COMB_MIN_P=0.80  COMB_MIN_CUOTA=2.0  COMB_MAX_SEL=3  COMB_OPCIONES=3  COMB_HORAS=48
     BETPLAY_KAMBI=betplay     (código de BetPlay en Kambi; si falla, se detecta solo abriendo betplay.com.co)
 """
 from __future__ import annotations
@@ -305,28 +306,78 @@ def find_odds(pick: dict, ev: dict, offers: list[dict]) -> tuple[float, str] | N
 
 
 # ------------------------------------------------------------------ combinations
-def combos(legs: list[dict], min_odds: float, max_sel: int, want: int) -> list[dict]:
-    out = []
-    for k in range(1, max_sel + 1):
-        for c in itertools.combinations(legs, k):
-            if len({l["event"] for l in c}) < k:
-                continue                                  # one selection per match (BetPlay does not combine them)
-            odds = math.prod(l["odds"] for l in c)
-            if odds <= min_odds:
+def _ou(label: str) -> tuple[str, str, float] | None:
+    m = re.match(r"^(.+?):\s*(Más|Menos) de (\d+(?:\.\d+)?)", label or "")
+    return (m[1].strip(), m[2], float(m[3])) if m else None
+
+
+def same_match_ok(c: tuple) -> bool:
+    """Selections of one match that make sense together: no two lines of the same market (redundant or contradictory)
+    and no selection that is already implied by another one (team over X implies total over X)."""
+    pres = [str(l["label"]).partition(":")[0].strip().lower() for l in c]
+    if len(set(pres)) < len(pres):
+        return False
+    for a in c:
+        for b in c:
+            if a is b:
                 continue
-            pm, pr = math.prod(l["p"] for l in c), math.prod(l["p_real"] for l in c)
-            out.append({"legs": c, "odds": odds, "p_model": pm, "p_real": pr, "ev": pr * odds - 1})
-    out.sort(key=lambda x: (-x["ev"], -x["p_real"]))
+            oa, ob = _ou(a["label"]), _ou(b["label"])
+            if oa and ob and oa[1] == ob[1] == "Más" and oa[0].lower().startswith("total de goles") \
+                    and ob[0].lower().startswith("goles de") and ob[2] >= oa[2]:
+                return False                                 # team scores > X  ⇒  match has > X goals
+            if str(a["label"]).startswith("1X2") and str(b["label"]).startswith("Doble oportunidad"):
+                return False                                 # a win already covers "win or draw"
+    return True
+
+
+def _pick(out: list[dict], want: int) -> list[dict]:
     chosen, uses = [], {}
     for x in out:                                         # variety: one selection appears in at most 2 options
         if all(uses.get(id(l), 0) < 2 for l in x["legs"]):
             chosen.append(x)
             for l in x["legs"]:
                 uses[id(l)] = uses.get(id(l), 0) + 1
-        if len(chosen) >= max(want, 5) + 3:
+        if len(chosen) >= want:
             break
+    return chosen
+
+
+def combos_same(legs: list[dict], min_odds: float, max_sel: int, want: int) -> list[dict]:
+    """First choice: 2 or 3 selections of the SAME match (BetPlay 'Crea tu apuesta'), total odds above min_odds."""
+    by_ev: dict = {}
+    for l in legs:
+        by_ev.setdefault(l["event"], []).append(l)
+    out = []
+    for ev_legs in by_ev.values():
+        for k in range(2, min(max_sel, len(ev_legs)) + 1):
+            for c in itertools.combinations(ev_legs, k):
+                if not same_match_ok(c):
+                    continue
+                odds = math.prod(l["odds"] for l in c)
+                if odds <= min_odds:
+                    continue
+                pm, pr = math.prod(l["p"] for l in c), math.prod(l["p_real"] for l in c)
+                out.append({"legs": c, "odds": odds, "p_model": pm, "p_real": pr, "ev": pr * odds - 1, "same": True})
+    out.sort(key=lambda x: (-x["p_real"], -x["ev"]))       # same match: the most likely first
+    return _pick(out, want)
+
+
+def combos(legs: list[dict], min_odds: float, max_sel: int, want: int) -> list[dict]:
+    """Fallback: 1 to max_sel selections of DIFFERENT matches."""
+    out = []
+    for k in range(1, max_sel + 1):
+        for c in itertools.combinations(legs, k):
+            if len({l["event"] for l in c}) < k:
+                continue
+            odds = math.prod(l["odds"] for l in c)
+            if odds <= min_odds:
+                continue
+            pm, pr = math.prod(l["p"] for l in c), math.prod(l["p_real"] for l in c)
+            out.append({"legs": c, "odds": odds, "p_model": pm, "p_real": pr, "ev": pr * odds - 1, "same": False})
+    out.sort(key=lambda x: (-x["ev"], -x["p_real"]))
+    chosen = _pick(out, want)
     for x in out:                                         # not enough variety: fill with the next best ones
-        if len(chosen) >= max(want, 5):
+        if len(chosen) >= want:
             break
         if x not in chosen:
             chosen.append(x)
@@ -352,9 +403,14 @@ def report(opts: list[dict], info: dict) -> str:
             f"<div class=s>{'historial ' + str(l['hist_n']) if l['hist_n'] else 'sin historial'}</div></td></tr>"
             for l in x["legs"])
         tone = "pos" if x["ev"] > 0 else "neg"
-        cards.append(f"""<section><h2>Opción {i} <span>{len(x['legs'])} {'selecciones' if len(x['legs']) > 1 else 'selección'}</span></h2>
+        tag = (f"mismo partido · {len(x['legs'])} selecciones" if x.get("same")
+               else f"{len(x['legs'])} {'selecciones' if len(x['legs']) > 1 else 'selección'} de partidos distintos")
+        same_note = ("<div class=s>Mismo partido: ármala en BetPlay con 'Crea tu apuesta'. BetPlay calcula su propia cuota "
+                     "para selecciones del mismo partido (suele ser menor que la multiplicación de abajo), y la probabilidad "
+                     "conjunta no es exactamente el producto porque los eventos están relacionados.</div>") if x.get("same") else ""
+        cards.append(f"""<section><h2>Opción {i} <span>{tag}</span></h2>{same_note}
 <table><tr><th>Partido</th><th>Mercado</th><th class=n>Cuota</th><th class=n>Modelo</th><th class=n>Real</th></tr>{rows}</table>
-<div class=tot><b>Cuota total {x['odds']:.2f}</b> · probabilidad modelo {x['p_model'] * 100:.0f}% · ajustada a la realidad
+<div class=tot><b>Cuota total {'estimada ' if x.get('same') else ''}{x['odds']:.2f}</b> · probabilidad modelo {x['p_model'] * 100:.0f}% · ajustada a la realidad
 {x['p_real'] * 100:.0f}% · implícita de la cuota {100 / x['odds']:.0f}% ·
 <b class={tone}>valor esperado {x['ev'] * 100:+.0f}%</b></div></section>""")
     body = "".join(cards)
@@ -397,7 +453,7 @@ Calibración general del modelo en picks de {info['min_p'] * 100:.0f}%+: {info['
 def main() -> int:
     load_env()
     min_p, min_odds = env_f("COMB_MIN_P", 0.80), env_f("COMB_MIN_CUOTA", 2.0)
-    max_sel, want, hours = int(env_f("COMB_MAX_SEL", 3)), int(env_f("COMB_OPCIONES", 5)), env_f("COMB_HORAS", 48)
+    max_sel, want, hours = int(env_f("COMB_MAX_SEL", 3)), int(env_f("COMB_OPCIONES", 3)), env_f("COMB_HORAS", 48)
     print(f"Picks de {min_p * 100:.0f}% o más de las próximas {hours:.0f} h…")
     data = signed("/api/social/candidatos", {"min": min_p, "hours": hours})
     picks, stats = data["picks"], calibration(data["history"])
@@ -458,7 +514,11 @@ def main() -> int:
     os.makedirs(OUTDIR, exist_ok=True)
     with open(os.path.join(OUTDIR, "diagnostico_combinadas.json"), "w", encoding="utf-8") as f:
         json.dump(diag, f, ensure_ascii=False, indent=1)
-    opts = combos(legs, min_odds, max_sel, want)
+    opts = combos_same(legs, min_odds, max_sel, want)          # first: 2-3 selections of one match
+    print(f"  {len(opts)} opciones en un mismo partido")
+    if not opts:                                               # none in one match: combine different matches
+        opts = combos(legs, min_odds, max_sel, want)
+        print(f"  ninguna en un mismo partido: {len(opts)} opciones combinando partidos distintos")
     top = sorted(legs, key=lambda l: -l["odds"])
     best, used = [], set()
     for l in top:                                   # the highest total possible with max_sel matches
@@ -468,7 +528,7 @@ def main() -> int:
     path = report(opts, {"top": top[:12], "best": best, "min_p": min_p, "picks": len(picks), "matched": len(legs), "max_sel": max_sel,
                          "min_odds": min_odds, "unmatched": unmatched, "hit": hit})
     for i, x in enumerate(opts, 1):
-        print(f"\nOpción {i}: cuota {x['odds']:.2f} · real {x['p_real'] * 100:.0f}% · VE {x['ev'] * 100:+.0f}%")
+        print(f"\nOpción {i} ({'mismo partido' if x.get('same') else 'partidos distintos'}): cuota {x['odds']:.2f} · real {x['p_real'] * 100:.0f}% · VE {x['ev'] * 100:+.0f}%")
         for l in x["legs"]:
             print(f"   {l['home']} vs {l['away']} ({when(l['kickoffAt'])}) — {l['label']} @ {l['odds']:.2f}")
     if len(opts) < want:

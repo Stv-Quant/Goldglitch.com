@@ -492,7 +492,10 @@ ANCHOR_P = float(os.environ.get("REDES_ANCLA_P", "0.85"))
 FOMO_SHARE = {"tiktok": 0.7}        # TikTok: mostly curiosity pieces; elsewhere 35 %
 
 
-LOOK_BRIEF = {   # one brand voice (a private members' data club), five rooms
+LOOK_BRIEF = {   # one brand voice (a private members' data club), five rooms + the signal
+    "senal": "SEÑAL (el estilo de la landing): polvo de partículas que pasa de ruido a dato; subtítulos palabra por "
+             "palabra, ventana de terminal, sello y círculo a mano; ritmo pausado. Tono: una idea por escena, frases "
+             "cortas que se leen al ritmo de la voz ('Ruido. Ruido. Y de pronto, un número.')",
     "club": "EL SALÓN DEL CLUB: negro y oro, sello de socio; tono de quien entra sin hacer fila: pocas palabras, "
             "seguras ('Esta noche el dato es uno solo.')",
     "stmoritz": "ST. MORITZ: crema, azul alpino y oro viejo, aire de temporada de invierno; tono sereno y elegante, "
