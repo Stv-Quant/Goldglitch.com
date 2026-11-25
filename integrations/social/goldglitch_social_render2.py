@@ -1236,32 +1236,68 @@ def reel_video(frames: list[tuple[str, float, str]], name: str) -> str:
 
 
 def _motion_video(frames, lens, voice, name, M, T) -> str:
-    """Animated scenes (goldglitch_motion): depth, data that counts and fills, the EGG look of the day."""
+    """Animated scenes (goldglitch_motion) joined by editor-grade cuts (goldglitch_cuts): zoom-through, whip pans,
+    spin, drop, slices and gold light leaks, each on a speed ramp, cut on the beat. Falls back to xfade."""
+    look = LOOK.get("look") or "terminal"
     d = os.path.join(OUT, f"{name}_motion")
-    dirs = M.render_scenes([f[0] for f in frames], lens, d, LOOK.get("look") or "terminal")
-    inputs, parts = [], []
-    for i, (dd, (_, _secs, fx, _say)) in enumerate(zip(dirs, frames)):
-        inputs += ["-framerate", str(M.fps_for(LOOK.get("look") or "terminal")), "-i", os.path.join(dd, "%04d.jpg")]
-        glitch = ",rgbashift=rh=-10:bh=10:gv=4:enable='lt(t,0.12)'"          # the gold glitch cut, every scene
-        flash = ",fade=t=in:st=0:d=0.10:color=white" if fx == "flash" else ""
-        parts.append(f"[{i}:v]fps=30,scale=1080:1920,format=yuv420p,setsar=1{glitch}{flash},vignette=PI/6,"
-                     f"trim=duration={lens[i]:.3f},setpts=PTS-STARTPTS[v{i}]")
-    out = _assemble(inputs, parts, lens, frames, voice, name, T, len(dirs))
+    dirs = M.render_scenes([f[0] for f in frames], lens, d, look)
+    fps = M.fps_for(look)
+    try:
+        import goldglitch_cuts as C
+    except Exception:
+        C = None
+    if C is None or len(dirs) < 2:
+        inputs, parts = [], []
+        for i, (dd, (_, _secs, fx, _say)) in enumerate(zip(dirs, frames)):
+            inputs += ["-framerate", str(fps), "-i", os.path.join(dd, "%04d.jpg")]
+            glitch = ",rgbashift=rh=-10:bh=10:gv=4:enable='lt(t,0.12)'"
+            flash = ",fade=t=in:st=0:d=0.10:color=white" if fx == "flash" else ""
+            parts.append(f"[{i}:v]fps=30,scale=1080:1920,format=yuv420p,setsar=1{glitch}{flash},vignette=PI/6,"
+                         f"trim=duration={lens[i]:.3f},setpts=PTS-STARTPTS[v{i}]")
+        out = _assemble(inputs, parts, lens, frames, voice, name, T, len(dirs))
+    else:
+        D = C.N / C.FPS                                  # each cut is centred on the scene boundary
+        seed = int(hashlib.md5(name.encode()).hexdigest()[:4], 16)
+        files = [sorted(os.listdir(dd)) for dd in dirs]
+        at = lambda i, t: os.path.join(dirs[i], files[i][min(len(files[i]) - 1, max(0, int(t * fps)))])
+        inputs, parts, order, n_in = [], [], [], 0
+        for i, (dd, (_, _secs, fx, _say)) in enumerate(zip(dirs, frames)):
+            st = D / 2 if i > 0 else 0.0
+            en = lens[i] - D / 2 if i < len(dirs) - 1 else lens[i]
+            inputs += ["-framerate", str(fps), "-i", os.path.join(dd, "%04d.jpg")]
+            flash = ",fade=t=in:st=0:d=0.10:color=white" if fx == "flash" else ""
+            parts.append(f"[{n_in}:v]fps=30,scale=1080:1920,format=yuv420p,setsar=1,trim=start={st:.3f}:end={en:.3f},"
+                         f"setpts=PTS-STARTPTS{flash},vignette=PI/6[v{n_in}]")
+            order.append(f"[v{n_in}]")
+            n_in += 1
+            if i < len(dirs) - 1:
+                a = [at(i, lens[i] - D / 2 + k / C.FPS) for k in range(C.N)]
+                b = [at(i + 1, max(0.0, k / C.FPS - D / 2)) for k in range(C.N)]
+                td = os.path.join(d, f"cut{i:02d}")
+                C.make(a, b, C.kind_for(look, i, seed), td)
+                inputs += ["-framerate", str(C.FPS), "-i", os.path.join(td, "%04d.jpg")]
+                parts.append(f"[{n_in}:v]scale=1080:1920,format=yuv420p,setsar=1,vignette=PI/6,setpts=PTS-STARTPTS[v{n_in}]")
+                order.append(f"[v{n_in}]")
+                n_in += 1
+        out = _assemble(inputs, parts, lens, frames, voice, name, 0.0, n_in, concat=order)
     import shutil as _sh
     _sh.rmtree(d, ignore_errors=True)
     return out
 
 
-def _assemble(inputs, parts, durs, frames, voice, name, T, count) -> str:
+def _assemble(inputs, parts, durs, frames, voice, name, T, count, concat: list[str] | None = None) -> str:
     import imageio_ffmpeg
     ff = imageio_ffmpeg.get_ffmpeg_exe()
-    trs = LOOK_TRANSITIONS.get(LOOK.get("look") or "", TRANSITIONS)
-    chain, last, off = [], "v0", durs[0] - T
-    for i in range(1, count):
-        tr = trs[i % len(trs)]
-        chain.append(f"[{last}][v{i}]xfade=transition={tr}:duration={T}:offset={off:.3f}[x{i}]")
-        last, off = f"x{i}", off + durs[i] - T
-    total = off + T
+    if concat:                                         # segments already carry their own cuts: just chain them
+        chain, last, total = [f"{''.join(concat)}concat=n={len(concat)}:v=1:a=0[vcat]"], "vcat", sum(durs)
+    else:
+        trs = LOOK_TRANSITIONS.get(LOOK.get("look") or "", TRANSITIONS)
+        chain, last, off = [], "v0", durs[0] - T
+        for i in range(1, count):
+            tr = trs[i % len(trs)]
+            chain.append(f"[{last}][v{i}]xfade=transition={tr}:duration={T}:offset={off:.3f}[x{i}]")
+            last, off = f"x{i}", off + durs[i] - T
+        total = off + T
     Path(OUT).mkdir(exist_ok=True)
     starts, acc = [], 0.0
     for d, (_, _, fx, _s) in zip(durs, frames):
