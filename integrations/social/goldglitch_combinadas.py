@@ -1,18 +1,18 @@
 """Combinadas de BetPlay con los picks del modelo: reporte PRIVADO para ti (no se publica y no apuesta nada).
 
 Qué hace:
-  1. Trae de la web todos los picks de fútbol con 80 % o más de las próximas 48 h (todos los mercados de cada partido)
+  1. Trae de la web todos los picks de fútbol con 85 % o más de las próximas 48 h (todos los mercados de cada partido)
      y el historial de cómo le ha ido al modelo en ese rango, por familia de mercado.
   2. Lee las cuotas PÚBLICAS de BetPlay (las mismas que ve cualquiera sin iniciar sesión; BetPlay usa la plataforma
      Kambi). Nunca entra a tu cuenta ni toca tu saldo.
-  3. Busca primero combinadas de 2 o 3 selecciones de UN MISMO partido con cuota total mayor a 2 (en BetPlay:
-     'Crea tu apuesta'). Si no hay ninguna, combina partidos distintos (1 a 3 selecciones). Máximo 3 opciones,
-     con la probabilidad del modelo y la que ha tenido en la realidad.
+  3. Deja al menos 3 opciones con cuota total mayor a 2: una de 2 o 3 selecciones de UN MISMO partido (en BetPlay:
+     'Crea tu apuesta') y dos combinando partidos distintos (máximo 3 selecciones). Si falta de un tipo, completa
+     con el otro. Con la probabilidad del modelo y la que ha tenido en la realidad.
 Tú revisas el reporte y, si quieres, armas la apuesta en BetPlay. Es información, no una recomendación.
 
     python goldglitch_combinadas.py                # reporte en reportes\\combinadas_FECHA.html (se abre solo)
 Ajustes opcionales en el .env:
-    COMB_MIN_P=0.80  COMB_MIN_CUOTA=2.0  COMB_MAX_SEL=3  COMB_OPCIONES=3  COMB_HORAS=48
+    COMB_MIN_P=0.85  COMB_MIN_CUOTA=2.0  COMB_MAX_SEL=3  COMB_OPCIONES=3  COMB_HORAS=48
     BETPLAY_KAMBI=betplay     (código de BetPlay en Kambi; si falla, se detecta solo abriendo betplay.com.co)
 """
 from __future__ import annotations
@@ -452,7 +452,7 @@ Calibración general del modelo en picks de {info['min_p'] * 100:.0f}%+: {info['
 # ------------------------------------------------------------------ main
 def main() -> int:
     load_env()
-    min_p, min_odds = env_f("COMB_MIN_P", 0.80), env_f("COMB_MIN_CUOTA", 2.0)
+    min_p, min_odds = env_f("COMB_MIN_P", 0.85), env_f("COMB_MIN_CUOTA", 2.0)
     max_sel, want, hours = int(env_f("COMB_MAX_SEL", 3)), int(env_f("COMB_OPCIONES", 3)), env_f("COMB_HORAS", 48)
     print(f"Picks de {min_p * 100:.0f}% o más de las próximas {hours:.0f} h…")
     data = signed("/api/social/candidatos", {"min": min_p, "hours": hours})
@@ -514,11 +514,14 @@ def main() -> int:
     os.makedirs(OUTDIR, exist_ok=True)
     with open(os.path.join(OUTDIR, "diagnostico_combinadas.json"), "w", encoding="utf-8") as f:
         json.dump(diag, f, ensure_ascii=False, indent=1)
-    opts = combos_same(legs, min_odds, max_sel, want)          # first: 2-3 selections of one match
-    print(f"  {len(opts)} opciones en un mismo partido")
-    if not opts:                                               # none in one match: combine different matches
-        opts = combos(legs, min_odds, max_sel, want)
-        print(f"  ninguna en un mismo partido: {len(opts)} opciones combinando partidos distintos")
+    same = combos_same(legs, min_odds, max_sel, want)          # 2-3 selections of one match
+    mixed = combos(legs, min_odds, max_sel, want)              # selections of different matches
+    opts = same[:1] + mixed[:max(2, want - 1)]                 # at least: 1 of one match + 2 of mixed matches
+    for x in same[1:] + mixed[max(2, want - 1):]:              # short on one kind: fill with the other
+        if len(opts) >= want:
+            break
+        opts.append(x)
+    print(f"  {sum(1 for x in opts if x.get('same'))} de un mismo partido · {sum(1 for x in opts if not x.get('same'))} de partidos distintos")
     top = sorted(legs, key=lambda l: -l["odds"])
     best, used = [], set()
     for l in top:                                   # the highest total possible with max_sel matches
