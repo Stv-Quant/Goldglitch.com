@@ -648,7 +648,7 @@ window.__sig=function(t,T){
  let cur=-1;for(let i=0;i<wt.length;i++)if(t>=wt[i])cur=i;
  if(cur<0||!chunks.length||t>capEnd){cap.innerHTML=''}else{const ch=chunks.find(c=>c.includes(cur))||chunks[chunks.length-1];
   cap.innerHTML=ch.filter(i=>i<=cur).map(i=>"<span class='"+(i===cur?'on':'past')+"'>"+wordsS[i].replace(/&/g,'&amp;').replace(/</g,'&lt;')+"</span>").join('')}
- const talking=t>0.12&&t<0.12+vd;eqs.forEach((e,k)=>{const h=talking?6+20*Math.abs(Math.sin(t*(9+k*1.7)+k*1.3)*Math.sin(t*3.1+k)):3;e.style.height=h+'px'});
+ const talking=M.voz!==false&&t>0.12&&t<0.12+vd;eqs.forEach((e,k)=>{const h=talking?6+20*Math.abs(Math.sin(t*(9+k*1.7)+k*1.3)*Math.sin(t*3.1+k)):3;e.style.height=h+'px'});
  tick.style.left=(-((t*90)%900))+'px';
  {const r=win.getBoundingClientRect(),o=8+4*Math.sin(t*3);const P=[[r.left-o,r.top-o],[r.right-46+o,r.top-o],[r.left-o,r.bottom-46+o],[r.right-46+o,r.bottom-46+o]];
   corners.forEach((c,k)=>{c.style.left=P[k][0]+'px';c.style.top=P[k][1]+'px';c.style.opacity=S((t-0.4)/0.5)})}
