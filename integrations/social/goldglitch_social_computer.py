@@ -433,8 +433,10 @@ class AgentTikTok:
                  "como etiqueta); si no aparece la lista, escribe un espacio y sigue. Etiquetas, en este orden: "
                  + " ".join("#" + t for t in tags) + ". Al terminar, amplía el cuadro de descripción y comprueba que las "
                  "etiquetas se ven como etiquetas (resaltadas), no como texto normal. ") if tags else ""
-        task = ("Publica este video en TikTok con la descripción preparada. En TikTok Studio (Cargar): 'Seleccionar video' "
-                "(el archivo se adjunta solo), espera a que termine de subir, borra el texto que aparezca en la descripción "
+        task = ("Publica este video en TikTok con la descripción preparada. En TikTok Studio (Cargar) el video se adjunta "
+                "solo al abrir la página: si ya ves que se está subiendo o el editor del video, NO pulses 'Seleccionar video'; "
+                "si sigue la zona vacía, pulsa 'Seleccionar video' una vez (también lo adjunta solo). Espera a que termine "
+                "de subir, borra el texto que aparezca en la descripción "
                 "(clic en el cuadro, ctrl+a, Delete), usa escribir_texto_preparado. " + steps +
                 "Deja la privacidad en 'Todos', y Publicar. "
                 + trending_audio_step("TikTok Studio ('Editar video' > 'Sonidos')", "TikTok", self.audio_vibe))

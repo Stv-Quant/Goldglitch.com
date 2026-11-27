@@ -57,6 +57,12 @@ def _page():
             pass
         time.sleep(4)
         S.update(br=br, pg=pg, agent=ScreenAgent(br, "", lambda m: None))
+        if TASK.get("net") == "tiktok" and S["state"].get("files"):
+            for _ in range(3):                  # the upload input renders a moment after the page
+                if _direct_attach(pg):
+                    time.sleep(3)
+                    break
+                time.sleep(3)
     return S["pg"]
 
 
@@ -65,29 +71,51 @@ def _img(block: dict) -> Image:
     return Image(data=base64.b64decode(block["source"]["data"]), format="png")
 
 
+def _attach_log(msg: str) -> None:
+    try:
+        d = os.path.join(HERE, "redes_salida", "errores")
+        os.makedirs(d, exist_ok=True)
+        with open(os.path.join(d, "adjuntar.log"), "a", encoding="utf-8") as f:
+            f.write(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] {TASK.get('net')}: {msg}\n")
+    except Exception:
+        pass
+
+
 def _direct_attach(pg) -> str:
-    """Put the file straight into the page's <input type=file> (any frame) when clicking the upload button opened no
-    chooser we can see (TikTok Studio since 2026-11-25). Only for publications, and only once."""
+    """Put the file straight into the page's <input type=file> (any frame, shadow DOM included), without opening any
+    chooser. TikTok Studio since 2026-11-25: its button opens a native Windows dialog the agent cannot see or use."""
     files = S["state"].get("files") or []
-    if S["state"].get("attached") or not files or TASK.get("kind") == "profile":
+    if S["state"].get("attached") or not files:
         return ""
+    seen = 0
     for fr in pg.frames:
         try:
             loc = fr.locator("input[type=file]")
-            if loc.count() == 0:
-                continue
-            el = loc.first
-            multi = bool(el.get_attribute("multiple") is not None)
-            el.set_input_files(files if multi else files[:1], timeout=10_000)
-            S["state"]["attached"] = True
-            return "Archivo adjuntado directamente en el campo de carga de la página."
-        except Exception:
-            continue
+            n = loc.count()
+            seen += n
+            for k in range(n):
+                el = loc.nth(k)
+                acc = (el.get_attribute("accept") or "").lower()
+                if acc and "video" not in acc and not any(files[0].lower().endswith(x) for x in (".jpg", ".png", ".jpeg")):
+                    continue
+                multi = el.get_attribute("multiple") is not None
+                el.set_input_files(files if multi else files[:1], timeout=15_000)
+                S["state"]["attached"] = True
+                _attach_log(f"adjuntado directo ({fr.url[:80]}, accept={acc or '-'})")
+                return "Archivo adjuntado directamente en el campo de carga: espera unos segundos a que suba."
+        except Exception as e:
+            _attach_log(f"error en {fr.url[:80]}: {str(e)[:300]}")
+    _attach_log(f"sin adjuntar: {seen} campos de archivo en {len(pg.frames)} marcos ({pg.url[:100]})")
     return ""
 
 
 def _act(name: str, a: dict):
     pg = _page()
+    if "click" in name and TASK.get("net") == "tiktok" and not S["state"].get("attached") and S["state"].get("files"):
+        note = _direct_attach(pg)              # attach instead of clicking 'Seleccionar vídeo' (native dialog)
+        if note:
+            time.sleep(3)
+            return [note, _img(S["agent"]._shot(pg))]
     out = S["agent"]._do(pg, name, a, S["state"])
     if isinstance(out, str) and "click" in name and not S["state"].get("attached"):
         time.sleep(1.5)                             # a real chooser fires within a second; if not, attach directly
