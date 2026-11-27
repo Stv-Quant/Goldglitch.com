@@ -982,9 +982,10 @@ def brand_outro(nets: list[str], line: str = "") -> tuple:
     net = nets[0] if len(nets) == 1 else ""
     follow = "Suscribite" if net == "youtube" else "Seguinos"
     where = "el enlace está en la página" if net == "facebook" else "el enlace está en el primer comentario"
-    say = line or (f"Sin opiniones, sin humo: solo datos. Nuestro historial es público, aciertos y fallos, en easygoldglitch "
-                   f"punto com. Entrá y registrate gratis: {where}. {follow}.")
-    return (reel_frame("REGISTRATE GRATIS", "easygoldglitch.com · la probabilidad de cada partido de hoy",
+    say = line or (f"Sin opiniones, sin humo: solo datos. El historial es público, aciertos y fallos. Y es gratis: te registrás "
+                   f"en easygoldglitch punto com para recibir las alertas y ver las estadísticas a detalle; no cobramos nada. "
+                   f"{where[0].upper() + where[1:]}. {follow}.")
+    return (reel_frame("GRATIS", "easygoldglitch.com · alertas y estadísticas a detalle · no cobramos",
                        color="#e7c25a", kicker="Esto es EGG", glitch=False,
                        foot="enlace en la página" if net == "facebook" else "enlace en el primer comentario"), 3.2, "punch", say)
 
@@ -1088,7 +1089,11 @@ def reel_script(kind: str, rows: list[dict], tx: dict, when_fn, record: dict | N
                            f"{anc['label']}: {_say_pct(p)}."))
         at = len(f) if kind == "resultados" else min(1, len(f))
         f[at:at] = scenes
-    f.insert(0, brand_intro())
+    if f:                    # the first second is the hook: the question, word by word, over a '?' made of dust
+        q = strip_emoji(tx.get("voz_hook") or tx.get("reel_hook") or f[0][3] or "").strip()
+        if q:
+            f[0] = (reel_frame("?", "", kicker="Pregunta", color="#d4af37", glitch=False), max(2.2, read_secs(q) + 0.6), "punch", q)
+    f.insert(1 if f else 0, brand_intro())       # who we are comes right after the hook, never before it
     f.append(brand_outro(tx.get("_redes") or [], tx.get("voz_cierre") or ""))
     return f
 
@@ -1257,7 +1262,8 @@ def _motion_video(frames, lens, voice, name, M, T) -> str:
     d = os.path.join(OUT, f"{name}_motion")
     from goldglitch_lenguaje import brand_clean, safe_text
     clean = (lambda x: safe_text(brand_clean(x))) if SAFE["on"] else brand_clean
-    meta = [{"say": clean(strip_emoji(f[3] or "").strip()), "vd": (voice[i][1] if voice[i] else read_secs(f[3])),
+    tidy = lambda x: re.sub(r"\.{2,}", ".", re.sub(r"\b([ap])\. ?m\.", lambda m: m.group(1).upper() + "M", x))
+    meta = [{"say": tidy(clean(strip_emoji(f[3] or "").strip())), "vd": (voice[i][1] if voice[i] else read_secs(f[3])),
              "voz": bool(voice[i])} for i, f in enumerate(frames)]
     dirs = M.render_scenes([f[0] for f in frames], lens, d, look, meta)
     fps = M.fps_for(look)

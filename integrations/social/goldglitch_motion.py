@@ -530,10 +530,12 @@ body.sig .wrap{position:relative;z-index:2}
 .sg-term{position:absolute;left:24px;bottom:20px;font:400 26px 'JetBrains Mono',monospace;color:#ede6d6;white-space:nowrap}
 .sg-term b{color:#d4af37;font-weight:400}
 .sg-cur{display:inline-block;width:14px;height:28px;background:#d4af37;vertical-align:-5px;margin-left:4px}
-.sg-cap{position:fixed;z-index:3;left:60px;right:60px;top:250px;text-align:center;font:700 62px/1.15 'Space Grotesk',sans-serif;color:#8c8576}
+.sg-cap{position:fixed;z-index:6;left:40px;right:40px;top:1430px;text-align:center;font:400 118px/1.02 'Anton','Bebas Neue',Impact,sans-serif;color:#fff;text-transform:uppercase;letter-spacing:.01em;-webkit-text-stroke:3px #0a0907;paint-order:stroke fill;text-shadow:0 8px 0 rgba(0,0,0,.55),0 0 40px rgba(0,0,0,.6)}
+body.sig.hook .sg-cap{top:1180px;font-size:136px}
+body.sig.hook .sg-win,body.sig.hook .sg-corner,body.sig.hook [data-m=kick]{display:none!important}
 .sg-cap span{display:inline-block;margin:0 .14em;padding:0 .14em;border-radius:6px}
-.sg-cap .on{color:#ede6d6;box-shadow:0 0 0 3px #d4af37;background:rgba(212,175,55,.12)}
-.sg-cap .past{color:#ede6d6}
+.sg-cap .on{color:#fff}.sg-cap .key{color:#f2c94c}
+.sg-cap .past{color:#fff}
 .sg-stamp{position:fixed;z-index:4;white-space:nowrap;border:7px solid #ff3b1f;color:#ff3b1f;border-radius:16px;padding:6px 26px;font:700 64px 'JetBrains Mono',monospace;
  letter-spacing:.06em;text-transform:uppercase;opacity:0;mix-blend-mode:screen}
 .sg-ring{position:fixed;inset:0;z-index:4;pointer-events:none}
@@ -546,7 +548,7 @@ body.sig .wrap{position:relative;z-index:2}
 </style>
 <script>
 (function(){
-document.body.classList.add('sig');
+document.body.classList.add('sig');if(((document.querySelector('[data-m=big]')||{}).textContent||'').trim()==='?')document.body.classList.add('hook');
 const W=1080,H=1920,N=""" + str(SIG_N) + r""";
 const M=window.__meta||{},PREV=window.__sigPrev;
 const sc=(window.__scene||[0,1])[0];
@@ -585,7 +587,7 @@ function sample(){
 const cap=document.createElement('div');cap.className='sg-cap';document.body.appendChild(cap);
 const say=(M.say||'').replace(/\s+/g,' ').trim(),vd=+M.vd||0,wordsS=say?say.split(' '):[];
 const wl=w=>w.length+1+(/[.!?:;…]$/.test(w)?9:/,$/.test(w)?3:0);const tot=wordsS.reduce((a,w)=>a+wl(w),0)||1;let acc=0;const wt=wordsS.map(w=>{const t=0.12+vd*(acc/tot);acc+=wl(w);return t});
-const chunks=[];{let c=[];wordsS.forEach((w,i)=>{c.push(i);if(c.length===3||(w.length>3&&/[.,;:!?…]$/.test(w))){chunks.push(c);c=[]}});if(c.length)chunks.push(c);for(let k=chunks.length-1;k>0;k--)if(chunks[k].length===1&&chunks[k-1].length<4){chunks[k-1]=chunks[k-1].concat(chunks[k]);chunks.splice(k,1)}}
+const chunks=[];{let c=[];wordsS.forEach((w,i)=>{c.push(i);const nx=wordsS[i+1]||'';if(c.length===2||(w.length>3&&/[.,;:!?…]$/.test(w))||(c.length===1&&(w.length+nx.length)>13)){chunks.push(c);c=[]}});if(c.length)chunks.push(c);for(let k=chunks.length-1;k>0;k--)if(chunks[k].length===1&&chunks[k-1].length<4){chunks[k-1]=chunks[k-1].concat(chunks[k]);chunks.splice(k,1)}}
 const capEnd=0.12+vd+0.45;
 // terminal window around the stage, with a typed command
 const st=document.querySelector('[data-m=stage]'),kickEl=document.querySelector('[data-m=kick]');
@@ -647,7 +649,8 @@ window.__sig=function(t,T){
  // karaoke
  let cur=-1;for(let i=0;i<wt.length;i++)if(t>=wt[i])cur=i;
  if(cur<0||!chunks.length||t>capEnd){cap.innerHTML=''}else{const ch=chunks.find(c=>c.includes(cur))||chunks[chunks.length-1];
-  cap.innerHTML=ch.filter(i=>i<=cur).map(i=>"<span class='"+(i===cur?'on':'past')+"'>"+wordsS[i].replace(/&/g,'&amp;').replace(/</g,'&lt;')+"</span>").join('')}
+  const isKey=w=>/\d/.test(w)||w.replace(/[^\wáéíóúñ]/gi,'').length>=6;
+  cap.innerHTML=ch.filter(i=>i<=cur).map(i=>"<span class='"+(i===cur?'on':'past')+(isKey(wordsS[i])?' key':'')+"'>"+wordsS[i].replace(/&/g,'&amp;').replace(/</g,'&lt;')+"</span>").join('')}
  const talking=M.voz!==false&&t>0.12&&t<0.12+vd;eqs.forEach((e,k)=>{const h=talking?6+20*Math.abs(Math.sin(t*(9+k*1.7)+k*1.3)*Math.sin(t*3.1+k)):3;e.style.height=h+'px'});
  tick.style.left=(-((t*90)%900))+'px';
  {const r=win.getBoundingClientRect(),o=8+4*Math.sin(t*3);const P=[[r.left-o,r.top-o],[r.right-46+o,r.top-o],[r.left-o,r.bottom-46+o],[r.right-46+o,r.bottom-46+o]];
