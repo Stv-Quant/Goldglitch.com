@@ -254,7 +254,7 @@ reglas. Conceptos ya usados (no repitas ni te parezcas): {json.dumps(recent, ens
 Tipo: {post['type']} — {POST_TYPES[post['type']]}
 Ángulo: {post.get('angle')}  Tema: {post.get('topic') or '—'}
 Gancho pedido por el comité de crecimiento: {post.get('hook') or '—'}
-Llamado a la acción pedido por el comité: {post.get('cta') or 'ver todas las estadísticas gratis creando la cuenta'}
+Llamado a la acción pedido por el comité: {post.get('cta') or 'registrarse gratis (sin pagar nada) para recibir alertas y ver las estadísticas a detalle'}
 Red de destino: {red_destino(post)}
 Dato ancla (pick de 85%+ de hoy): {json.dumps(data.get('pick_ancla'), ensure_ascii=False) if data.get('pick_ancla') else 'no hay'}
 — si hay dato ancla, TODA la pieza (imagen, video y texto) gira en torno a él: nómbralo en reel_hook o voz_hook, usa
@@ -276,7 +276,7 @@ Entrega:
 - cover_title: título de portada, máx. 38 caracteres.
 - cover_subtitle: subtítulo de portada, máx. 90 caracteres.
 - ig: texto para Instagram (máx. 900 caracteres, gancho de curiosidad en la primera línea, saltos de línea, una pregunta
-  para comentar, un "guárdalo / mándaselo a…" y termina invitando a ver todo gratis en el enlace de la bio).
+  para comentar, un "guárdalo / mándaselo a…" y termina diciendo que es gratis: registrándote en el enlace de la bio recibes alertas y ves las estadísticas a detalle).
 - fb: texto para Facebook (máx. 700 caracteres, incluye https://easygoldglitch.com).
 - tiktok: texto para TikTok (máx. 220 caracteres): primera línea BUSCABLE y natural (equipos/competición + lo que
   la gente quiere saber: "quién gana", "estadísticas", "cuántos goles"), luego el remate y una pregunta corta.
@@ -284,8 +284,8 @@ Entrega:
   competición del dato (realmadrid, psv, championsleague), luego el tema (estadisticasdefutbol, datosdefutbol), al final
   1 general (futbol). PROHIBIDOS los de relleno: fyp, parati, viral, foryou, trending, explore. Nada de apuestas.
   (Cada red usa solo los primeros: TikTok 5, Instagram 8, YouTube 3, Facebook 2.)
-- reel_hook: texto de impacto para la primera pantalla del reel, máx. 26 caracteres, en voz EGG (ej. "MIRÁ ESTO 👀",
-  "O SEA… 88%", "NIVEL: CHAMPIONS 🥂").
+- reel_hook: el gancho del primer segundo (ver HOOKS): UNA pregunta "¿Por qué…?" o "¿Qué pasaría si…?", máx. 70
+  caracteres, sin emojis. Sale en pantalla palabra por palabra, en grande.
 - reel_sub: segunda línea del reel, máx. 40 caracteres.
 {"- edu_title (máx. 50 caracteres) y edu_body (3 a 5 frases cortas, una por línea) para la imagen." if post['type'] in TEXT_TYPES else ''}
 {self._meme_ask(post) if post['type'] == 'meme' else ''}
@@ -297,18 +297,22 @@ No escribas hashtags dentro de ig, fb ni tiktok (van aparte) y no uses "#" para 
 PARTIDOS Y FECHAS (crítico): la hora actual está en los datos ("ahora"). Solo presenta como futuro un partido que esté en
 los datos de próximos partidos con su hora; los resultados van en pasado. Los titulares y tendencias son noticias que YA
 pasaron: nunca los presentes como un partido por jugarse ni inventes un partido. Si dudas de si ya se jugó, no lo menciones.
-HOOKS (los mejores, probados en Shorts/Reels/TikTok; el gancho decide todo en el primer segundo y medio):
-- Usa fórmulas que funcionan: brecha de curiosidad ("Este partido tiene una trampa que casi nadie ve"), número
-  inesperado ("El favorito solo tiene 41%"), contradicción ("Todos apuestan al local. Los datos dicen otra cosa"),
-  reto ("Si aciertas estos 3, sabes más que el 90% de los hinchas" solo si el dato existe), lo que está en juego
-  ("Hoy se define…"), resultado primero ("Ayer acertamos 5 de 6. Hoy vamos por estos"), lista con promesa ("3 partidos
-  de esta noche que el modelo ve claros").
-- El gancho dice algo concreto (equipo, número, partido) en máx. 8 palabras; nada de saludos ni de "mira esto".
-- No uses la palabra "parche" en ganchos ni títulos (máximo una vez en el texto, y solo si suena natural).
-- voz_cierre: cierre hablado (máx. 28 palabras), tono serio y pausado: dice que somos cien por ciento objetivos, solo datos; que nuestro historial es público (aciertos y fallos) y lleva a entrar a easygoldglitch punto com y registrarse gratis; el enlace está en el primer comentario (en Facebook: 'en la página').
-  La voz es un RELATOR ARGENTINO apasionado por el fútbol: voseo rioplatense ("mirá", "vos", "tenés", "fijate", "che",
-  "no sabés lo que es esto"), exclamaciones y energía de relato, sin groserías.
+HOOKS (el gancho decide todo en el primer segundo y medio; estilo de los reels que más retienen):
+- El gancho es una PREGUNTA RARA, MUY ESPECÍFICA Y VISUAL que abre una curiosidad que el espectador necesita cerrar,
+  y que el video responde DESPUÉS con la estadística. Fórmulas: "¿Por qué…?" (algo extraño pero real del fútbol) y
+  "¿Qué pasaría si…?" (un escenario imaginable al instante). Ejemplos del tono (no los copies):
+  "¿Por qué los porteros le tienen miedo al minuto 88?", "¿Qué pasaría si este partido durara 200 minutos?",
+  "¿Por qué el Real Madrid casi nunca pierde cuando marca primero?", "¿Qué pasa con los goles cuando llueve en Manizales?",
+  "¿Por qué este equipo hace más córners perdiendo que ganando?". Debe salir de los datos de la pieza (equipo, partido,
+  mercado o dato ancla) y la respuesta tiene que estar en el video: nunca prometas algo que el video no muestra.
+- Nada de ganchos genéricos ("mirá esto", "los datos de hoy", "3 partidos, 1 dato", "el dato que nadie mira").
+- No uses la palabra "parche" en ganchos ni títulos.
+- voz_cierre: cierre (máx. 30 palabras), tono serio y pausado: somos cien por ciento objetivos, solo datos; el historial
+  es público (aciertos y fallos); EGG es GRATIS: solo te registrás para recibir las alertas y ver las estadísticas a
+  detalle, no cobramos nada; el enlace está en el primer comentario (en Facebook: 'en la página').
 VOZ DEL VIDEO: narrador serio y pausado, de documental; frases cortas, una idea por frase, sin gritos ni exclamaciones seguidas. Siempre deja claro que somos objetivos (solo datos, sin opiniones), que el historial es público y que todo está en la página.
+GRATIS (decirlo en cada pieza, con naturalidad): EGG es gratuito. Registrarse sirve para recibir alertas de los
+partidos y ver las estadísticas a detalle; no se cobra nada. Nunca hables de planes de pago, precios ni suscripciones.
 MARCAS: NUNCA nombres casas de apuestas ni ligas por su patrocinador de apuestas (di "liga colombiana", no "Liga BetPlay"); nada de raspa y gana, loterías ni dinero.
 SEO NATURAL (que suene a persona, no a lista de palabras clave): en los datos vienen "busquedas_reales" (lo que la gente
 escribe en YouTube/Google/TikTok). Toma UNA de esas búsquedas (sin palabras de apuestas) y dila como la diría alguien en
@@ -328,7 +332,7 @@ listas de emojis ni de frases de plantilla ("¡No te lo pierdas!", "Descubre", "
 - yt_title: título del Short de YouTube (máx. 60 caracteres): empieza con los equipos o la competición como los
   busca la gente (ej. "Arsenal vs Chelsea: quién gana según los datos", "Real Madrid vs PSV, el dato que nadie mira");
   sin "pronóstico" ni palabras de apuestas, sin hashtags, sin emojis, sin mayúsculas sostenidas.
-- voz_hook y voz_cierre: ver HOOKS.
+- voz_hook: la misma pregunta de reel_hook dicha con naturalidad (puede añadir 2-4 palabras). voz_cierre: ver HOOKS.
 - yt: descripción de YouTube (3 a 5 líneas): la primera con palabras clave de búsqueda, luego el valor, y el enlace
   https://easygoldglitch.com/?ref=yt_desc ; +18; sin hashtags.
 - audio_vibe: la vibra del audio en tendencia que debe sonar en el reel (ej. "épico de estadio", "comedia", "tensión",

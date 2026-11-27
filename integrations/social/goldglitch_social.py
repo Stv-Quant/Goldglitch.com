@@ -560,16 +560,16 @@ DEFAULT_TAGS = ["futbol", "estadisticasdefutbol", "datosdefutbol", "futbollatino
 SPAM_TAGS = re.compile(r"^(fyp|foryou|foryoupage|parati|paratii|viral|viralvideo|trending|xyzbca|explore|explorepage|tiktok|"
                        r"reels|reel|instagood|followme|follow|like4like|likeforlike|goldglitchstats)$", re.I)
 SITE_REF = {"tiktok": "tt", "instagram": "ig", "facebook": "fb", "youtube": "yt"}
-FIRST_COMMENT = {   # the first comment on every post: sign up (free), with the link where the network lets it work
-    "tiktok": ["Registrate gratis en easygoldglitch.com y mirá la probabilidad de cada partido de hoy. Te espero adentro.",
-               "¿Querés todos los datos de hoy? Registrate gratis en easygoldglitch.com (también está en el perfil).",
-               "Cuenta gratis en easygoldglitch.com: el modelo calcula cada partido del día. Entrá antes de que empiece."],
-    "instagram": ["Registrate gratis en easygoldglitch.com: cada partido del día, con su probabilidad. El enlace también está en la bio.",
-                  "Socio del club, gratis: easygoldglitch.com (enlace en la bio) y tenés todos los datos de hoy."],
-    "facebook": ["Regístrese gratis en EGG y vea la probabilidad de cada partido de hoy: el enlace está en la página. ¿Qué partido quiere que analicemos?",
-                 "Cuenta gratis en EGG: todos los datos del día, partido por partido. El enlace está en la información de la página."],
-    "youtube": ["Registrate gratis y mirá la probabilidad de cada partido de hoy: https://easygoldglitch.com/?ref=yt_cm",
-                "Todos los datos del día, gratis: https://easygoldglitch.com/?ref=yt_cm ¿Qué partido querés que analicemos mañana?"],
+FIRST_COMMENT = {   # the first comment on every post: free sign-up (alerts + detailed stats), no charge
+    "tiktok": ["EGG es gratis: registrate en easygoldglitch.com y te llegan las alertas de cada partido con sus estadísticas a detalle. No cobramos nada.",
+               "¿Querés las estadísticas completas? Gratis en easygoldglitch.com: te registrás, recibís las alertas y ves todo a detalle. Sin pagar.",
+               "Todo gratis en easygoldglitch.com (también en el perfil): registro para alertas y estadísticas a detalle. Cero pagos."],
+    "instagram": ["Gratis, sin pagar nada: registrate en easygoldglitch.com (enlace en la bio) y recibí las alertas de cada partido con sus estadísticas a detalle.",
+                  "EGG no cobra: te registrás en el enlace de la bio para recibir alertas y ver las estadísticas a detalle de cada partido."],
+    "facebook": ["EGG es gratuito: regístrese en la página para recibir alertas y ver las estadísticas a detalle de cada partido. No se cobra nada. ¿Qué partido quiere que analicemos?",
+                 "Sin costo: con el registro gratis recibe alertas y ve las estadísticas completas de cada partido. El enlace está en la información de la página."],
+    "youtube": ["Gratis: registrate y recibí alertas con las estadísticas a detalle de cada partido. No cobramos nada → https://easygoldglitch.com/?ref=yt_cm",
+                "Estadísticas a detalle y alertas de cada partido, 100% gratis: https://easygoldglitch.com/?ref=yt_cm ¿Qué partido querés que analicemos mañana?"],
 }
 
 
@@ -578,18 +578,18 @@ def first_comment_text(net: str, seed: str) -> str:
     return pool[int(hashlib.md5(f"{net}|{seed}".encode()).hexdigest()[:6], 16) % len(pool)]
 
 
-SIGNATURES = {    # who we are + sign up, said differently each time
-    "tiktok": ["Registrate gratis (enlace en el primer comentario) y seguí la cuenta.",
-               "Todos los datos de hoy, gratis: el enlace está en el primer comentario.",
-               "EGG: el dato antes del partido. Registro gratis en el primer comentario."],
-    "ig": ["EGG · estadística de fútbol con un modelo propio. Registrate gratis: enlace en la bio y en el primer comentario.",
-           "Guardalo para antes del partido. Todos los datos, gratis: registro en la bio.",
-           "Cada día, el dato que nadie está mirando. Cuenta gratis en la bio."],
-    "fb": ["En EGG calculamos la probabilidad de cada partido con un modelo propio. Seguí la página y lo comentamos juntos.",
-           "¿Usted qué piensa? Lo leemos todo. Seguí la página para el dato de cada día.",
-           "Somos EGG: estadística de fútbol, partido por partido."],
-    "yt": ["EGG analiza cada partido con un modelo estadístico propio. Suscribite para el dato de cada día.",
-           "Estadística de fútbol, partido por partido. Suscribite y activá la campanita."],
+SIGNATURES = {    # who we are + free sign-up, said differently each time
+    "tiktok": ["Gratis: registrate (enlace en el primer comentario) para alertas y estadísticas a detalle.",
+               "EGG es gratis. Alertas y estadísticas completas con el registro: enlace en el primer comentario.",
+               "Solo datos, gratis. Registro para alertas en el primer comentario."],
+    "ig": ["EGG · estadística de fútbol con un modelo propio. Gratis: registrate en la bio para alertas y estadísticas a detalle.",
+           "Guardalo para antes del partido. Todo gratis: registro en la bio, sin pagar nada.",
+           "Cada día, el dato que nadie mira. Gratis: alertas y estadísticas a detalle con el registro de la bio."],
+    "fb": ["En EGG calculamos la probabilidad de cada partido con un modelo propio. Es gratis: regístrese para recibir alertas y ver las estadísticas a detalle.",
+           "¿Usted qué piensa? Lo leemos todo. EGG es gratuito: con el registro recibe alertas de cada partido.",
+           "Somos EGG: estadística de fútbol, partido por partido, gratis. Sin cobros, solo registro."],
+    "yt": ["EGG analiza cada partido con un modelo estadístico propio. Gratis: registrate para alertas y estadísticas a detalle. Suscribite.",
+           "Estadística de fútbol, partido por partido, 100% gratis. Suscribite y activá la campanita."],
 }
 
 
@@ -602,7 +602,7 @@ def caption(tx: dict, key: str) -> str:
         text = re.sub(r"\s*(https?://\S+|(www\.)?easygoldglitch\.com\S*)", "", str(text or "")).rstrip(" :→-👉👇")
         if "perfil" not in text.lower():
             if int(hashlib.md5(text.encode()).hexdigest()[:2], 16) % 2:   # not on every post
-                text += "\n\nEl historial completo está en el enlace del perfil."
+                text += "\n\nGratis: el historial y las estadísticas a detalle están en el enlace del perfil."
     body = re.sub(r"#(\d)", r"Nº\1", str(text or ""))
     inline = re.findall(r"(?<![\w&])#([^\W\d][\w]*)", body)
     body = re.sub(r"[ \t]*(?<![\w&])#[^\W\d][\w]*", "", body).rstrip()
@@ -613,7 +613,7 @@ def caption(tx: dict, key: str) -> str:
             seen.add(h.lower())
             tags.append(h)
     h = int(hashlib.md5(body.encode()).hexdigest()[:6], 16)
-    if not re.search(r"registr|suscrib|primer comentario", body, re.I):      # always invite to sign up, in a rotating line
+    if not re.search(r"gratis|gratuit", body, re.I):      # always invite to sign up, in a rotating line
         pool = SIGNATURES.get(key, SIGNATURES["ig"])
         body += "\n\n" + pool[h % len(pool)]
     tags = [t for t in tags if not SPAM_TAGS.match(t)]
