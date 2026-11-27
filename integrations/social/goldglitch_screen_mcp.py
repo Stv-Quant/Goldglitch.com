@@ -47,6 +47,10 @@ def _page():
             S["state"]["attached"] = True
         pg.on("filechooser", on_chooser)
         pg.on("dialog", lambda d: d.dismiss())
+        try:      # sites that open the new File System Access picker skip the chooser we intercept: make them use <input>
+            pg.add_init_script("try{Object.defineProperty(window,'showOpenFilePicker',{value:undefined,configurable:true})}catch(e){}")
+        except Exception:
+            pass
         try:
             pg.goto(TASK["start_url"], wait_until="domcontentloaded", timeout=60_000)
         except Exception:
@@ -61,9 +65,35 @@ def _img(block: dict) -> Image:
     return Image(data=base64.b64decode(block["source"]["data"]), format="png")
 
 
+def _direct_attach(pg) -> str:
+    """Put the file straight into the page's <input type=file> (any frame) when clicking the upload button opened no
+    chooser we can see (TikTok Studio since 2026-11-25). Only for publications, and only once."""
+    files = S["state"].get("files") or []
+    if S["state"].get("attached") or not files or TASK.get("kind") == "profile":
+        return ""
+    for fr in pg.frames:
+        try:
+            loc = fr.locator("input[type=file]")
+            if loc.count() == 0:
+                continue
+            el = loc.first
+            multi = bool(el.get_attribute("multiple") is not None)
+            el.set_input_files(files if multi else files[:1], timeout=10_000)
+            S["state"]["attached"] = True
+            return "Archivo adjuntado directamente en el campo de carga de la página."
+        except Exception:
+            continue
+    return ""
+
+
 def _act(name: str, a: dict):
     pg = _page()
     out = S["agent"]._do(pg, name, a, S["state"])
+    if isinstance(out, str) and "click" in name and not S["state"].get("attached"):
+        time.sleep(1.5)                             # a real chooser fires within a second; if not, attach directly
+        note = _direct_attach(pg)
+        if note:
+            out = f"{out} {note}"
     if isinstance(out, list):
         return [_img(out[0])]
     if out.startswith("ENSAYO") or out.startswith("Acción no"):
