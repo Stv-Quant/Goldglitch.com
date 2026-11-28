@@ -5,7 +5,7 @@ export default function manifest(): MetadataRoute.Manifest {
     id: "/",
     name: "Goldglitch · Stats",
     short_name: "Goldglitch",
-    description: "Estadísticas y probabilidades deportivas con incertidumbre visible e historial auditable.",
+    description: "Estadísticas de fútbol gratis: probabilidades de cada partido e historial público. Sin planes de pago, solo regístrate.",
     lang: "es-CO",
     start_url: "/app?source=pwa",
     scope: "/",

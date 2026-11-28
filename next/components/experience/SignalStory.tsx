@@ -357,18 +357,20 @@ export function SignalStory() {
       <div className="-mt-[100dvh]">
         <section data-act="0" className="relative min-h-[150dvh] flex items-start pt-[30dvh] sm:items-center sm:pt-0">
           <div className="px-5 sm:px-10 lg:px-16 max-w-[46rem]">
-            <p className="num text-[11px] tracking-[0.22em] text-flare uppercase">00 — Ruido</p>
+            <p className="num text-[11px] tracking-[0.22em] text-flare uppercase">00 — Ruido · <span className="text-gold">100% gratis</span></p>
             <h1 className="display mt-5 text-[3.1rem] sm:text-[5.6rem] lg:text-[7rem]">
               <Line>Te venden <span className="line-through decoration-[var(--flare)] decoration-2">fijas</span>.</Line>
               <Line>Nosotros, <em>números</em>.</Line>
+              <Line>Y <em>gratis</em>.</Line>
             </h1>
             <p className="mt-7 text-lg text-mid max-w-md leading-relaxed">
-              Goldglitch calcula qué tan probable es cada resultado de un partido. Sin grupos VIP, sin humo. Y publicamos
-              cada acierto y cada fallo.
+              Estadísticas de fútbol gratis: Goldglitch calcula qué tan probable es cada resultado de un partido y publica
+              cada acierto y cada fallo. Sin grupos VIP, sin planes de pago, sin tarjeta. Solo te registras.
             </p>
-            <Link href="/acceso" className="mt-6 inline-flex items-center gap-2 num text-xs tracking-[0.18em] uppercase text-gold hover:underline underline-offset-4">
-              Ver los partidos de hoy gratis →
-            </Link>
+            <div className="mt-7 flex flex-wrap items-center gap-3">
+              <Link href="/acceso" className="btn-gold px-6 py-3.5 text-[15px]">Regístrate gratis</Link>
+              <span className="num text-[11px] tracking-[0.18em] uppercase text-gold">100% gratis · sin planes · sin tarjeta</span>
+            </div>
             <SportChips />
             <div className="mt-10 num text-[11px] tracking-[0.2em] uppercase text-lo flex items-center gap-3">
               <span className="inline-block h-8 w-px bg-[var(--text-lo)] scroll-cue" /> Desliza
