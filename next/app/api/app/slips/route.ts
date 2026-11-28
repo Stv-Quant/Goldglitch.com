@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 async function proViewer() {
   const v = await getViewer().catch(() => null);
   if (!v) return { error: Response.json({ error: "auth" }, { status: 401 }) };
-  if (!hasTier(v.tier, "pro")) return { error: Response.json({ error: "Las combinadas son parte de Pro." }, { status: 403 }) };
+  if (!hasTier(v.tier, "pro")) return { error: Response.json({ error: "Las combinadas se usan con tu cuenta gratis." }, { status: 403 }) };
   return { v };
 }
 

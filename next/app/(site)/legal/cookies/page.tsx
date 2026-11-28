@@ -34,7 +34,7 @@ export default function CookiesPage() {
         </p>
       </Clause>
       <Clause n="04" title="Terceros">
-        <p>Las fuentes tipográficas se sirven desde nuestro propio dominio. Al pagar, Wompi puede usar sus propias cookies dentro de su página de pago.</p>
+        <p>Las fuentes tipográficas se sirven desde nuestro propio dominio.</p>
       </Clause>
     </LegalPage>
   );

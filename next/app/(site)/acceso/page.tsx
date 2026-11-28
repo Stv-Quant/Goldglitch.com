@@ -5,7 +5,7 @@ import { getViewer } from "@/lib/auth";
 import { INVITE_COOKIE, getInviteByCode, inviteState, normalizeCode } from "@/lib/invites";
 import { cookies } from "next/headers";
 
-export const metadata: Metadata = { title: "Entrar", robots: { index: false, follow: true } };
+export const metadata: Metadata = { title: "Regístrate gratis", robots: { index: false, follow: true } };
 export const dynamic = "force-dynamic";
 
 const INVITE_MSG = {

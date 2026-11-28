@@ -12,11 +12,11 @@ export async function SiteHeader() {
         <Logo />
         <nav className="flex items-center gap-1 sm:gap-4 text-sm" aria-label="Principal">
           <Link href="/historial" className="hidden sm:inline px-2 py-1 text-mid hover:text-hi">Historial</Link>
-          <Link href="/planes" className="hidden sm:inline px-2 py-1 text-mid hover:text-hi">Planes</Link>
+          <Link href="/planes" className="hidden sm:inline px-2 py-1 text-mid hover:text-hi">Gratis</Link>
           {viewer ? (
             <Link href="/app" className="btn-gold px-4 py-1.5">Abrir app</Link>
           ) : (
-            <Link href="/acceso?entrar" className="btn-gold px-4 py-1.5">Entrar</Link>
+            <Link href="/acceso" className="btn-gold px-4 py-1.5">Regístrate gratis</Link>
           )}
         </nav>
       </div>

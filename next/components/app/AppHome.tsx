@@ -195,8 +195,8 @@ export function AppHome() {
             </ul>
           ) : (
             <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line p-4">
-              <p className="text-sm text-mid">Hay <span className="num text-gold">{view.picks}</span> selecciones con 80% o más en estos partidos. Los picks son parte de Pro.</p>
-              <Link href="/planes" className="btn-gold px-4 py-2 text-sm">Ver planes</Link>
+              <p className="text-sm text-mid">Hay <span className="num text-gold">{view.picks}</span> selecciones con 80% o más en estos partidos. Los picks se ven con tu cuenta gratis.</p>
+              <Link href="/acceso" className="btn-gold px-4 py-2 text-sm">Crear cuenta gratis</Link>
             </div>
           )}
         </section>
@@ -302,7 +302,7 @@ function Row({ m, pro, three, crest }: { m: M; pro: boolean; three: boolean; cre
                 {n > 1 && <span className="text-lo">+{n - 1}</span>}
               </>
             ) : (
-              <span className="text-lo">{n} pick{n === 1 ? "" : "s"} de 80%+ · <span className="text-gold">Pro</span></span>
+              <span className="text-lo">{n} pick{n === 1 ? "" : "s"} de 80%+</span>
             )}
           </div>
         )}
@@ -317,7 +317,7 @@ function Stat({ label, value, p, locked }: { label: string; value?: string; p?: 
         {p !== undefined ? <Prob p={p} className="text-2xl font-semibold" /> : <span className="num text-2xl font-semibold text-hi">{value}</span>}
       </dd>
       <dt className="order-2 truncate text-[12px] text-lo">
-        {label}{locked && <span className="ml-1.5 text-[10px] uppercase tracking-[0.14em] text-gold">Pro</span>}
+        {label}{locked && <span className="ml-1.5 text-[10px] uppercase tracking-[0.14em] text-gold">con cuenta</span>}
       </dt>
     </div>
   );

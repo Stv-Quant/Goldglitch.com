@@ -9,7 +9,7 @@ const COLUMNS = [
       { href: "/app", label: "Partidos" },
       { href: "/historial", label: "Historial del modelo" },
       { href: "/historial", label: "Metodología" },
-      { href: "/planes", label: "Planes" },
+      { href: "/planes", label: "Es gratis" },
     ],
   },
   {
@@ -17,8 +17,8 @@ const COLUMNS = [
     links: [
       { href: "/app", label: "Fútbol" },
       { href: "/app", label: "Béisbol · Baloncesto · Hockey" },
-      { href: "/planes", label: "E-sports · pronto" },
-      { href: "/planes", label: "Tenis · pronto" },
+      { href: "/app", label: "E-sports · pronto" },
+      { href: "/app", label: "Tenis · pronto" },
     ],
   },
   { title: "Legal", links: LEGAL_LINKS },

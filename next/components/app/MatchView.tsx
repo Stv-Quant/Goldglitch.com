@@ -23,8 +23,8 @@ export function MatchView({ m }: { m: MatchData | { locked: true; sport: Sport }
     return (
       <div className="max-w-xl space-y-4">
         <Link href="/app" className="text-sm text-lo hover:text-hi">← Partidos</Link>
-        <LockedPanel tier="Pro" title={`${SPORT_LABEL[m.sport]} es parte de Pro`}>
-          {`El modelo completo de ${SPORT_LABEL[m.sport].toLowerCase()} (probabilidades, picks y líneas) está disponible desde el plan Pro.`}
+        <LockedPanel tier="Pro" title={`${SPORT_LABEL[m.sport]} se ve con tu cuenta gratis`}>
+          {`El modelo completo de ${SPORT_LABEL[m.sport].toLowerCase()} (probabilidades, picks y líneas) está disponible gratis al registrarte.`}
         </LockedPanel>
       </div>
     );
@@ -45,7 +45,7 @@ export function MatchView({ m }: { m: MatchData | { locked: true; sport: Sport }
             <p className="text-[11px] text-lo">Mueve la línea con − y +. Arranca en la línea cuyo lado favorito tiene 65% o más.</p>
             {p.lines.length > 0 && <StatLines lines={p.lines} />}
             {p.linesLocked > 0 && (
-              <LockedPanel tier="Pro" title={`${p.linesLocked} estadísticas más con Pro`}>
+              <LockedPanel tier="Pro" title={`${p.linesLocked} estadísticas más con tu cuenta gratis`}>
                 {"Goles por equipo, córners, remates, remates al arco, faltas, tarjetas, fueras de juego y jugadores, cada una con su línea ajustable."}
               </LockedPanel>
             )}

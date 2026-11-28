@@ -63,7 +63,7 @@ export function MatchHero({ m }: { m: MatchData }) {
           <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-[rgba(237,230,214,0.06)] pt-4">
             <p className="num text-[11px] text-lo">
               Modelo {p.modelVersion} · actualizado {timeLabel(p.generatedAt)}
-              {p.locked.pro && " · el rango de incertidumbre es parte de Pro"}
+              {p.locked.pro && " · el rango de incertidumbre se ve con tu cuenta gratis"}
             </p>
             <ProbLegend />
           </div>

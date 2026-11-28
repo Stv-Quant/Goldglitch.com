@@ -1,10 +1,8 @@
 import { redirect } from "next/navigation";
-import { Checkout } from "@/components/app/Checkout";
 import { LogoutButton } from "@/components/app/LogoutButton";
 import { getViewer } from "@/lib/auth";
 import { getDB } from "@/lib/env";
 import { dateLabel } from "@/lib/format";
-import { PLANS } from "@/lib/plans";
 
 export const dynamic = "force-dynamic";
 
@@ -48,23 +46,11 @@ export default async function CuentaPage({ searchParams }: { searchParams: Promi
 
       <section className="glass p-6 flex flex-wrap items-center justify-between gap-4">
         <div>
-          <div className="text-xs text-lo">Plan actual</div>
-          <div className={`text-xl font-semibold ${viewer.tier !== "free" ? "text-gold" : ""}`}>{PLANS[viewer.tier].name}</div>
-          {viewer.tier !== "free" && viewer.periodEnd && (
-            <div className="text-sm text-mid mt-0.5">Activo hasta el <span className="num">{dateLabel(viewer.periodEnd)}</span></div>
-          )}
+          <div className="text-xs text-lo">Tu cuenta</div>
+          <div className="text-xl font-semibold text-gold">Gratis · todo incluido</div>
+          <div className="text-sm text-mid mt-0.5">Goldglitch no cobra nada: tienes todas las estadísticas, picks y alertas.</div>
         </div>
         <LogoutButton />
-      </section>
-
-      <section>
-        <h2 className="text-lg font-semibold">{viewer.tier === "free" ? "Mejora tu plan" : "Renueva o cambia de plan"}</h2>
-        <p className="text-sm text-mid mt-1">
-          Renovar el mismo plan suma días al periodo actual. Cambiar de plan inicia un periodo nuevo desde hoy.
-        </p>
-        <div className="mt-6">
-          <Checkout currentTier={viewer.tier} />
-        </div>
       </section>
     </div>
   );

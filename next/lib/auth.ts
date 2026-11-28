@@ -134,8 +134,8 @@ export const getViewer = cache(async (): Promise<Viewer | null> => {
     }>();
   if (!row || row.status === "suspended") return null;
 
-  const active = row.plan !== null && row.current_period_end !== null && row.current_period_end > now;
-  const ownTier: Tier = active ? row.plan! : "free";
+  // Goldglitch is free (since 2026-11-27): every account sees everything. Old subscriptions stay in the DB, unused.
+  const ownTier: Tier = "elite";
   const isAdmin = row.is_admin === 1;
   let viewingAs: Tier | null = null;
   if (isAdmin) {

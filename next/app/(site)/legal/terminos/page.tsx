@@ -26,18 +26,16 @@ export default function TerminosPage() {
           mantenerlo seguro. Podemos suspender cuentas que incumplan estas condiciones.
         </p>
       </Clause>
-      <Clause n="04" title="Membresías y pagos">
+      <Clause n="04" title="Gratuidad">
         <ul className="list-disc pl-5 space-y-2">
-          <li>Los planes Pro y Elite se pagan por adelantado en pesos colombianos (COP) mediante Wompi.</li>
-          <li>Cada pago activa el periodo elegido (30 o 365 días). No hay renovaciones ni cobros automáticos.</li>
-          <li>Renovar el mismo plan suma el nuevo periodo al restante. Cambiar de plan inicia un periodo nuevo desde la fecha del pago.</li>
-          <li>Reembolsos: [POLÍTICA DE REEMBOLSO — por definir], sin perjuicio del derecho de retracto previsto en la Ley 1480 de 2011 cuando aplique.</li>
+          <li>Goldglitch es gratuito: no hay planes de pago, suscripciones ni cobros. Solo pedimos una cuenta con tu correo.</li>
+          <li>La cuenta sirve para recibir alertas y ver las estadísticas de cada partido a detalle.</li>
         </ul>
       </Clause>
       <Clause n="05" title="Uso permitido">
         <p>
           El contenido es para tu uso personal. No puedes revenderlo, redistribuirlo en grupos de pago, extraerlo de forma
-          automatizada ni presentarlo como «pronósticos seguros». Hacerlo es causa de cierre de la cuenta sin reembolso.
+          automatizada ni presentarlo como «pronósticos seguros». Hacerlo es causa de cierre de la cuenta.
         </p>
       </Clause>
       <Clause n="06" title="Propiedad intelectual">

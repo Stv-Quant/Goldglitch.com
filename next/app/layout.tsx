@@ -8,9 +8,9 @@ import "@fontsource-variable/jetbrains-mono";
 import "./globals.css";
 
 const SITE = "https://easygoldglitch.com";
-const TITLE = "Goldglitch · Probabilidades de fútbol y béisbol con datos, no fijas";
+const TITLE = "Goldglitch · Estadísticas y probabilidades de fútbol gratis, con datos";
 const DESC =
-  "Probabilidades de cada partido de fútbol y béisbol calculadas por un modelo estadístico: ganador, goles, córners, tarjetas y jugadores. Historial público de aciertos y fallos. Gratis.";
+  "Estadísticas de fútbol gratis: probabilidades de cada partido (ganador, goles, córners, tarjetas y jugadores) calculadas por un modelo estadístico, con historial público de aciertos y fallos. Sin pagos: solo regístrate.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE),
@@ -18,8 +18,9 @@ export const metadata: Metadata = {
   description: DESC,
   applicationName: "Goldglitch",
   keywords: [
-    "probabilidades de fútbol", "pronósticos de fútbol", "estadísticas de fútbol", "predicciones de partidos",
-    "estadísticas MLB", "Liga BetPlay", "Premier League", "Champions League", "córners", "tarjetas", "xG",
+    "estadísticas de fútbol gratis", "probabilidades de fútbol", "estadísticas de fútbol", "quién gana hoy",
+    "predicciones de partidos", "datos de fútbol", "estadísticas MLB", "liga colombiana", "Premier League",
+    "Champions League", "córners", "tarjetas", "xG",
   ],
   alternates: { canonical: "/" },
   appleWebApp: { capable: true, title: "Goldglitch", statusBarStyle: "black-translucent" },
@@ -29,7 +30,7 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: TITLE,
-    description: "Te venden fijas. Nosotros, números. Probabilidades de cada partido e historial público de aciertos y fallos.",
+    description: "Te venden fijas. Nosotros, números, y gratis. Probabilidades de cada partido e historial público de aciertos y fallos: solo regístrate.",
     url: SITE,
     siteName: "Goldglitch",
     type: "website",
@@ -39,7 +40,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary",
     title: TITLE,
-    description: "Probabilidades de cada partido con datos, no fijas. Historial público.",
+    description: "Estadísticas de cada partido gratis, con datos, no fijas. Historial público. Solo regístrate.",
   },
   robots: { index: true, follow: true },
 };
