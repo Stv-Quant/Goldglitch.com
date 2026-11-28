@@ -121,9 +121,9 @@ def generar(n: int = 12) -> str:
     open(os.path.join(d, "egg_clips.py"), "w", encoding="utf-8").write(src.replace("__PROMPTS__", json.dumps(items, ensure_ascii=False)))
     meta = {"id": f"{user}/{SLUG}", "title": SLUG, "code_file": "egg_clips.py", "language": "python", "kernel_type": "script",
             "is_private": "true", "enable_gpu": "true", "enable_internet": "true", "dataset_sources": [],
-            "competition_sources": [], "kernel_sources": [],
-            # P100 (1 GPU) starts right away most of the time; T4 x2 is the most requested and can queue for hours
-            "machine_shape": os.environ.get("KAGGLE_GPU", "NvidiaTeslaP100")}
+            "competition_sources": [], "kernel_sources": []}
+    if os.environ.get("KAGGLE_GPU"):                 # Kaggle's default GPU is T4 x2 (the P100 was retired)
+        meta["machine_shape"] = os.environ["KAGGLE_GPU"]
     json.dump(meta, open(os.path.join(d, "kernel-metadata.json"), "w", encoding="utf-8"), indent=1)
     json.dump(items, open(os.path.join(WORK, "pedido.json"), "w", encoding="utf-8"), ensure_ascii=False, indent=1)
     out = kaggle("kernels", "push", "-p", d)
