@@ -12,7 +12,18 @@ const JSON_LD = {
     { "@type": "WebApplication", name: "Goldglitch", url: "https://easygoldglitch.com", applicationCategory: "SportsApplication",
       operatingSystem: "Web", inLanguage: "es-CO",
       description: "Estadísticas y probabilidades de cada partido de fútbol y béisbol, gratis: calculadas por un modelo estadístico, con historial público de aciertos y fallos. Solo pide registrarse.",
-      offers: { "@type": "Offer", price: "0", priceCurrency: "COP" } },
+      isAccessibleForFree: true,
+      offers: { "@type": "Offer", price: "0", priceCurrency: "COP", description: "Gratis: solo requiere registrarse con el correo." } },
+    { "@type": "FAQPage", mainEntity: [
+      { "@type": "Question", name: "¿Goldglitch es gratis?",
+        acceptedAnswer: { "@type": "Answer", text: "Sí. Goldglitch es 100% gratis: no hay planes de pago ni se pide tarjeta. Solo te registras con tu correo para ver todas las estadísticas y recibir alertas." } },
+      { "@type": "Question", name: "¿Para qué tengo que registrarme?",
+        acceptedAnswer: { "@type": "Answer", text: "La cuenta gratis sirve para ver las estadísticas de cada partido a detalle (goles, córners, tarjetas, jugadores y picks de 80% o más) y recibir alertas de los partidos que te interesan." } },
+      { "@type": "Question", name: "¿Goldglitch vende pronósticos o fijas?",
+        acceptedAnswer: { "@type": "Answer", text: "No. Publicamos probabilidades calculadas por un modelo estadístico y el historial público de aciertos y fallos. No vendemos nada." } },
+      { "@type": "Question", name: "¿Qué deportes cubre?",
+        acceptedAnswer: { "@type": "Answer", text: "Fútbol (Champions, Premier League, LaLiga, liga colombiana y más), béisbol, baloncesto, hockey y NFL." } },
+    ] },
   ],
 };
 

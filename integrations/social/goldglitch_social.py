@@ -395,6 +395,14 @@ def _build(post: dict, facts: dict, ag: Agents, now: datetime, tag: str, shown: 
             data["tendencias_del_momento"] = T.brief(n=6)
         except Exception:
             pass
+    if t == "reel" and reel_of == "picks_dia" and not rows:     # no matches left today: a curiosity reel, not a skip
+        reel_of = "texto"
+        try:
+            data["titulares_futbol"] = T.brief(n=6).get("titulares_futbol", [])
+        except Exception:
+            data.setdefault("titulares_futbol", [])
+        data["formato_visual"] = "curiosidad sin partido: una pregunta '¿por qué…?' sobre el fútbol, respondida con el historial o un titular real"
+        log("  sin partidos de hoy por mostrar: reel de curiosidad con el historial y los titulares")
     if t in ("picks_dia", "resultados") or (t == "reel" and reel_of != "texto"):
         if not rows:
             raise SkipPiece("no quedan partidos de hoy de ligas top sin mostrar (los de mañana se publican mañana)"
