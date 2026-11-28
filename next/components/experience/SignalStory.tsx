@@ -420,9 +420,9 @@ export function SignalStory() {
             </h2>
             <div className="mt-10 flex flex-wrap gap-3">
               <Link href="/acceso" className="btn-gold px-6 py-3.5 text-[15px]">Crear cuenta gratis</Link>
-              <Link href="/planes" className="btn-ghost px-6 py-3.5 text-[15px] bg-[rgba(10,9,7,0.5)]">Ver planes</Link>
+              <Link href="/historial" className="btn-ghost px-6 py-3.5 text-[15px] bg-[rgba(10,9,7,0.5)]">Ver el historial</Link>
             </div>
-            <p className="mt-4 text-sm text-lo">Gratis, sin tarjeta. Solo necesitas tu correo.</p>
+            <p className="mt-4 text-sm text-lo">Gratis para siempre: sin planes ni tarjeta. Solo tu correo.</p>
           </div>
         </section>
       </div>

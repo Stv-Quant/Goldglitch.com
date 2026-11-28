@@ -15,7 +15,7 @@ export type TodayFixture = {
 
 // Public ESPN scoreboards: the schedule only (teams + kickoff). Probabilities never come from here.
 const FEEDS: { path: string; sport: string; league: string }[] = [
-  { path: "soccer/col.1", sport: "FÚT", league: "Liga BetPlay" },
+  { path: "soccer/col.1", sport: "FÚT", league: "Liga Colombiana" },
   { path: "soccer/eng.1", sport: "FÚT", league: "Premier League" },
   { path: "soccer/esp.1", sport: "FÚT", league: "LaLiga" },
   { path: "soccer/ita.1", sport: "FÚT", league: "Serie A" },

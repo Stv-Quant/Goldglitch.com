@@ -9,7 +9,7 @@ import { SPORT_LABEL } from "@/lib/sports";
 
 export const metadata: Metadata = {
   title: "Historial de aciertos y fallos",
-  description: "Cada pronóstico de Goldglitch, acertado o fallado, guardado antes del partido. Mira si cuando decimos 60% pasa el 60% de las veces.",
+  description: "Cada pick de Goldglitch (80% o más), acertado o fallado, guardado antes del partido. Gratis y público: mira si cuando decimos 85% pasa el 85% de las veces.",
   alternates: { canonical: "/historial" },
 };
 export const dynamic = "force-dynamic";

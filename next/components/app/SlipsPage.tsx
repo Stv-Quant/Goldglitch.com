@@ -56,7 +56,7 @@ export function SlipsPage() {
   return (
     <div className="space-y-8">
       <div>
-        <p className="eyebrow">Pro</p>
+        <p className="eyebrow">Gratis</p>
         <h1 className="mt-1 text-3xl font-semibold tracking-tight">Combinadas</h1>
         <p className="mt-2 max-w-2xl text-sm text-mid">
           Junta picks de 80% o más con <span className="text-hi">+ Combinada</span> en cada partido. Calculamos la probabilidad de que salgan todas,

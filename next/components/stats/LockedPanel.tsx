@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 /**
- * Upsell placeholder. Contains no real data — the server never sends locked fields —
+ * Sign-up placeholder (the product is free; only an account is needed). Contains no real data — the server never sends locked fields —
  * only an abstract shape so the layout doesn't jump when the user upgrades.
  */
 export function LockedPanel({ tier, title, children }: { tier: "Pro" | "Elite"; title: string; children: string }) {
@@ -14,11 +14,11 @@ export function LockedPanel({ tier, title, children }: { tier: "Pro" | "Elite"; 
             <rect x="4" y="11" width="16" height="10" rx="2" />
             <path d="M8 11V7a4 4 0 0 1 8 0v4" />
           </svg>
-          <span className="eyebrow" style={{ color: "var(--gold)" }}>{tier}</span>
+          <span className="eyebrow" style={{ color: "var(--gold)" }}>{tier ? "Gratis con tu cuenta" : ""}</span>
         </div>
         <h3 className="mt-2 text-base font-semibold">{title}</h3>
         <p className="mt-1 text-sm text-mid max-w-prose">{children}</p>
-        <Link href="/planes" className="btn-ghost mt-4 inline-block px-4 py-2 text-sm">Ver planes</Link>
+        <Link href="/acceso" className="btn-ghost mt-4 inline-block px-4 py-2 text-sm">Crear cuenta gratis</Link>
       </div>
     </div>
   );

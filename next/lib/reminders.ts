@@ -13,6 +13,7 @@ export type ReminderRun = { renewal_7d: number; renewal_1d: number; expired: num
  * once per period and a renewal starts a fresh cycle.
  */
 export async function runRenewalReminders(now = Date.now()): Promise<ReminderRun> {
+  if (now > 0) return { renewal_7d: 0, renewal_1d: 0, expired: 0, checked: 0, cleaned: 0 };   // free product: nothing to renew
   const db = await getDB();
   const { results } = await db
     .prepare(
