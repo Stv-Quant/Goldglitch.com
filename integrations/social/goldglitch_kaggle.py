@@ -121,7 +121,9 @@ def generar(n: int = 12) -> str:
     open(os.path.join(d, "egg_clips.py"), "w", encoding="utf-8").write(src.replace("__PROMPTS__", json.dumps(items, ensure_ascii=False)))
     meta = {"id": f"{user}/{SLUG}", "title": SLUG, "code_file": "egg_clips.py", "language": "python", "kernel_type": "script",
             "is_private": "true", "enable_gpu": "true", "enable_internet": "true", "dataset_sources": [],
-            "competition_sources": [], "kernel_sources": []}
+            "competition_sources": [], "kernel_sources": [],
+            # P100 (1 GPU) starts right away most of the time; T4 x2 is the most requested and can queue for hours
+            "machine_shape": os.environ.get("KAGGLE_GPU", "NvidiaTeslaP100")}
     json.dump(meta, open(os.path.join(d, "kernel-metadata.json"), "w", encoding="utf-8"), indent=1)
     json.dump(items, open(os.path.join(WORK, "pedido.json"), "w", encoding="utf-8"), ensure_ascii=False, indent=1)
     out = kaggle("kernels", "push", "-p", d)
@@ -134,7 +136,7 @@ def estado() -> str:
     return kaggle("kernels", "status", f"{user}/{SLUG}").strip()
 
 
-def traer(wait_min: int = 150) -> int:
+def traer(wait_min: int = 300) -> int:
     """Wait for the run to finish, download the clips, upscale them to 1080×1920 and add them to the library."""
     user = os.environ["KAGGLE_USERNAME"]
     t_end = time.time() + wait_min * 60
@@ -143,6 +145,8 @@ def traer(wait_min: int = 150) -> int:
         st = estado().lower()
         if any(w in st for w in ("complete", "error", "cancel")):
             break
+        if "queued" in st and time.time() > t_end - (wait_min - 45) * 60:
+            log("Kaggle: lleva 45 min en cola; si sigue así, prueba más tarde o cambia la GPU en .env (KAGGLE_GPU)")
         print(f"  {datetime.now():%H:%M} {st[-80:]}", flush=True)
         time.sleep(60)
     dl = os.path.join(WORK, "salida")
