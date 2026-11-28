@@ -79,6 +79,12 @@ def kaggle(*args: str, check: bool = True) -> str:
     p = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace",
                        creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     out = (p.stdout or "") + (p.stderr or "")
+    if "No module named 'six'" in out and not os.environ.get("_EGG_SIX"):   # kaggle 2.2.x ships without its 'six' dependency
+        os.environ["_EGG_SIX"] = "1"
+        subprocess.run([sys.executable, "-m", "pip", "install", "-q", "six"], creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+        return kaggle(*args, check=check)
+    if "Authentication required" in out:
+        raise RuntimeError("Kaggle no aceptó el token: revisa que .env tenga KAGGLE_API_TOKEN=... (sin comillas ni espacios)")
     if check and p.returncode != 0:
         raise RuntimeError(out.strip()[-600:] or f"kaggle {' '.join(args)} falló")
     return out
